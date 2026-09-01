@@ -375,3 +375,5 @@ Vite build output must land in `src/adassassin/webapp/` (see `web/vite.config.ts
 - 2026-09-01 — Phase 0–5 completeness pass: guide red-run step, observe-run
   progress ignores RED jobs, stale Phase 2 acceptance text updated.
 - 2026-09-01 — Phase 6 landed (report export + closeout, 0.7.0).
+- 2026-09-01 — Post-phase hardening: GitHub Actions CI, operator runbook,
+  release tag `v0.7.0`.

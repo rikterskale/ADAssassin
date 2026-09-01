@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: pytest (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install package (editable + dev)
+        run: python -m pip install -U pip setuptools wheel; python -m pip install -e ".[dev]"
+
+      - name: Run tests
+        run: python -m pytest tests/ -q
+
+      - name: Packaging smoke
+        run: |
+          python -m pip install .
+          python -c "from adassassin import __version__, ENGINE_PIN, ENGINE_COMMIT; assert __version__ == '0.7.0'; assert ENGINE_PIN == '0.10.1'"
+          python -c "from adassassin.catalog import static_catalog; c=static_catalog(); assert c['count'] == 92"
+          adassassin --version
+
+  lint:
+    name: ruff
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install ruff
+        run: python -m pip install -U pip "ruff>=0.6.0"
+
+      - name: Ruff check
+        run: python -m ruff check src tests
