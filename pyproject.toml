@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=80", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "adassassin"
+version = "0.1.0"
+description = "Vendor-grade web console for authorized Active Directory red team operations"
+readme = "README.md"
+requires-python = ">=3.11,<3.15"
+license = "LicenseRef-Proprietary"
+authors = [{ name = "Rikter Skale" }]
+keywords = ["active-directory", "red-team", "web-console"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Web Environment",
+    "Intended Audience :: Information Technology",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Topic :: Security",
+]
+dependencies = [
+    "fastapi==0.116.1",
+    "uvicorn[standard]==0.35.0",
+    "pydantic==2.13.4",
+    "pydantic-settings==2.15.0",
+    "adaf-attack @ git+https://github.com/rikterskale/ADAF-ATTACK.git@fdb60b90b910ba3dcbd582e2c72ce48189191214",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "httpx>=0.28",
+    "ruff>=0.6.0",
+]
+
+[project.scripts]
+adassassin = "adassassin.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+adassassin = ["data/*.json", "webapp/**/*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
