@@ -2,14 +2,9 @@ import { NavLink, Outlet } from "react-router-dom";
 import type { HealthResponse } from "../types";
 
 const links = [
-  ["/", "Overview"],
-  ["/guided", "Guided"],
-  ["/catalog", "Catalog"],
-  ["/engagements", "Engagements"],
-  ["/findings", "Findings"],
-  ["/vault", "Vault"],
-  ["/rollback", "Rollback"],
-  ["/report", "Report"],
+  ["/", "Overview"], ["/guided", "Guided"], ["/catalog", "Catalog"], ["/glossary", "Glossary"],
+  ["/engagements", "Engagements"], ["/findings", "Findings"], ["/vault", "Vault"],
+  ["/rollback", "Rollback"], ["/report", "Report"],
 ] as const;
 
 export function Shell({ health }: { health: HealthResponse | null }) {
@@ -26,15 +21,13 @@ export function Shell({ health }: { health: HealthResponse | null }) {
         </div>
         <nav>
           {links.map(([to, label]) => (
-            <NavLink key={to} to={to} end={to === "/"}>
-              {label}
-            </NavLink>
+            <NavLink key={to} to={to} end={to === "/"}>{label}</NavLink>
           ))}
         </nav>
         <div className="rail-foot">
           Local console. Authorized internal use only.
           <br />
-          Engine pin {health?.engine_pin ?? "0.10.1"}
+          Phase {health?.phase ?? "1"} · engine pin {health?.engine_pin ?? "0.10.1"}
         </div>
       </aside>
       <section className="main">
@@ -42,16 +35,12 @@ export function Shell({ health }: { health: HealthResponse | null }) {
           <div className="banner">Authorized use only · written scope required for live work</div>
           <div className="status-pills">
             <span className="pill">ADAssassin {health?.version ?? "…"}</span>
-            <span className={`pill ${engineOk ? "ok" : "warn"}`}>
-              engine {engineOk ? "live" : "catalog fallback"}
-            </span>
+            <span className={`pill ${engineOk ? "ok" : "warn"}`}>engine {engineOk ? "live" : "catalog fallback"}</span>
             <span className="pill">{health?.catalog_count ?? 0} capabilities</span>
             <span className="pill">{health?.bind ?? "127.0.0.1"}</span>
           </div>
         </header>
-        <div className="content">
-          <Outlet />
-        </div>
+        <div className="content"><Outlet /></div>
       </section>
     </div>
   );
