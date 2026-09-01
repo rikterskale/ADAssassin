@@ -1,73 +1,42 @@
 import { Link } from "react-router-dom";
-import type { Engagement, HealthResponse } from "../types";
+import type { DoctorResponse, Engagement, GuideResponse, HealthResponse } from "../types";
 
 export function Overview({
-  health,
-  engagement,
+  health, doctor, guide, engagement,
 }: {
   health: HealthResponse | null;
+  doctor: DoctorResponse | null;
+  guide: GuideResponse | null;
   engagement: Engagement | null;
 }) {
   return (
     <>
       <section className="hero">
-        <div className="brand-sub">Phase 0 console</div>
+        <div className="brand-sub">Phase 1 · guided console</div>
         <h1>See the estate. Then take the next approved step.</h1>
-        <p className="lede">
-          ADAssassin is the operator surface for the pinned ADAF-ATTACK engine.
-          Guided mode hides the 92-tool wall. Destructive work stays behind
-          engine approval gates.
-        </p>
+        <p className="lede">Doctor never contacts a domain controller. The next step is computed from local readiness and the current workspace.</p>
         <div className="actions">
-          <Link className="btn primary" to="/guided">
-            Open guided path
-          </Link>
-          <Link className="btn" to="/catalog">
-            Browse catalog
-          </Link>
+          {guide?.next ? <Link className="btn primary" to={guide.next.href}>Next: {guide.next.title}</Link> : <Link className="btn primary" to="/guided">Open guided path</Link>}
+          <Link className="btn" to="/catalog?lane=green">GREEN catalog</Link>
         </div>
       </section>
       <div className="grid">
         <div className="panel span-8">
-          <h2>Pulse</h2>
-          <div className="metric-row">
-            <div className="metric">
-              <b>{health?.catalog_count ?? "—"}</b>
-              <span>Capabilities</span>
+          <h2>Doctor</h2>
+          <p className="muted">{doctor?.summary ?? "…"} · directory contact {doctor?.contacts_directory ? "yes" : "no"}</p>
+          {(doctor?.checks ?? []).map((check) => (
+            <div className="finding" key={check.id}>
+              <span className={`badge ${check.status === "pass" ? "green" : check.status === "warn" ? "yellow" : "red"}`}>{check.status}</span>
+              {" "}{check.id}
+              <div className="muted">{check.detail}</div>
             </div>
-            <div className="metric">
-              <b>{engagement?.findings.length ?? 0}</b>
-              <span>Findings in focus</span>
-            </div>
-            <div className="metric">
-              <b>{engagement?.rollback.pending ?? 0}</b>
-              <span>Pending rollbacks</span>
-            </div>
-          </div>
+          ))}
         </div>
         <div className="panel span-4">
-          <h2>Active engagement</h2>
-          {engagement ? (
-            <>
-              <div>{engagement.name}</div>
-              <div className="muted mono">{engagement.id}</div>
-              <p className="muted">{engagement.mode === "demo" ? "Offline demo workspace." : "Live-ready workspace."}</p>
-            </>
-          ) : (
-            <p className="muted">No engagement yet. Create one or seed the demo.</p>
-          )}
-        </div>
-        <div className="panel span-12">
-          <h2>Engine</h2>
-          <p className="muted">
-            Pin {health?.engine_pin} · {health?.engine_commit?.slice(0, 12)} · source{" "}
-            {health?.catalog_source}
-          </p>
-          {health?.engine.error ? (
-            <p className="muted">Engine import note: {health.engine.error}</p>
-          ) : (
-            <p className="muted">Registry reachable. Execution lands in a later phase.</p>
-          )}
+          <h2>Pulse</h2>
+          <div className="metric"><b>{health?.catalog_count ?? "—"}</b><span>Capabilities</span></div>
+          <div className="metric"><b>{guide?.lanes.green ?? 0} / {guide?.lanes.yellow ?? 0} / {guide?.lanes.red ?? 0}</b><span>Green / yellow / red</span></div>
+          <div className="metric"><b>{engagement?.findings.length ?? 0}</b><span>{engagement?.name ?? "No engagement"}</span></div>
         </div>
       </div>
     </>

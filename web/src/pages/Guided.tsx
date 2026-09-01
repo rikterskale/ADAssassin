@@ -1,62 +1,39 @@
 import { Link } from "react-router-dom";
-import type { Engagement } from "../types";
-
-const steps = [
-  ["01", "Workspace", "Use the offline demo or name a live-ready engagement."],
-  ["02", "Discover", "Observe-only catalog items. No directory writes."],
-  ["03", "Recommend", "Next actions come from evidence, not a toolbox."],
-  ["04", "Approve", "RED work requires typed confirmation and scope."],
-  ["05", "Close out", "Rollback queue, vault rotation marks, report."],
-];
+import type { Engagement, GuideResponse } from "../types";
 
 export function Guided({
-  engagement,
-  onDemo,
+  guide, engagement, onDemo, onMark,
 }: {
+  guide: GuideResponse | null;
   engagement: Engagement | null;
   onDemo: () => void;
+  onMark: (stepId: string) => void;
 }) {
   return (
     <>
       <section className="hero">
         <div className="brand-sub">Guided</div>
         <h1>Do not start from a capability name.</h1>
-        <p className="lede">
-          The novice path is an engagement. Capabilities appear when evidence
-          makes them the next step.
-        </p>
+        <p className="lede">Complete these local steps first. Live connect is Phase 2.</p>
         <div className="actions">
-          <button className="btn primary" type="button" onClick={onDemo}>
-            Seed offline demo
-          </button>
-          <Link className="btn" to="/engagements">
-            Name an engagement
-          </Link>
+          <button className="btn primary" type="button" onClick={onDemo}>Seed offline demo</button>
+          <Link className="btn" to="/engagements">Name an engagement</Link>
         </div>
       </section>
       <div className="grid">
-        {steps.map(([n, title, copy]) => (
-          <div className="panel span-4" key={n}>
-            <h2>{n} {title}</h2>
-            <p className="muted">{copy}</p>
+        {(guide?.steps ?? []).map((step, index) => (
+          <div className="panel span-6" key={step.id}>
+            <h2>{String(index + 1).padStart(2, "0")} {step.title}</h2>
+            <p className="muted">{step.why}</p>
+            <div className="actions">
+              <Link className="btn ghost" to={step.href}>Open</Link>
+              {step.done ? <span className="badge green">done</span> : <button className="btn" type="button" onClick={() => onMark(step.id)}>Mark seen</button>}
+            </div>
           </div>
         ))}
         <div className="panel span-12">
           <h2>Current focus</h2>
-          {engagement ? (
-            <>
-              <p>
-                {engagement.name} · {engagement.mode} · {engagement.findings.length} demo
-                findings
-              </p>
-              <p className="muted">
-                Live connect and capability run land in Phase 2. This slice
-                proves the console, catalog, and workspace.
-              </p>
-            </>
-          ) : (
-            <p className="muted">Seed the demo to populate findings without a DC.</p>
-          )}
+          <p className="muted">{engagement ? `${engagement.name} · ${engagement.mode} · ${engagement.findings.length} findings` : "Seed the demo to populate findings without a DC."}</p>
         </div>
       </div>
     </>
