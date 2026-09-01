@@ -197,7 +197,9 @@ export type Engagement = {
   jobs?: Job[];
   connect?: ConnectState;
   vault: { secrets: number; tickets: number; certificates: number };
+  vault_audit?: { id: string; action: string; name: string; scope?: string; ttl_seconds?: number; at: string; expires_at?: string }[];
   rollback: { pending: number };
+  rollback_audit?: { id: string; action: string; at: string; sessions?: string[] }[];
   target_contacted: boolean;
   guided_marked?: string[];
 };
@@ -238,4 +240,66 @@ export type FindingStatusResponse = {
   ok: boolean;
   finding: Finding;
   engagement: Engagement;
+};
+
+export type VaultItem = {
+  name: string;
+  kind: string;
+  secret: boolean;
+  label: string;
+  created?: string | null;
+  last_used?: string | null;
+  scope: string;
+  metadata?: Record<string, unknown>;
+};
+
+export type VaultResponse = {
+  ok: boolean;
+  engagement_id: string;
+  counters: { secrets: number; tickets: number; certificates: number };
+  items: VaultItem[];
+  unmasked_active: { name: string; expires_at: string }[];
+};
+
+export type VaultUnmaskResponse = {
+  ok: boolean;
+  item: { name: string; scope: string; value: unknown; expires_at: string; ttl_seconds: number };
+  engagement: Engagement;
+};
+
+export type RollbackEntry = {
+  session_id: string;
+  kind: string;
+  target?: string;
+  attribute?: string;
+  status: string;
+  classification?: string;
+  registered_at?: string;
+  host?: string;
+  result?: string;
+  has_previous?: boolean;
+};
+
+export type RollbackResponse = {
+  ok: boolean;
+  engagement_id: string;
+  pending: number;
+  failed: number;
+  completed: number;
+  entries: RollbackEntry[];
+  sessions: {
+    session_id: string;
+    session_path: string;
+    status?: string;
+    pending?: number;
+    failed?: number;
+    next_action?: string;
+  }[];
+  engagement?: Engagement;
+  contacts_directory?: boolean;
+  preview?: boolean;
+  mutation?: boolean;
+  message?: string;
+  requires_force?: boolean;
+  confirm_token?: string;
 };

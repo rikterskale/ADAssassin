@@ -102,5 +102,5 @@ def test_invalid_finding_status(tmp_path: Path) -> None:
 def test_health_phase_three(tmp_path: Path) -> None:
     client = _client(tmp_path)
     health = client.get("/api/health").json()
-    assert health["phase"] == "3"
-    assert health["version"].startswith("0.4")
+    assert int(health["phase"]) >= 3
+    assert health["version"].startswith("0.")

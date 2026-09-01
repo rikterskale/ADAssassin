@@ -13,7 +13,10 @@ import type {
   GuideResponse,
   HealthResponse,
   Job,
+  RollbackResponse,
   RunResponse,
+  VaultResponse,
+  VaultUnmaskResponse,
 } from "./types";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -88,5 +91,24 @@ export const api = {
     request<FindingStatusResponse>(
       `/api/engagements/${engagementId}/findings/${encodeURIComponent(findingId)}/status`,
       { method: "POST", body: JSON.stringify({ status }) },
+    ),
+  vault: (engagementId: string) =>
+    request<VaultResponse>(`/api/engagements/${engagementId}/vault`),
+  unmaskVault: (engagementId: string, name: string, body?: { scope?: string; ttl_seconds?: number }) =>
+    request<VaultUnmaskResponse>(
+      `/api/engagements/${engagementId}/vault/${encodeURIComponent(name)}/unmask`,
+      { method: "POST", body: JSON.stringify(body ?? { scope: "engagement", ttl_seconds: 30 }) },
+    ),
+  rollback: (engagementId: string) =>
+    request<RollbackResponse>(`/api/engagements/${engagementId}/rollback`),
+  previewRollback: (engagementId: string) =>
+    request<RollbackResponse>(`/api/engagements/${engagementId}/rollback/preview`, { method: "POST" }),
+  applyRollback: (
+    engagementId: string,
+    body: { force: boolean; ack: boolean; confirm: string; session_id?: string },
+  ) =>
+    request<RollbackResponse & { applied?: boolean; results?: unknown[] }>(
+      `/api/engagements/${engagementId}/rollback/apply`,
+      { method: "POST", body: JSON.stringify(body) },
     ),
 };

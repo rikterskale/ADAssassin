@@ -9,10 +9,10 @@ a guided GUI.
 > Written authorization is required before any live target work.
 > Availability of this repository is not authorization.
 
-Current slice: **Phase 3** (findings list/detail, explain, remediation
-checklist, status marks). Red execution is Phase 5.
+Current slice: **Phase 4** (vault metadata + TTL unmask, rollback preview /
+force-gated apply). Red capability execution is Phase 5.
 
-Build order and acceptance criteria: **[ROADMAP.md](ROADMAP.md)**. Next slice is Phase 4.
+Build order and acceptance criteria: **[ROADMAP.md](ROADMAP.md)**. Next slice is Phase 5.
 
 ## Quick start
 
@@ -29,7 +29,7 @@ Binds `127.0.0.1:8745`. Doctor and demo never contact a domain controller.
 cd web && npm install && npm run build   # optional React rebuild
 ```
 
-## Phase 3 console
+## Phase 4 console
 
 - Overview doctor checks (Python, catalog, engine, bind)
 - Guided checklist through connect + observe run
@@ -37,6 +37,8 @@ cd web && npm install && npm run build   # optional React rebuild
 - Connect preflight (engine live-ad doctor); passwords stay in memory
 - Observe-only runs with job log and findings attach
 - Findings pane: severity groups, explain, remediation checklist, status
+- Vault metadata inventory with single-item TTL unmask + audit
+- Rollback preview (offline) and typed-YES apply
 - Glossary from the engine when present
 - Offline demo findings
 

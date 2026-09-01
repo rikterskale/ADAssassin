@@ -30,8 +30,10 @@ from adassassin.findings import (
     set_finding_status,
 )
 from adassassin.guide import glossary_payload, guide_payload
+from adassassin.rollback import RollbackError, apply_rollback, list_rollback, preview_rollback
 from adassassin.runner import RunRefused, execute_observe
 from adassassin.targets import TargetError, connect_engagement
+from adassassin.vault import VaultServiceError, list_vault, unmask_vault_item
 
 WEBAPP = Path(__file__).resolve().parent / "webapp"
 
@@ -66,6 +68,18 @@ class FindingStatusIn(BaseModel):
     status: str = Field(min_length=1, max_length=20)
 
 
+class VaultUnmaskIn(BaseModel):
+    scope: str = "engagement"
+    ttl_seconds: int = Field(default=30, ge=5, le=300)
+
+
+class RollbackApplyIn(BaseModel):
+    force: bool = False
+    ack: bool = False
+    confirm: str = ""
+    session_id: str | None = None
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
     settings.data_dir.mkdir(parents=True, exist_ok=True)
@@ -86,7 +100,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "ok": True,
             "product": "adassassin",
             "version": __version__,
-            "phase": "3",
+            "phase": "4",
             "engine": engine,
             "engine_pin": ENGINE_PIN,
             "engine_commit": ENGINE_COMMIT,
@@ -243,6 +257,62 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except FindingError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.get("/api/engagements/{engagement_id}/vault")
+    def engagement_vault(engagement_id: str) -> dict[str, Any]:
+        try:
+            return list_vault(settings, engagement_id)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.post("/api/engagements/{engagement_id}/vault/{name}/unmask")
+    def engagement_vault_unmask(
+        engagement_id: str, name: str, body: VaultUnmaskIn
+    ) -> dict[str, Any]:
+        try:
+            return unmask_vault_item(
+                settings,
+                engagement_id,
+                name,
+                scope=body.scope,
+                ttl_seconds=body.ttl_seconds,
+            )
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except VaultServiceError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.get("/api/engagements/{engagement_id}/rollback")
+    def engagement_rollback(engagement_id: str) -> dict[str, Any]:
+        try:
+            return list_rollback(settings, engagement_id)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.post("/api/engagements/{engagement_id}/rollback/preview")
+    def engagement_rollback_preview(engagement_id: str) -> dict[str, Any]:
+        try:
+            return preview_rollback(settings, engagement_id)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.post("/api/engagements/{engagement_id}/rollback/apply")
+    def engagement_rollback_apply(
+        engagement_id: str, body: RollbackApplyIn
+    ) -> dict[str, Any]:
+        try:
+            return apply_rollback(
+                settings,
+                engagement_id,
+                force=body.force,
+                confirm=body.confirm,
+                ack=body.ack,
+                session_id=body.session_id,
+            )
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except RollbackError as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
 
     if WEBAPP.joinpath("index.html").exists():
         assets = WEBAPP / "assets"

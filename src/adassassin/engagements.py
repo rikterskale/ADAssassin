@@ -119,10 +119,23 @@ def get_job(settings: Settings, engagement_id: str, job_id: str) -> dict[str, An
 
 
 def ensure_demo(settings: Settings) -> dict[str, Any]:
+    from adassassin.rollback import seed_demo_pending_cleanup
+    from adassassin.vault import ensure_demo_vault
+
     for item in list_engagements(settings):
         if item.get("mode") == "demo":
+            ensure_demo_vault(settings, item["id"])
+            seed_demo_pending_cleanup(settings, item["id"])
             return item
-    return create_engagement(settings, name="Offline demo", notes="Fixture workspace. No domain controller is contacted.", demo=True)
+    created = create_engagement(
+        settings,
+        name="Offline demo",
+        notes="Fixture workspace. No domain controller is contacted.",
+        demo=True,
+    )
+    ensure_demo_vault(settings, created["id"])
+    seed_demo_pending_cleanup(settings, created["id"])
+    return created
 
 
 def mark_guided(settings: Settings, engagement_id: str, step_id: str) -> dict[str, Any] | None:

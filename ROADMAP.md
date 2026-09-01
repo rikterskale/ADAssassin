@@ -9,8 +9,8 @@ every capability in `docs/CAPABILITY_CATALOG.md` from
 (92 at pin 0.10.1). It does not reimplement those capabilities.
 
 Repo: https://github.com/rikterskale/ADAssassin
-Current slice: **Phase 3 complete. Next work is Phase 4.**
-Package version at this writing: `0.4.0`.
+Current slice: **Phase 4 complete. Next work is Phase 5.**
+Package version at this writing: `0.5.0`.
 
 ---
 
@@ -44,6 +44,8 @@ browser  →  FastAPI (adassassin)  →  adaf-attack (pinned)
                 ├─ targets.py     connect / live-ad preflight
                 ├─ runner.py      observe-only capability runs
                 ├─ findings.py    explain / remediate / status
+                ├─ vault.py       metadata list + TTL unmask
+                ├─ rollback.py    preview / force-gated apply
                 ├─ secrets.py     in-memory bind secrets
                 ├─ engagements.py disk sessions under ~/.adassassin
                 └─ web/           React source
@@ -77,8 +79,8 @@ Lanes (console risk bands):
 | 1 | Doctor, guided checklist, glossary, inspector | **done** on `main` |
 | 2 | Live connect + observe-only runs | **done** on `main` (2026-09-01) |
 | 3 | Findings, explain, remediate | **done** on `main` (2026-09-01) |
-| 4 | Vault, tickets, rollback UI | **next** |
-| 5 | Typed-confirm RED execution | not started |
+| 4 | Vault, tickets, rollback UI | **done** on `main` (2026-09-01) |
+| 5 | Typed-confirm RED execution | **next** |
 | 6 | Report export + closeout | not started |
 
 ---
@@ -224,23 +226,30 @@ Acceptance that already passed:
 
 ---
 
-## Phase 4 — Vault, tickets, rollback UI
+## Phase 4 — Vault, tickets, rollback UI (done)
 
 Intent: operators can see that secrets exist without dumping them.
 
-- Vault counters already exist on the engagement (`secrets`, `tickets`,
-  `certificates`). Wire them to the engine vault.
-- List items metadata-only: type, label, created, last used
-- Unmask a **single** item behind an explicit click + short TTL
-- Rollback pane lists pending engine cleanup entries
-- “Preview rollback” vs “Apply rollback” as two actions
+Shipped:
 
-Acceptance:
+- `src/adassassin/vault.py` — engine `SessionVault` list + single-item TTL unmask
+- `src/adassassin/rollback.py` — pending cleanup list, preview, force-gated apply
+- Vault + Rollback React pages; demo seeds metadata vault items and one pending cleanup
+- Tests: `tests/test_phase4.py`
 
-- Engagement JSON on disk never stores raw ticket bytes or NT hashes
-- Unmask is audited on the engagement
-- Rollback apply is still a mutation: treat it as Phase 5-adjacent and
-  require the same confirmation pattern if the engine says so
+APIs:
+
+- `GET /api/engagements/{id}/vault`
+- `POST /api/engagements/{id}/vault/{name}/unmask` body `{ "scope", "ttl_seconds" }`
+- `GET /api/engagements/{id}/rollback`
+- `POST /api/engagements/{id}/rollback/preview` — no directory contact
+- `POST /api/engagements/{id}/rollback/apply` — requires `force`, `ack`, typed `YES`
+
+Acceptance that already passed:
+
+- Engagement JSON never stores raw ticket bytes or NT hashes
+- Unmask is audited on the engagement (`vault_audit`)
+- Apply without force/ack/YES returns 403; engine cleanup is mocked in tests
 
 ---
 
@@ -289,7 +298,7 @@ Acceptance: a demo engagement can export a report with zero network.
 4. Implement the smallest API + UI that meets that phase’s acceptance.
 5. Add tests under `tests/test_phaseN.py`.
 6. Bump version in `__init__.py` and `pyproject.toml` when the phase lands
-   (Phase 3 → `0.4.0`).
+   (Phase 4 → `0.5.0`).
 7. Mark the phase **done** in the status table above and write the date.
 8. Leave `webapp/` fallback working even if you do not rebuild React.
 
@@ -335,3 +344,5 @@ Vite build output must land in `src/adassassin/webapp/` (see `web/vite.config.ts
   Connect form hydration + hashes, stronger acceptance tests.
 - 2026-09-01 — Phase 3 landed (findings explain/remediate/status, 0.4.0).
   Next slice is Phase 4.
+- 2026-09-01 — Phase 4 landed (vault unmask TTL, rollback preview/apply, 0.5.0).
+  Next slice is Phase 5.

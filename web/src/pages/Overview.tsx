@@ -12,13 +12,13 @@ export function Overview({
   return (
     <>
       <section className="hero">
-        <div className="brand-sub">Phase 3 · findings and remediate</div>
+        <div className="brand-sub">Phase 4 · vault and rollback</div>
         <h1>See the estate. Then take the next approved step.</h1>
-        <p className="lede">Doctor never contacts a domain controller. Findings explain and remediation stay offline from directory writes.</p>
+        <p className="lede">Vault shows metadata only until an explicit unmask. Rollback preview stays offline; apply requires typed YES.</p>
         <div className="actions">
           {guide?.next ? <Link className="btn primary" to={guide.next.href}>Next: {guide.next.title}</Link> : <Link className="btn primary" to="/guided">Open guided path</Link>}
-          <Link className="btn" to="/findings">Findings</Link>
-          <Link className="btn" to="/connect">Connect</Link>
+          <Link className="btn" to="/vault">Vault</Link>
+          <Link className="btn" to="/rollback">Rollback</Link>
         </div>
       </section>
       <div className="grid">

@@ -10,7 +10,9 @@ import { Glossary } from "./pages/Glossary";
 import { Guided } from "./pages/Guided";
 import { Overview } from "./pages/Overview";
 import { Placeholder } from "./pages/Placeholder";
+import { Rollback } from "./pages/Rollback";
 import { Run } from "./pages/Run";
+import { Vault } from "./pages/Vault";
 import type { CatalogResponse, DoctorResponse, Engagement, GuideResponse, HealthResponse } from "./types";
 
 export default function App() {
@@ -80,8 +82,8 @@ export default function App() {
         <Route path="/connect" element={<Connect engagement={current} onConnected={(item) => void handleConnected(item)} />} />
         <Route path="/run" element={<Run engagement={current} catalog={catalog?.capabilities ?? []} onRan={(item) => void handleRan(item)} />} />
         <Route path="/findings" element={<Findings engagement={current} onUpdated={(item) => void handleConnected(item)} />} />
-        <Route path="/vault" element={<Placeholder title="Vault" copy="Tickets, certificates, and secrets stay redacted until an operator unmasks a single item." engagement={current} />} />
-        <Route path="/rollback" element={<Placeholder title="Rollback" copy="Pending directory mutations from the engine cleanup log will list here." engagement={current} />} />
+        <Route path="/vault" element={<Vault engagement={current} onUpdated={(item) => void handleConnected(item)} />} />
+        <Route path="/rollback" element={<Rollback engagement={current} onUpdated={(item) => void handleConnected(item)} />} />
         <Route path="/report" element={<Placeholder title="Report" copy="Markdown and HTML export wrap the engine report capability." engagement={current} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
