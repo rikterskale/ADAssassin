@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import urllib.error
 import urllib.request
 from functools import lru_cache
 from importlib import resources
@@ -66,7 +67,17 @@ def _bundled_catalog() -> dict[str, Any] | None:
         )
     except (FileNotFoundError, ModuleNotFoundError, OSError):
         return None
-    return json.loads(data)
+    try:
+        payload = json.loads(data)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(payload, dict) or not payload.get("capabilities"):
+        return None
+    payload.setdefault("source", "bundled")
+    payload.setdefault("engine_version", ENGINE_PIN)
+    payload.setdefault("engine_commit", ENGINE_COMMIT)
+    payload["count"] = len(payload["capabilities"])
+    return payload
 
 
 def _remote_catalog() -> dict[str, Any]:
@@ -84,11 +95,21 @@ def _remote_catalog() -> dict[str, Any]:
 
 @lru_cache(maxsize=1)
 def static_catalog() -> dict[str, Any]:
+    """Offline-first catalog: bundled pin snapshot, else remote markdown."""
     bundled = _bundled_catalog()
-    if bundled and bundled.get("capabilities"):
-        bundled.setdefault("source", "bundled")
+    if bundled is not None:
         return bundled
-    return _remote_catalog()
+    try:
+        return _remote_catalog()
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        return {
+            "source": "unavailable",
+            "engine_version": ENGINE_PIN,
+            "engine_commit": ENGINE_COMMIT,
+            "count": 0,
+            "capabilities": [],
+            "error": str(exc),
+        }
 
 
 def bundled_catalog() -> dict[str, Any]:
@@ -97,17 +118,17 @@ def bundled_catalog() -> dict[str, Any]:
 
 
 def catalog_payload() -> dict[str, Any]:
+    """Prefer live engine registry. Never require network when the engine is live."""
     live = live_catalog()
-    static = static_catalog()
-    if live is None:
-        return static
-    return {
-        "source": "engine",
-        "engine_version": static.get("engine_version", ENGINE_PIN),
-        "engine_commit": static.get("engine_commit", ENGINE_COMMIT),
-        "count": len(live),
-        "capabilities": live,
-    }
+    if live is not None:
+        return {
+            "source": "engine",
+            "engine_version": ENGINE_PIN,
+            "engine_commit": ENGINE_COMMIT,
+            "count": len(live),
+            "capabilities": live,
+        }
+    return static_catalog()
 
 
 def get_capability(capability_id: str) -> dict[str, Any] | None:

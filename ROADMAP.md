@@ -55,9 +55,9 @@ and a large Textual TUI. Approach is wrap-not-rewrite.
 
 Catalog source order:
 
-1. Live `adaf_attack.core.registry` if the package imported.
-2. Bundled `src/adassassin/data/catalog.json` if present.
-3. Pinned markdown:
+1. Live `adaf_attack.core.registry` if the package imported (no network required).
+2. Bundled `src/adassassin/data/catalog.json` (shipped for the pin).
+3. Pinned markdown (last resort when bundle missing):
    `https://raw.githubusercontent.com/rikterskale/ADAF-ATTACK/<ENGINE_COMMIT>/docs/CAPABILITY_CATALOG.md`
 
 Lanes (console risk bands):
@@ -91,10 +91,11 @@ Shipped:
 - FastAPI app + `adassassin` CLI
 - React source under `web/`
 - Fallback console `src/adassassin/webapp/index.html` so `pip install` works without npm
-- Catalog API with engine / markdown fallback
+- Catalog API with engine / bundled / markdown fallback
+- Bundled pin snapshot `src/adassassin/data/catalog.json` (92 caps) for offline use
 - Demo engagement with fixture findings
 - `AUTHORIZED_USE.md`, `SECURITY.md`, banner in the shell
-- Tests: `tests/test_catalog.py`
+- Tests: `tests/test_catalog.py`, `tests/test_phase0.py`
 
 APIs:
 
@@ -119,12 +120,12 @@ Intent: a novice can use the product with zero network and a clear next step.
 Shipped:
 
 - `src/adassassin/doctor.py` — offline checks
-- `src/adassassin/guide.py` — six-step path + glossary
+- `src/adassassin/guide.py` — guided path + glossary (Phase 1 six steps; Phase 2 appends two)
 - Guided marks on engagements (`guided_marked`)
 - Overview doctor panel
 - Catalog inspector (approval, rollback, tools, environment)
 - Glossary page
-- Tests: `tests/test_phase1.py`
+- Tests: `tests/test_phase1.py` (includes missing-engine warn)
 
 APIs:
 
@@ -141,6 +142,8 @@ Guided steps (keep stable unless you update this file and the UI together):
 4. `findings` — read demo findings
 5. `glossary` — open glossary
 6. `engagement` — name a live-ready workspace
+7. `connect` — connect an authorized target (Phase 2)
+8. `observe-run` — run a GREEN or YELLOW observe capability (Phase 2)
 
 Acceptance that already passed:
 
@@ -320,3 +323,5 @@ Vite build output must land in `src/adassassin/webapp/` (see `web/vite.config.ts
   Phase 2 specified as the next CLI slice.
 - 2026-09-01 — Phase 2 landed (connect, observe runs, jobs, 0.3.0).
   Next slice is Phase 3.
+- 2026-09-01 — Phase 0–2 completeness pass: bundled catalog.json,
+  Connect form hydration + hashes, stronger acceptance tests.

@@ -160,3 +160,126 @@ def test_health_phase_two(tmp_path: Path) -> None:
     health = client.get("/api/health").json()
     assert health["phase"] == "2"
     assert health["version"].startswith("0.3")
+
+
+def test_yellow_observe_after_successful_connect(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    engagement = _engagement(client)
+
+    fake_preflight = {
+        "ok": True,
+        "ready": True,
+        "profile": "live-ad",
+        "checks": [{"id": "dc-ldap", "status": "ok", "scope": "live-ad", "value": "ok"}],
+        "blocking_checks": [],
+        "advisory_checks": [],
+        "next_step": "plan",
+        "first_run": False,
+    }
+
+    def fake_execute(capability_id: str, target: Any, **kwargs: Any) -> dict[str, Any]:
+        assert capability_id == "ldap-enum"
+        assert target.domain == "corp.local"
+        assert target.dc_ip == "10.0.0.10"
+        return {
+            "ok": True,
+            "capability": capability_id,
+            "session_id": "sess-yellow",
+            "session_path": str(tmp_path / "sess-yellow"),
+            "result": {
+                "ok": True,
+                "findings": [
+                    {
+                        "id": "yellow-finding-1",
+                        "title": "Yellow observe finding",
+                        "severity": "low",
+                        "impact": "Mocked ldap-enum evidence.",
+                    }
+                ],
+            },
+            "auth": "anonymous",
+            "outcome": {"status": "success"},
+        }
+
+    with patch("adaf_attack.cli._doctor_payload", return_value=fake_preflight):
+        connect = client.post(
+            f"/api/engagements/{engagement['id']}/connect",
+            json={"domain": "corp.local", "dc": "10.0.0.10"},
+        )
+    assert connect.status_code == 200
+    assert connect.json()["engagement"]["connect"]["preflight_ok"] is True
+
+    with patch("adaf_attack.core.runner.execute_capability", side_effect=fake_execute):
+        response = client.post(
+            f"/api/engagements/{engagement['id']}/run",
+            json={"capability_id": "ldap-enum", "options": {}, "ack": False},
+        )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "completed"
+    assert any(item["id"] == "yellow-finding-1" for item in body["findings"])
+    detail = client.get(f"/api/engagements/{engagement['id']}").json()["engagement"]
+    assert detail["target_contacted"] is True
+    assert "connect" in detail["guided_marked"]
+    assert "observe-run" in detail["guided_marked"]
+
+
+def test_failed_preflight_still_marks_contacted_when_probes_ran(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    engagement = _engagement(client)
+    fake_preflight = {
+        "ok": False,
+        "ready": False,
+        "profile": "live-ad",
+        "checks": [
+            {"id": "domain-dns", "status": "error", "scope": "live-ad", "value": "nxdomain"},
+            {"id": "dc-ldap", "status": "warning", "scope": "live-ad", "value": "timeout"},
+        ],
+        "blocking_checks": ["domain-dns"],
+        "advisory_checks": ["dc-ldap"],
+        "next_step": "fix DNS",
+        "first_run": False,
+    }
+    with patch("adaf_attack.cli._doctor_payload", return_value=fake_preflight):
+        response = client.post(
+            f"/api/engagements/{engagement['id']}/connect",
+            json={"domain": "bad.example", "dc": "10.0.0.99"},
+        )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["preflight"]["ok"] is False
+    assert body["preflight"]["target_contacted"] is True
+    assert body["engagement"]["target_contacted"] is True
+    assert body["engagement"]["connect"]["preflight_ok"] is False
+    assert "connect" not in (body["engagement"].get("guided_marked") or [])
+
+
+def test_green_observe_without_domain_or_dc(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    engagement = client.post(
+        "/api/engagements",
+        json={"name": "offline only"},
+    ).json()["engagement"]
+    assert engagement["domain"] == ""
+    assert engagement["dc"] == ""
+
+    def fake_execute(capability_id: str, target: Any, **kwargs: Any) -> dict[str, Any]:
+        assert target.domain == "offline.local"
+        assert target.dc_ip == "127.0.0.1"
+        return {
+            "ok": True,
+            "capability": capability_id,
+            "session_id": "sess-green",
+            "session_path": str(tmp_path / "sess-green"),
+            "result": {"ok": True, "findings": []},
+            "auth": "anonymous",
+            "outcome": {"status": "success"},
+        }
+
+    with patch("adaf_attack.core.runner.execute_capability", side_effect=fake_execute):
+        response = client.post(
+            f"/api/engagements/{engagement['id']}/run",
+            json={"capability_id": "attack-paths", "options": {}, "ack": False},
+        )
+    assert response.status_code == 200
+    assert response.json()["status"] == "completed"

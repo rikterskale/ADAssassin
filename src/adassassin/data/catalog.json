@@ -1,0 +1,4442 @@
+{
+  "source": "bundled",
+  "engine_version": "0.10.1",
+  "engine_commit": "fdb60b90b910ba3dcbd582e2c72ce48189191214",
+  "count": 92,
+  "capabilities": [
+    {
+      "id": "aadconnect-dcsync",
+      "summary": "Identify and use Azure AD Connect MSOL_* replication rights",
+      "plain": "Identify and use Azure AD Connect MSOL_* replication rights. Reads information from an authorized target and contacts the network.",
+      "category": "credential-access",
+      "maturity": "fixture-tested",
+      "environment": "live-read-only",
+      "tools": [
+        "impacket"
+      ],
+      "fixture": "hybrid-fixture",
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "acl-abuse",
+      "summary": "Operator ACL abuse: GenericAll / GenericWrite / WriteDacl / WriteOwner / Owns",
+      "plain": "Operator ACL abuse: GenericAll / GenericWrite / WriteDacl / WriteOwner / Owns. Can change target state and requires explicit approval.",
+      "category": "privilege-escalation",
+      "maturity": "fixture-tested",
+      "environment": "live-mutating",
+      "tools": [],
+      "fixture": "delegated-acl-target",
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "-P sam=<target>",
+          "label": "Value for parameter 'sam'",
+          "help": "Provide the value for -P sam. Example: <target>.",
+          "is_param": "true",
+          "param_key": "sam"
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "acl-enum",
+      "summary": "Enumerate interesting ACL edges (high-value or domain-wide scope)",
+      "plain": "Enumerate interesting ACL edges (high-value or domain-wide scope). Reads information from an authorized target and contacts the network.",
+      "category": "enumeration",
+      "maturity": "implemented",
+      "environment": "live-read-only",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "acl-write",
+      "summary": "Apply an approved raw ACL descriptor with rollback capture",
+      "plain": "Apply an approved raw ACL descriptor with rollback capture. Can change target state and requires explicit approval.",
+      "category": "privilege-escalation",
+      "maturity": "implemented",
+      "environment": "live-mutating",
+      "tools": [],
+      "fixture": null,
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--write-target",
+          "label": "DN of the object to modify",
+          "help": "The exact distinguishedName that will receive the write.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--descriptor-hex",
+          "label": "Security descriptor as hex",
+          "help": "Bring the pre-approved raw ACL descriptor for this write.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "ad-cve-scan",
+      "summary": "Non-exploiting scan for Zerologon / noPAC / Certifried / signing posture",
+      "plain": "Non-exploiting scan for Zerologon / noPAC / Certifried / signing posture. Reads information from an authorized target and contacts the network.",
+      "category": "enumeration",
+      "maturity": "implemented",
+      "environment": "live-read-only",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "adcs-enum",
+      "summary": "Enumerate AD CS CAs/templates, ESC1-ESC9 signals, and enrollment rights",
+      "plain": "Enumerate AD CS CAs/templates, ESC1-ESC9 signals, and enrollment rights. Reads information from an authorized target and contacts the network.",
+      "category": "enumeration",
+      "maturity": "implemented",
+      "environment": "live-read-only",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "adcs-policy-probe",
+      "summary": "Evaluate CA/DC policy evidence for ESC10-ESC15",
+      "plain": "Evaluate CA/DC policy evidence for ESC10-ESC15. Reads information from an authorized target and contacts the network.",
+      "category": "enumeration",
+      "maturity": "implemented",
+      "environment": "live-read-only",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "add-member",
+      "summary": "Add a principal to a group (AddMember / GenericAll on group)",
+      "plain": "Add a principal to a group (AddMember / GenericAll on group). Can change target state and requires explicit approval.",
+      "category": "privilege-escalation",
+      "maturity": "fixture-tested",
+      "environment": "live-mutating",
+      "tools": [],
+      "fixture": "delegated-acl-target",
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "-P group=<sam>",
+          "label": "Value for parameter 'group'",
+          "help": "Provide the value for -P group. Example: <sam>.",
+          "is_param": "true",
+          "param_key": "group"
+        },
+        {
+          "option": "-P member=<sam>",
+          "label": "Value for parameter 'member'",
+          "help": "Provide the value for -P member. Example: <sam>.",
+          "is_param": "true",
+          "param_key": "member"
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "add-self",
+      "summary": "Add the current principal to a group (AddSelf)",
+      "plain": "Add the current principal to a group (AddSelf). Can change target state and requires explicit approval.",
+      "category": "privilege-escalation",
+      "maturity": "fixture-tested",
+      "environment": "live-mutating",
+      "tools": [],
+      "fixture": "delegated-acl-target",
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "-P group=<sam>",
+          "label": "Value for parameter 'group'",
+          "help": "Provide the value for -P group. Example: <sam>.",
+          "is_param": "true",
+          "param_key": "group"
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "adidns-wpad",
+      "summary": "Plant WPAD / wildcard records in AD-integrated DNS",
+      "plain": "Plant WPAD / wildcard records in AD-integrated DNS. Can change target state and requires explicit approval.",
+      "category": "lateral-movement",
+      "maturity": "fixture-tested",
+      "environment": "live-mutating",
+      "tools": [],
+      "fixture": "dns-fixture",
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "-P ip=<attacker-ip>",
+          "label": "Value for parameter 'ip'",
+          "help": "Provide the value for -P ip. Example: <attacker-ip>.",
+          "is_param": "true",
+          "param_key": "ip"
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "adminsdholder-persist",
+      "summary": "Plant a persistence ACE on AdminSDHolder",
+      "plain": "Plant a persistence ACE on AdminSDHolder. Can change target state and requires explicit approval.",
+      "category": "persistence",
+      "maturity": "fixture-tested",
+      "environment": "live-mutating",
+      "tools": [],
+      "fixture": "domain-admin-fixture",
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "anonymous-ldap-probe",
+      "summary": "Measure anonymous LDAP bind and limited directory-read capabilities",
+      "plain": "Measure anonymous LDAP bind and limited directory-read capabilities. Reads information from an authorized target and contacts the network.",
+      "category": "enumeration",
+      "maturity": "implemented",
+      "environment": "live-read-only",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [
+        "anonymous"
+      ],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "low",
+      "sensitivity": "directory-metadata",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "asrep-roast",
+      "summary": "Identify and roast accounts that do not require pre-authentication",
+      "plain": "Identify and roast accounts that do not require pre-authentication. Reads information from an authorized target and contacts the network.",
+      "category": "credential-access",
+      "maturity": "implemented",
+      "environment": "live-read-only",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [
+        "anonymous"
+      ],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "low",
+      "sensitivity": "credential-material",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "asreq-userhunt",
+      "summary": "Validate usernames via Kerberos AS-REQ without incrementing badPwdCount",
+      "plain": "Validate usernames via Kerberos AS-REQ without incrementing badPwdCount. Reads information from an authorized target and contacts the network.",
+      "category": "enumeration",
+      "maturity": "implemented",
+      "environment": "live-read-only",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [
+        "anonymous"
+      ],
+      "requires_username_list": true,
+      "active_authentication": false,
+      "noise": "low",
+      "sensitivity": "directory-metadata",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "-P users=<path-to-user-list>",
+          "label": "Value for parameter 'users'",
+          "help": "Provide the value for -P users. Example: <path-to-user-list>.",
+          "is_param": "true",
+          "param_key": "users"
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "attack-paths",
+      "summary": "Rank weighted attack paths from principals toward high-value targets",
+      "plain": "Rank weighted attack paths from principals toward high-value targets. Works from saved evidence and does not contact a target.",
+      "category": "analysis",
+      "maturity": "implemented",
+      "environment": "offline",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "green",
+      "safety": {
+        "level": "GREEN",
+        "network": false,
+        "plain": "Works from saved evidence and does not contact a target."
+      },
+      "required_prompts": [],
+      "runnable": true
+    },
+    {
+      "id": "azureadssoacc-roast",
+      "summary": "Kerberoast the Seamless SSO computer account (AZUREADSSOACC$)",
+      "plain": "Kerberoast the Seamless SSO computer account (AZUREADSSOACC$). Reads information from an authorized target and contacts the network.",
+      "category": "credential-access",
+      "maturity": "fixture-tested",
+      "environment": "live-read-only",
+      "tools": [
+        "impacket"
+      ],
+      "fixture": "hybrid-fixture",
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "badsuccessor",
+      "summary": "Windows Server 2025 dMSA BadSuccessor privilege escalation",
+      "plain": "Windows Server 2025 dMSA BadSuccessor privilege escalation. Can change target state and requires explicit approval.",
+      "category": "privilege-escalation",
+      "maturity": "fixture-tested",
+      "environment": "live-mutating",
+      "tools": [],
+      "fixture": "dmsa-fixture",
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "-P preceded_by=<sam>",
+          "label": "Value for parameter 'preceded_by'",
+          "help": "Provide the value for -P preceded_by. Example: <sam>.",
+          "is_param": "true",
+          "param_key": "preceded_by"
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "blast-radius",
+      "summary": "Calculate reachable high-value impact from a graph principal",
+      "plain": "Calculate reachable high-value impact from a graph principal. Works from saved evidence and does not contact a target.",
+      "category": "analysis",
+      "maturity": "implemented",
+      "environment": "offline",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "green",
+      "safety": {
+        "level": "GREEN",
+        "network": false,
+        "plain": "Works from saved evidence and does not contact a target."
+      },
+      "required_prompts": [],
+      "runnable": true
+    },
+    {
+      "id": "bloodhound-export",
+      "summary": "Export attack graph to BloodHound CE JSON + ingest zip",
+      "plain": "Export attack graph to BloodHound CE JSON + ingest zip. Works from saved evidence and does not contact a target.",
+      "category": "export",
+      "maturity": "implemented",
+      "environment": "offline",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "green",
+      "safety": {
+        "level": "GREEN",
+        "network": false,
+        "plain": "Works from saved evidence and does not contact a target."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "bloodhound-import",
+      "summary": "Import BloodHound-compatible JSON, enrich locally, and re-export",
+      "plain": "Import BloodHound-compatible JSON, enrich locally, and re-export. Works from saved evidence and does not contact a target.",
+      "category": "export",
+      "maturity": "implemented",
+      "environment": "offline",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "green",
+      "safety": {
+        "level": "GREEN",
+        "network": false,
+        "plain": "Works from saved evidence and does not contact a target."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "campaign-run",
+      "summary": "Run ordered engagement phases with vault hand-off and purple package",
+      "plain": "Run ordered engagement phases with vault hand-off and purple package. Can change target state and requires explicit approval.",
+      "category": "analysis",
+      "maturity": "implemented",
+      "environment": "live-mutating",
+      "tools": [],
+      "fixture": null,
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "cert-request",
+      "summary": "Request a certificate from AD CS (ESC1 enroll path); requires --force",
+      "plain": "Request a certificate from AD CS (ESC1 enroll path); requires --force. Can change target state and requires explicit approval.",
+      "category": "credential-access",
+      "maturity": "implemented",
+      "environment": "live-mutating",
+      "tools": [],
+      "fixture": null,
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--template",
+          "label": "AD CS certificate template name",
+          "help": "Must exactly match the template display name on the CA.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--ca",
+          "label": "Certificate Authority name",
+          "help": "e.g. CORP-CA. Use adcs-enum first if you do not know it.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "coerce",
+      "summary": "Trigger coercion only against an approved host allowlist",
+      "plain": "Trigger coercion only against an approved host allowlist. Causes an approved network side effect or credential exposure.",
+      "category": "credential-access",
+      "maturity": "implemented",
+      "environment": "live-mutating",
+      "tools": [],
+      "fixture": null,
+      "risk": "side_effect",
+      "approval": "scoped_token",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Causes an approved network side effect or credential exposure."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "-P listener=<attacker-ip>",
+          "label": "Value for parameter 'listener'",
+          "help": "Provide the value for -P listener. Example: <attacker-ip>.",
+          "is_param": "true",
+          "param_key": "listener"
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "coercion-map",
+      "summary": "Map coercion surfaces (Spooler/EFSRPC) on domain computers \u2014 detect only",
+      "plain": "Map coercion surfaces (Spooler/EFSRPC) on domain computers \u2014 detect only. Reads information from an authorized target and contacts the network.",
+      "category": "discovery",
+      "maturity": "implemented",
+      "environment": "live-read-only",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "computer-takeover",
+      "summary": "Identify writable computer SPN and DNS identity surfaces",
+      "plain": "Identify writable computer SPN and DNS identity surfaces. Reads information from an authorized target and contacts the network.",
+      "category": "enumeration",
+      "maturity": "implemented",
+      "environment": "live-read-only",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--sam",
+          "label": "Target sAMAccountName",
+          "help": "The AD object (user or computer) this capability operates on.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "constrained-delegation",
+      "summary": "Abuse constrained delegation (msDS-AllowedToDelegateTo)",
+      "plain": "Abuse constrained delegation (msDS-AllowedToDelegateTo). Can change target state and requires explicit approval.",
+      "category": "lateral-movement",
+      "maturity": "fixture-tested",
+      "environment": "live-mutating",
+      "tools": [
+        "impacket"
+      ],
+      "fixture": "delegated-service",
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "credential-inventory",
+      "summary": "Inventory, export, purge, or mark-for-rotation session credential material",
+      "plain": "Inventory, export, purge, or mark-for-rotation session credential material. Reads information from an authorized target and contacts the network.",
+      "category": "credential-access",
+      "maturity": "implemented",
+      "environment": "offline",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "green",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "dcshadow",
+      "summary": "DCShadow: plant rogue DC objects, register SPNs, optional DRSAddEntry push",
+      "plain": "DCShadow: plant rogue DC objects, register SPNs, optional DRSAddEntry push. Can change target state and requires explicit approval.",
+      "category": "persistence",
+      "maturity": "fixture-tested",
+      "environment": "live-mutating",
+      "tools": [
+        "impacket"
+      ],
+      "fixture": "disposable-dc",
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "-P computer=<sam>",
+          "label": "Rogue / planted computer sAMAccountName",
+          "help": "Computer account that will be registered as a temporary DC (DCShadow).",
+          "is_param": "true",
+          "param_key": "computer"
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "dcsync",
+      "summary": "Replicate NT/LM/aes secrets via MS-DRSR (DCSync)",
+      "plain": "Replicate NT/LM/aes secrets via MS-DRSR (DCSync). Causes an approved network side effect or credential exposure.",
+      "category": "credential-access",
+      "maturity": "implemented",
+      "environment": "live-mutating",
+      "tools": [],
+      "fixture": null,
+      "risk": "side_effect",
+      "approval": "force_and_ack",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Causes an approved network side effect or credential exposure."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "dcsync-grant-workflow",
+      "summary": "Grant DS-Replication rights, DCSync, revert the ACE",
+      "plain": "Grant DS-Replication rights, DCSync, revert the ACE. Can change target state and requires explicit approval.",
+      "category": "credential-access",
+      "maturity": "fixture-tested",
+      "environment": "live-mutating",
+      "tools": [
+        "impacket"
+      ],
+      "fixture": "delegated-acl-target",
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "dmsa-ouroboros",
+      "summary": "Post-patch dMSA Ouroboros credential extraction (Server 2025)",
+      "plain": "Post-patch dMSA Ouroboros credential extraction (Server 2025). Can change target state and requires explicit approval.",
+      "category": "credential-access",
+      "maturity": "fixture-tested",
+      "environment": "live-mutating",
+      "tools": [],
+      "fixture": "dmsa-fixture",
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "dnsadmin-srv",
+      "summary": "DNSAdmins name-abuse (SRV / WPAD) without a server DLL drop",
+      "plain": "DNSAdmins name-abuse (SRV / WPAD) without a server DLL drop. Can change target state and requires explicit approval.",
+      "category": "privilege-escalation",
+      "maturity": "fixture-tested",
+      "environment": "live-mutating",
+      "tools": [],
+      "fixture": "dns-fixture",
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "-P host=<attacker-fqdn>",
+          "label": "Value for parameter 'host'",
+          "help": "Provide the value for -P host. Example: <attacker-fqdn>.",
+          "is_param": "true",
+          "param_key": "host"
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "dpapi-domain-backup",
+      "summary": "Retrieve the domain DPAPI backup key via replication rights",
+      "plain": "Retrieve the domain DPAPI backup key via replication rights. Reads information from an authorized target and contacts the network.",
+      "category": "credential-access",
+      "maturity": "fixture-tested",
+      "environment": "live-read-only",
+      "tools": [
+        "impacket"
+      ],
+      "fixture": "delegated-replication",
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "esc-chain",
+      "summary": "Automated ESC1-ESC15 exploit chain: template -> cert -> PKINIT -> TGT",
+      "plain": "Automated ESC1-ESC15 exploit chain: template -> cert -> PKINIT -> TGT. Can change target state and requires explicit approval.",
+      "category": "privilege-escalation",
+      "maturity": "implemented",
+      "environment": "live-mutating",
+      "tools": [],
+      "fixture": null,
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "esc10",
+      "summary": "AD CS ESC10: weak certificate mapping",
+      "plain": "AD CS ESC10: weak certificate mapping. Can change target state and requires explicit approval.",
+      "category": "adcs",
+      "maturity": "fixture-tested",
+      "environment": "live-mutating",
+      "tools": [
+        "certipy"
+      ],
+      "fixture": "adcs-fixture",
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "esc13",
+      "summary": "AD CS ESC13: issuance policy linked to a privileged group",
+      "plain": "AD CS ESC13: issuance policy linked to a privileged group. Can change target state and requires explicit approval.",
+      "category": "adcs",
+      "maturity": "fixture-tested",
+      "environment": "live-mutating",
+      "tools": [
+        "certipy"
+      ],
+      "fixture": "adcs-fixture",
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "esc14",
+      "summary": "AD CS ESC14: weak explicit certificate mapping",
+      "plain": "AD CS ESC14: weak explicit certificate mapping. Can change target state and requires explicit approval.",
+      "category": "adcs",
+      "maturity": "fixture-tested",
+      "environment": "live-mutating",
+      "tools": [
+        "certipy"
+      ],
+      "fixture": "adcs-fixture",
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "esc15",
+      "summary": "AD CS ESC15 (EKUwu / CVE-2024-49019): v1 template application policy override",
+      "plain": "AD CS ESC15 (EKUwu / CVE-2024-49019): v1 template application policy override. Can change target state and requires explicit approval.",
+      "category": "adcs",
+      "maturity": "fixture-tested",
+      "environment": "live-mutating",
+      "tools": [
+        "certipy"
+      ],
+      "fixture": "adcs-fixture",
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "esc16",
+      "summary": "AD CS ESC16: security extension disabled on the CA",
+      "plain": "AD CS ESC16: security extension disabled on the CA. Can change target state and requires explicit approval.",
+      "category": "adcs",
+      "maturity": "fixture-tested",
+      "environment": "live-mutating",
+      "tools": [
+        "certipy"
+      ],
+      "fixture": "adcs-fixture",
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "esc8-relay-workflow",
+      "summary": "Coerce plus HTTP relay to AD CS web enrollment (ESC8)",
+      "plain": "Coerce plus HTTP relay to AD CS web enrollment (ESC8). Can change target state and requires explicit approval.",
+      "category": "adcs",
+      "maturity": "fixture-tested",
+      "environment": "live-mutating",
+      "tools": [
+        "impacket",
+        "certipy"
+      ],
+      "fixture": "adcs-fixture",
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "-P ca=<web-enrollment-host>",
+          "label": "Value for parameter 'ca'",
+          "help": "Provide the value for -P ca. Example: <web-enrollment-host>.",
+          "is_param": "true",
+          "param_key": "ca"
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "esc9",
+      "summary": "AD CS ESC9: template with no SID security extension",
+      "plain": "AD CS ESC9: template with no SID security extension. Can change target state and requires explicit approval.",
+      "category": "adcs",
+      "maturity": "fixture-tested",
+      "environment": "live-mutating",
+      "tools": [
+        "certipy"
+      ],
+      "fixture": "adcs-fixture",
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "external-exposure",
+      "summary": "Assess externally reachable AD service exposure using low-noise connection checks",
+      "plain": "Assess externally reachable AD service exposure using low-noise connection checks. Reads information from an authorized target and contacts the network.",
+      "category": "enumeration",
+      "maturity": "implemented",
+      "environment": "live-read-only",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [
+        "anonymous"
+      ],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "low",
+      "sensitivity": "endpoint-metadata",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "force-change-password",
+      "summary": "Reset a user password via User-Force-Change-Password",
+      "plain": "Reset a user password via User-Force-Change-Password. Can change target state and requires explicit approval.",
+      "category": "credential-access",
+      "maturity": "fixture-tested",
+      "environment": "live-mutating",
+      "tools": [],
+      "fixture": "delegated-acl-target",
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "-P sam=<user>",
+          "label": "Certificate / account sAMAccountName",
+          "help": "Subject account for PKINIT / UnPAC (usually matches the cert identity).",
+          "is_param": "true",
+          "param_key": "sam"
+        },
+        {
+          "option": "-P new_password=<pwd>",
+          "label": "Value for parameter 'new_password'",
+          "help": "Provide the value for -P new_password. Example: <pwd>.",
+          "is_param": "true",
+          "param_key": "new_password"
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "gmsa-laps-enum",
+      "summary": "Enumerate gMSAs and LAPS; read secrets with --include-secrets when permitted",
+      "plain": "Enumerate gMSAs and LAPS; read secrets with --include-secrets when permitted. Reads information from an authorized target and contacts the network.",
+      "category": "credential-access",
+      "maturity": "implemented",
+      "environment": "live-read-only",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "gmsa-read",
+      "summary": "Read and parse msDS-ManagedPassword for a gMSA",
+      "plain": "Read and parse msDS-ManagedPassword for a gMSA. Reads information from an authorized target and contacts the network.",
+      "category": "credential-access",
+      "maturity": "fixture-tested",
+      "environment": "live-read-only",
+      "tools": [],
+      "fixture": "gmsa-laps",
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "golden-cert",
+      "summary": "Forge authentication certificates from a stolen CA key",
+      "plain": "Forge authentication certificates from a stolen CA key. Can change target state and requires explicit approval.",
+      "category": "persistence",
+      "maturity": "fixture-tested",
+      "environment": "live-mutating",
+      "tools": [
+        "certipy"
+      ],
+      "fixture": "adcs-fixture",
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "-P ca_pfx=<stolen-ca.pfx>",
+          "label": "Stolen CA PFX path",
+          "help": "CA private key material used to forge a golden certificate.",
+          "is_param": "true",
+          "param_key": "ca_pfx"
+        },
+        {
+          "option": "-P upn=<user@domain>",
+          "label": "UPN to forge into the certificate",
+          "help": "Usually a privileged user@domain for PKINIT afterwards.",
+          "is_param": "true",
+          "param_key": "upn"
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "gpo-abuse",
+      "summary": "Enumerate writable GPOs with link-based blast-radius ranking",
+      "plain": "Enumerate writable GPOs with link-based blast-radius ranking. Reads information from an authorized target and contacts the network.",
+      "category": "privilege-escalation",
+      "maturity": "implemented",
+      "environment": "live-read-only",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--gpo",
+          "label": "Target GPO GUID or display name",
+          "help": "Identifier of the Group Policy Object to modify.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--payload",
+          "label": "Payload (inline text or @/path/to/file)",
+          "help": "@path reads from a file; inline text is written verbatim.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "gpo-link",
+      "summary": "Replace an approved GPO link with rollback capture",
+      "plain": "Replace an approved GPO link with rollback capture. Can change target state and requires explicit approval.",
+      "category": "privilege-escalation",
+      "maturity": "implemented",
+      "environment": "live-mutating",
+      "tools": [],
+      "fixture": null,
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "gpo-sysvol",
+      "summary": "Probe SYSVOL GPO paths for write; optional stage requires --force",
+      "plain": "Probe SYSVOL GPO paths for write; optional stage requires --force. Reads information from an authorized target and contacts the network.",
+      "category": "privilege-escalation",
+      "maturity": "implemented",
+      "environment": "live-read-only",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--gpo",
+          "label": "Target GPO GUID or display name",
+          "help": "Identifier of the Group Policy Object to modify.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--payload",
+          "label": "Payload (inline text or @/path/to/file)",
+          "help": "@path reads from a file; inline text is written verbatim.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "gpp-cpassword-hunt",
+      "summary": "Discover and decrypt legacy GPP cpassword secrets under SYSVOL",
+      "plain": "Discover and decrypt legacy GPP cpassword secrets under SYSVOL. Reads information from an authorized target and contacts the network.",
+      "category": "credential-access",
+      "maturity": "implemented",
+      "environment": "live-read-only",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "-P sysvol=<mounted-sysvol-path>",
+          "label": "Value for parameter 'sysvol'",
+          "help": "Provide the value for -P sysvol. Example: <mounted-sysvol-path>.",
+          "is_param": "true",
+          "param_key": "sysvol"
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "hybrid-signals",
+      "summary": "Detect on-prem hybrid identity / Entra-adjacent signals (read-only)",
+      "plain": "Detect on-prem hybrid identity / Entra-adjacent signals (read-only). Reads information from an authorized target and contacts the network.",
+      "category": "enumeration",
+      "maturity": "implemented",
+      "environment": "live-read-only",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "impacket-exec",
+      "summary": "Scoped remote execute via wmiexec / smbexec / dcomexec / atexec with execution status",
+      "plain": "Scoped remote execute via wmiexec / smbexec / dcomexec / atexec with execution status. Can change target state and requires explicit approval.",
+      "category": "lateral-movement",
+      "maturity": "implemented",
+      "environment": "live-mutating",
+      "tools": [],
+      "fixture": null,
+      "risk": "destructive",
+      "approval": "scoped_token",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "-P method=wmiexec|smbexec|dcomexec|atexec",
+          "label": "Value for parameter 'method'",
+          "help": "Provide the value for -P method. Example: wmiexec|smbexec|dcomexec|atexec.",
+          "is_param": "true",
+          "param_key": "method"
+        },
+        {
+          "option": "-P command=<cmd>",
+          "label": "Value for parameter 'command'",
+          "help": "Provide the value for -P command. Example: <cmd>.",
+          "is_param": "true",
+          "param_key": "command"
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "kerberoast",
+      "summary": "Request TGS tickets for SPN-enabled accounts (Kerberoasting)",
+      "plain": "Request TGS tickets for SPN-enabled accounts (Kerberoasting). Reads information from an authorized target and contacts the network.",
+      "category": "credential-access",
+      "maturity": "implemented",
+      "environment": "live-read-only",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "krb-relay",
+      "summary": "Kerberos relay / reflection into LDAP, SMB, or HTTP",
+      "plain": "Kerberos relay / reflection into LDAP, SMB, or HTTP. Can change target state and requires explicit approval.",
+      "category": "lateral-movement",
+      "maturity": "fixture-tested",
+      "environment": "live-mutating",
+      "tools": [
+        "impacket"
+      ],
+      "fixture": "relay-fixture",
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "-P relay_targets=<ldap://host>",
+          "label": "Value for parameter 'relay_targets'",
+          "help": "Provide the value for -P relay_targets. Example: <ldap://host>.",
+          "is_param": "true",
+          "param_key": "relay_targets"
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "laps-read",
+      "summary": "Read LAPS v1 (ms-Mcs-AdmPwd) and v2 (msLAPS-EncryptedPassword) passwords",
+      "plain": "Read LAPS v1 (ms-Mcs-AdmPwd) and v2 (msLAPS-EncryptedPassword) passwords. Reads information from an authorized target and contacts the network.",
+      "category": "credential-access",
+      "maturity": "implemented",
+      "environment": "live-read-only",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "ldap-enum",
+      "summary": "Enumerate users, computers, groups, trusts, SPNs, delegation, SID history, and GPO links via LDAP",
+      "plain": "Enumerate users, computers, groups, trusts, SPNs, delegation, SID history, and GPO links via LDAP. Reads information from an authorized target and contacts the network.",
+      "category": "enumeration",
+      "maturity": "implemented",
+      "environment": "live-read-only",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "maq-add-computer",
+      "summary": "Create a machine account using ms-DS-MachineAccountQuota",
+      "plain": "Create a machine account using ms-DS-MachineAccountQuota. Can change target state and requires explicit approval.",
+      "category": "privilege-escalation",
+      "maturity": "fixture-tested",
+      "environment": "live-mutating",
+      "tools": [],
+      "fixture": "baseline-directory",
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "maq-rbcd-workflow",
+      "summary": "MachineAccountQuota add-computer then RBCD then S4U",
+      "plain": "MachineAccountQuota add-computer then RBCD then S4U. Can change target state and requires explicit approval.",
+      "category": "lateral-movement",
+      "maturity": "fixture-tested",
+      "environment": "live-mutating",
+      "tools": [
+        "impacket"
+      ],
+      "fixture": "delegated-computer",
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "-P set_on=<computer>",
+          "label": "Value for parameter 'set_on'",
+          "help": "Provide the value for -P set_on. Example: <computer>.",
+          "is_param": "true",
+          "param_key": "set_on"
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "next-actions",
+      "summary": "Recommend policy-gated next actions from current graph evidence only",
+      "plain": "Recommend policy-gated next actions from current graph evidence only. Works from saved evidence and does not contact a target.",
+      "category": "analysis",
+      "maturity": "implemented",
+      "environment": "offline",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "green",
+      "safety": {
+        "level": "GREEN",
+        "network": false,
+        "plain": "Works from saved evidence and does not contact a target."
+      },
+      "required_prompts": [],
+      "runnable": true
+    },
+    {
+      "id": "nopac-workflow",
+      "summary": "sAMAccountName spoof (noPac / CVE-2021-42278/42287) workflow",
+      "plain": "sAMAccountName spoof (noPac / CVE-2021-42278/42287) workflow. Can change target state and requires explicit approval.",
+      "category": "privilege-escalation",
+      "maturity": "fixture-tested",
+      "environment": "live-mutating",
+      "tools": [
+        "impacket"
+      ],
+      "fixture": "unpatched-dc",
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "-P dc=<DC$>",
+          "label": "Value for parameter 'dc'",
+          "help": "Provide the value for -P dc. Example: <DC$>.",
+          "is_param": "true",
+          "param_key": "dc"
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "ntlm-relay",
+      "summary": "Run ntlmrelayx against a fixed allowlist; vault captured credentials",
+      "plain": "Run ntlmrelayx against a fixed allowlist; vault captured credentials. Can change target state and requires explicit approval.",
+      "category": "lateral-movement",
+      "maturity": "implemented",
+      "environment": "live-mutating",
+      "tools": [],
+      "fixture": null,
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "-P relay_targets=<host1,host2>",
+          "label": "Value for parameter 'relay_targets'",
+          "help": "Provide the value for -P relay_targets. Example: <host1,host2>.",
+          "is_param": "true",
+          "param_key": "relay_targets"
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "passive-discovery",
+      "summary": "Probe common AD service endpoints without credentials or authentication",
+      "plain": "Probe common AD service endpoints without credentials or authentication. Reads information from an authorized target and contacts the network.",
+      "category": "enumeration",
+      "maturity": "implemented",
+      "environment": "live-read-only",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [
+        "anonymous"
+      ],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "low",
+      "sensitivity": "endpoint-metadata",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "password-spray",
+      "summary": "Lockout-aware password spray against user accounts",
+      "plain": "Lockout-aware password spray against user accounts. Causes an approved network side effect or credential exposure.",
+      "category": "credential-access",
+      "maturity": "implemented",
+      "environment": "live-mutating",
+      "tools": [],
+      "fixture": null,
+      "risk": "side_effect",
+      "approval": "scoped_token",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Causes an approved network side effect or credential exposure."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "-P spray_password=<candidate>",
+          "label": "Value for parameter 'spray_password'",
+          "help": "Provide the value for -P spray_password. Example: <candidate>.",
+          "is_param": "true",
+          "param_key": "spray_password"
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "pkinit-auth",
+      "summary": "PKINIT TGT using shadow-cred key/cert from session (requires --force)",
+      "plain": "PKINIT TGT using shadow-cred key/cert from session (requires --force). Can change target state and requires explicit approval.",
+      "category": "credential-access",
+      "maturity": "implemented",
+      "environment": "live-mutating",
+      "tools": [],
+      "fixture": null,
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--sam",
+          "label": "Target sAMAccountName",
+          "help": "The AD object (user or computer) this capability operates on.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "pre2k-spray",
+      "summary": "Pre-Windows 2000 compatible computer accounts (password = sAMAccountName)",
+      "plain": "Pre-Windows 2000 compatible computer accounts (password = sAMAccountName). Reads information from an authorized target and contacts the network.",
+      "category": "credential-access",
+      "maturity": "fixture-tested",
+      "environment": "live-read-only",
+      "tools": [],
+      "fixture": "baseline-directory",
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [
+        "anonymous"
+      ],
+      "requires_username_list": false,
+      "active_authentication": true,
+      "noise": "high",
+      "sensitivity": "credential-material",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "purple-feedback",
+      "summary": "Generate updated detection hypotheses from session events",
+      "plain": "Generate updated detection hypotheses from session events. Works from saved evidence and does not contact a target.",
+      "category": "export",
+      "maturity": "implemented",
+      "environment": "offline",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "green",
+      "safety": {
+        "level": "GREEN",
+        "network": false,
+        "plain": "Works from saved evidence and does not contact a target."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "rbcd",
+      "summary": "Enumerate RBCD + constrained delegation; optional set requires --force",
+      "plain": "Enumerate RBCD + constrained delegation; optional set requires --force. Reads information from an authorized target and contacts the network.",
+      "category": "lateral-movement",
+      "maturity": "implemented",
+      "environment": "live-read-only",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--set-on",
+          "label": "RBCD victim computer sAMAccountName",
+          "help": "The computer object whose msDS-AllowedToActOnBehalf will be set.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--set-from",
+          "label": "RBCD source principal sAMAccountName",
+          "help": "The controlled principal that will be granted delegation.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "rbcd-ticket-workflow",
+      "summary": "Set RBCD then request an S4U service ticket as the controlled computer",
+      "plain": "Set RBCD then request an S4U service ticket as the controlled computer. Can change target state and requires explicit approval.",
+      "category": "lateral-movement",
+      "maturity": "implemented",
+      "environment": "live-mutating",
+      "tools": [],
+      "fixture": null,
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--set-on",
+          "label": "RBCD victim computer sAMAccountName",
+          "help": "The computer object whose msDS-AllowedToActOnBehalf will be set.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--set-from",
+          "label": "RBCD source principal sAMAccountName",
+          "help": "The controlled principal that will be granted delegation.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--impersonate",
+          "label": "User to impersonate (S4U)",
+          "help": "sAMAccountName of the principal the service ticket should represent.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "report",
+      "summary": "Generate operator Markdown/HTML report from current session artifacts",
+      "plain": "Generate operator Markdown/HTML report from current session artifacts. Works from saved evidence and does not contact a target.",
+      "category": "export",
+      "maturity": "implemented",
+      "environment": "offline",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "green",
+      "safety": {
+        "level": "GREEN",
+        "network": false,
+        "plain": "Works from saved evidence and does not contact a target."
+      },
+      "required_prompts": [],
+      "runnable": true
+    },
+    {
+      "id": "rodc-delegation",
+      "summary": "Enumerate RODC password-replication policy, KRBTGT, and delegation exposure",
+      "plain": "Enumerate RODC password-replication policy, KRBTGT, and delegation exposure. Reads information from an authorized target and contacts the network.",
+      "category": "enumeration",
+      "maturity": "implemented",
+      "environment": "live-read-only",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "rollback",
+      "summary": "Reverse pending destructive changes recorded in a session (requires --force)",
+      "plain": "Reverse pending destructive changes recorded in a session (requires --force). Can change target state and requires explicit approval.",
+      "category": "analysis",
+      "maturity": "implemented",
+      "environment": "live-mutating",
+      "tools": [],
+      "fixture": null,
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "s4u-abuse",
+      "summary": "Full S4U2Self + S4U2Proxy chain (constrained delegation / RBCD abuse)",
+      "plain": "Full S4U2Self + S4U2Proxy chain (constrained delegation / RBCD abuse). Causes an approved network side effect or credential exposure.",
+      "category": "privilege-escalation",
+      "maturity": "implemented",
+      "environment": "live-mutating",
+      "tools": [],
+      "fixture": null,
+      "risk": "side_effect",
+      "approval": "force_and_ack",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Causes an approved network side effect or credential exposure."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "-P impersonate=<user>",
+          "label": "Value for parameter 'impersonate'",
+          "help": "Provide the value for -P impersonate. Example: <user>.",
+          "is_param": "true",
+          "param_key": "impersonate"
+        },
+        {
+          "option": "-P spn=<service/host>",
+          "label": "Value for parameter 'spn'",
+          "help": "Provide the value for -P spn. Example: <service/host>.",
+          "is_param": "true",
+          "param_key": "spn"
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "sccm-client-push",
+      "summary": "Abuse SCCM client-push installation account",
+      "plain": "Abuse SCCM client-push installation account. Can change target state and requires explicit approval.",
+      "category": "lateral-movement",
+      "maturity": "fixture-tested",
+      "environment": "live-mutating",
+      "tools": [],
+      "fixture": "sccm-fixture",
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "-P host=<target>",
+          "label": "Value for parameter 'host'",
+          "help": "Provide the value for -P host. Example: <target>.",
+          "is_param": "true",
+          "param_key": "host"
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "sccm-enum",
+      "summary": "Enumerate Microsoft Configuration Manager (SCCM/MECM) attack surface",
+      "plain": "Enumerate Microsoft Configuration Manager (SCCM/MECM) attack surface. Reads information from an authorized target and contacts the network.",
+      "category": "enumeration",
+      "maturity": "fixture-tested",
+      "environment": "live-read-only",
+      "tools": [],
+      "fixture": "sccm-fixture",
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "sccm-naa",
+      "summary": "Recover SCCM Network Access Account credentials",
+      "plain": "Recover SCCM Network Access Account credentials. Reads information from an authorized target and contacts the network.",
+      "category": "credential-access",
+      "maturity": "fixture-tested",
+      "environment": "live-read-only",
+      "tools": [],
+      "fixture": "sccm-fixture",
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "sccm-takeover",
+      "summary": "SCCM site takeover via relay to the site database (TAKEOVER-1)",
+      "plain": "SCCM site takeover via relay to the site database (TAKEOVER-1). Can change target state and requires explicit approval.",
+      "category": "privilege-escalation",
+      "maturity": "fixture-tested",
+      "environment": "live-mutating",
+      "tools": [
+        "impacket"
+      ],
+      "fixture": "sccm-fixture",
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "-P site_db=<sql-host>",
+          "label": "Value for parameter 'site_db'",
+          "help": "Provide the value for -P site_db. Example: <sql-host>.",
+          "is_param": "true",
+          "param_key": "site_db"
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "secretsdump-local",
+      "summary": "Dump SAM/LSA/NLKM/DPAPI secrets from a host (registry / LSA, no NTDS)",
+      "plain": "Dump SAM/LSA/NLKM/DPAPI secrets from a host (registry / LSA, no NTDS). Reads information from an authorized target and contacts the network.",
+      "category": "credential-access",
+      "maturity": "implemented",
+      "environment": "live-read-only",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "shadow-creds",
+      "summary": "Enumerate msDS-KeyCredentialLink; optional write requires --force",
+      "plain": "Enumerate msDS-KeyCredentialLink; optional write requires --force. Reads information from an authorized target and contacts the network.",
+      "category": "credential-access",
+      "maturity": "implemented",
+      "environment": "live-read-only",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--sam",
+          "label": "Target sAMAccountName",
+          "help": "The AD object (user or computer) this capability operates on.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "shadow-pkinit-workflow",
+      "summary": "Write Shadow Credential then request PKINIT TGT (requires --force)",
+      "plain": "Write Shadow Credential then request PKINIT TGT (requires --force). Can change target state and requires explicit approval.",
+      "category": "credential-access",
+      "maturity": "implemented",
+      "environment": "live-mutating",
+      "tools": [],
+      "fixture": null,
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--sam",
+          "label": "Target sAMAccountName",
+          "help": "The AD object (user or computer) this capability operates on.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "sidhistory-inject",
+      "summary": "Inject SID History / ExtraSids on a controlled principal",
+      "plain": "Inject SID History / ExtraSids on a controlled principal. Can change target state and requires explicit approval.",
+      "category": "privilege-escalation",
+      "maturity": "fixture-tested",
+      "environment": "live-mutating",
+      "tools": [],
+      "fixture": "trust-fixture",
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "-P sam=<user>",
+          "label": "Certificate / account sAMAccountName",
+          "help": "Subject account for PKINIT / UnPAC (usually matches the cert identity).",
+          "is_param": "true",
+          "param_key": "sam"
+        },
+        {
+          "option": "-P sid=<S-1-5-...>",
+          "label": "Value for parameter 'sid'",
+          "help": "Provide the value for -P sid. Example: <S-1-5-...>.",
+          "is_param": "true",
+          "param_key": "sid"
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "sysvol-hunt",
+      "summary": "Search authorized SYSVOL evidence for GPP cpasswords, scripts, and tasks",
+      "plain": "Search authorized SYSVOL evidence for GPP cpasswords, scripts, and tasks. Reads information from an authorized target and contacts the network.",
+      "category": "credential-access",
+      "maturity": "implemented",
+      "environment": "live-read-only",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "targeted-kerberoast",
+      "summary": "Write SPN, Kerberoast, revert SPN",
+      "plain": "Write SPN, Kerberoast, revert SPN. Can change target state and requires explicit approval.",
+      "category": "credential-access",
+      "maturity": "fixture-tested",
+      "environment": "live-mutating",
+      "tools": [
+        "impacket"
+      ],
+      "fixture": "delegated-acl-target",
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "-P sam=<user>",
+          "label": "Certificate / account sAMAccountName",
+          "help": "Subject account for PKINIT / UnPAC (usually matches the cert identity).",
+          "is_param": "true",
+          "param_key": "sam"
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "template-mod",
+      "summary": "Flip AD CS template to ESC1-vulnerable with rollback registration",
+      "plain": "Flip AD CS template to ESC1-vulnerable with rollback registration. Can change target state and requires explicit approval.",
+      "category": "privilege-escalation",
+      "maturity": "implemented",
+      "environment": "live-mutating",
+      "tools": [],
+      "fixture": null,
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "-P template=<name>",
+          "label": "AD CS certificate template name",
+          "help": "Must match a published template on the CA.",
+          "is_param": "true",
+          "param_key": "template"
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "ticket-forge",
+      "summary": "Forge golden / silver / sapphire Kerberos tickets from krbtgt / service key",
+      "plain": "Forge golden / silver / sapphire Kerberos tickets from krbtgt / service key. Reads information from an authorized target and contacts the network.",
+      "category": "credential-access",
+      "maturity": "implemented",
+      "environment": "live-read-only",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "-P variant=golden|silver|sapphire",
+          "label": "Value for parameter 'variant'",
+          "help": "Provide the value for -P variant. Example: golden|silver|sapphire.",
+          "is_param": "true",
+          "param_key": "variant"
+        },
+        {
+          "option": "-P impersonate=<user>",
+          "label": "Value for parameter 'impersonate'",
+          "help": "Provide the value for -P impersonate. Example: <user>.",
+          "is_param": "true",
+          "param_key": "impersonate"
+        },
+        {
+          "option": "-P domain_sid=<S-1-5-21-...>",
+          "label": "Value for parameter 'domain_sid'",
+          "help": "Provide the value for -P domain_sid. Example: <S-1-5-21-...>.",
+          "is_param": "true",
+          "param_key": "domain_sid"
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "ticket-lifecycle",
+      "summary": "Inventory or import ticket/certificate artifacts into the session vault",
+      "plain": "Inventory or import ticket/certificate artifacts into the session vault. Reads information from an authorized target and contacts the network.",
+      "category": "credential-access",
+      "maturity": "implemented",
+      "environment": "offline",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "green",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--operation",
+          "label": "Ticket lifecycle operation",
+          "help": "One of: import-ccache, export-ccache, import-pfx, export-pfx, pem-to-pfx, pfx-to-pem.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "timeroast",
+      "summary": "Unauthenticated RID roast via NTP (Timeroasting)",
+      "plain": "Unauthenticated RID roast via NTP (Timeroasting). Reads information from an authorized target and contacts the network.",
+      "category": "credential-access",
+      "maturity": "fixture-tested",
+      "environment": "live-read-only",
+      "tools": [],
+      "fixture": "baseline-directory",
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [
+        "anonymous"
+      ],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "low",
+      "sensitivity": "credential-material",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "trustedtoauth",
+      "summary": "Protocol-transition constrained delegation (TrustedToAuthForDelegation)",
+      "plain": "Protocol-transition constrained delegation (TrustedToAuthForDelegation). Reads information from an authorized target and contacts the network.",
+      "category": "lateral-movement",
+      "maturity": "fixture-tested",
+      "environment": "live-read-only",
+      "tools": [
+        "impacket"
+      ],
+      "fixture": "delegated-service",
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "trusts-enum",
+      "summary": "Deep trust enumeration with SID-filtering attack-path analysis",
+      "plain": "Deep trust enumeration with SID-filtering attack-path analysis. Reads information from an authorized target and contacts the network.",
+      "category": "enumeration",
+      "maturity": "implemented",
+      "environment": "live-read-only",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "unconst-tgtdump-workflow",
+      "summary": "Unconstrained-delegation hunt then coerce to capture a TGT",
+      "plain": "Unconstrained-delegation hunt then coerce to capture a TGT. Can change target state and requires explicit approval.",
+      "category": "credential-access",
+      "maturity": "fixture-tested",
+      "environment": "live-mutating",
+      "tools": [
+        "impacket"
+      ],
+      "fixture": "unconstrained-computer",
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    },
+    {
+      "id": "unconstrained-delegation",
+      "summary": "Hunt computers trusted for unconstrained delegation (TGT delegation)",
+      "plain": "Hunt computers trusted for unconstrained delegation (TGT delegation). Reads information from an authorized target and contacts the network.",
+      "category": "enumeration",
+      "maturity": "fixture-tested",
+      "environment": "live-read-only",
+      "tools": [],
+      "fixture": "baseline-directory",
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "unpac-the-hash",
+      "summary": "Recover NT hash from PAC_CREDENTIAL_INFO after PKINIT (UnPAC-the-Hash)",
+      "plain": "Recover NT hash from PAC_CREDENTIAL_INFO after PKINIT (UnPAC-the-Hash). Reads information from an authorized target and contacts the network.",
+      "category": "credential-access",
+      "maturity": "implemented",
+      "environment": "live-read-only",
+      "tools": [],
+      "fixture": null,
+      "risk": "observe",
+      "approval": "none",
+      "rollback": "none",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "yellow",
+      "safety": {
+        "level": "YELLOW",
+        "network": true,
+        "plain": "Reads information from an authorized target and contacts the network."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "-P sam=<user>",
+          "label": "Certificate / account sAMAccountName",
+          "help": "Subject account for PKINIT / UnPAC (usually matches the cert identity).",
+          "is_param": "true",
+          "param_key": "sam"
+        },
+        {
+          "option": "-P pfx=<path>",
+          "label": "PFX / PKCS#12 path",
+          "help": "Client certificate+key bundle used for PKINIT or UnPAC.",
+          "is_param": "true",
+          "param_key": "pfx"
+        }
+      ],
+      "runnable": true
+    },
+    {
+      "id": "write-spn",
+      "summary": "Set or clear servicePrincipalName for targeted Kerberoast",
+      "plain": "Set or clear servicePrincipalName for targeted Kerberoast. Can change target state and requires explicit approval.",
+      "category": "credential-access",
+      "maturity": "fixture-tested",
+      "environment": "live-mutating",
+      "tools": [],
+      "fixture": "delegated-acl-target",
+      "risk": "destructive",
+      "approval": "force_and_ack",
+      "rollback": "manual",
+      "auth_modes": [],
+      "requires_username_list": false,
+      "active_authentication": false,
+      "noise": "unspecified",
+      "sensitivity": "metadata",
+      "lane": "red",
+      "safety": {
+        "level": "RED",
+        "network": true,
+        "plain": "Can change target state and requires explicit approval."
+      },
+      "required_prompts": [
+        {
+          "option": "--domain",
+          "label": "Authorized domain (e.g. corp.local)",
+          "help": "The Active Directory DNS domain you are cleared to test.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--dc-ip",
+          "label": "Domain controller IP or hostname",
+          "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "-P sam=<user>",
+          "label": "Certificate / account sAMAccountName",
+          "help": "Subject account for PKINIT / UnPAC (usually matches the cert identity).",
+          "is_param": "true",
+          "param_key": "sam"
+        },
+        {
+          "option": "--force",
+          "label": "Type YES to confirm this destructive capability",
+          "help": "Destructive capabilities require explicit acknowledgement.",
+          "is_param": "",
+          "param_key": ""
+        }
+      ],
+      "runnable": false
+    }
+  ]
+}

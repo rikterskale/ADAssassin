@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
 import type { Engagement } from "../types";
@@ -10,13 +10,24 @@ export function Connect({
   engagement: Engagement | null;
   onConnected: (engagement: Engagement) => void;
 }) {
-  const [domain, setDomain] = useState(engagement?.domain ?? "");
-  const [dc, setDc] = useState(engagement?.dc ?? "");
-  const [username, setUsername] = useState(engagement?.username ?? "");
+  const [domain, setDomain] = useState("");
+  const [dc, setDc] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [hashes, setHashes] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preflight, setPreflight] = useState(engagement?.connect?.preflight ?? null);
+
+  useEffect(() => {
+    setDomain(engagement?.domain ?? "");
+    setDc(engagement?.dc ?? "");
+    setUsername(engagement?.username ?? "");
+    setPreflight(engagement?.connect?.preflight ?? null);
+    setPassword("");
+    setHashes("");
+    setError(null);
+  }, [engagement?.id, engagement?.domain, engagement?.dc, engagement?.username, engagement?.connect]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -32,8 +43,10 @@ export function Connect({
         dc: dc.trim(),
         username: username.trim() || undefined,
         password: password || undefined,
+        hashes: hashes.trim() || undefined,
       });
       setPassword("");
+      setHashes("");
       setPreflight(result.preflight);
       onConnected(result.engagement);
     } catch (err) {
@@ -50,7 +63,7 @@ export function Connect({
         <h1>Point this engagement at an authorized domain controller.</h1>
         <p className="lede">
           Preflight wraps the engine live-ad doctor (DNS + DC ports). It does not run a capability.
-          Passwords stay in process memory and are never written to engagement JSON.
+          Passwords and hashes stay in process memory and are never written to engagement JSON.
         </p>
       </section>
       <div className="grid">
@@ -85,6 +98,12 @@ export function Connect({
                 placeholder="Password (optional, not saved to disk)"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                autoComplete="off"
+              />
+              <input
+                placeholder="NTLM hashes LM:NT or NT (optional, not saved to disk)"
+                value={hashes}
+                onChange={(e) => setHashes(e.target.value)}
                 autoComplete="off"
               />
               {error && <div className="banner-error">{error}</div>}
