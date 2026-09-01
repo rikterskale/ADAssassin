@@ -342,7 +342,18 @@ Optional vendor UI rebuild:
 cd web && npm install && npm run build
 ```
 
+Frontend tests (Vitest + React Testing Library) cover the API client, every
+component, every page, and app bootstrap/routing:
+
+```bash
+cd web && npm install && npm test        # or: npm run test:coverage
+```
+
 Vite build output must land in `src/adassassin/webapp/` (see `web/vite.config.ts`).
+That built bundle is committed so `pip install` ships the console without a Node
+toolchain. When you change anything under `web/`, rebuild and commit the
+regenerated `src/adassassin/webapp/`; CI (`web` job) rebuilds and fails if the
+committed bundle drifts from source.
 
 ---
 
@@ -377,3 +388,15 @@ Vite build output must land in `src/adassassin/webapp/` (see `web/vite.config.ts
 - 2026-09-01 — Phase 6 landed (report export + closeout, 0.7.0).
 - 2026-09-01 — Post-phase hardening: GitHub Actions CI, operator runbook,
   release tag `v0.7.0`.
+- 2026-09-01 — Vendor-grade polish pass (no version bump): shipped genuine
+  IBM Plex Sans Medium (the 500/600 weights were placeholder copies of 400;
+  600 was unused and dropped), added a self-contained SVG reticle favicon plus
+  `theme-color`/`description` meta, removed the dead `Placeholder` page, and
+  extended CI with a `web` job that builds the console and enforces
+  bundle-in-sync. No engine, API, or capability behavior changed.
+- 2026-09-01 — Frontend test suite (Vitest + React Testing Library, jsdom):
+  covers the `api` client (request/error handling, encoding, gating bodies),
+  all shared components, all pages (including RED typed-confirm gating,
+  vault unmask, rollback typed-YES, report export, and Run background polling),
+  and App bootstrap (splash, fatal + retry, auto-seed). CI `web` job runs
+  `npm test` before the build.

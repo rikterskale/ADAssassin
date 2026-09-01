@@ -36,7 +36,8 @@ If anything fails, use the platform sections and verbose fix actions in
 
 ```bash
 cd web && npm install && npm run build   # optional React rebuild
-python -m pytest                         # or rely on GitHub Actions CI
+cd web && npm test                       # frontend suite (Vitest + RTL)
+python -m pytest                         # backend suite (or rely on CI)
 ```
 
 ## Phase 6 console
