@@ -9,7 +9,7 @@ import { Findings } from "./pages/Findings";
 import { Glossary } from "./pages/Glossary";
 import { Guided } from "./pages/Guided";
 import { Overview } from "./pages/Overview";
-import { Placeholder } from "./pages/Placeholder";
+import { Report } from "./pages/Report";
 import { Rollback } from "./pages/Rollback";
 import { Run } from "./pages/Run";
 import { Vault } from "./pages/Vault";
@@ -84,7 +84,7 @@ export default function App() {
         <Route path="/findings" element={<Findings engagement={current} onUpdated={(item) => void handleConnected(item)} />} />
         <Route path="/vault" element={<Vault engagement={current} onUpdated={(item) => void handleConnected(item)} />} />
         <Route path="/rollback" element={<Rollback engagement={current} onUpdated={(item) => void handleConnected(item)} />} />
-        <Route path="/report" element={<Placeholder title="Report" copy="Markdown and HTML export wrap the engine report capability." engagement={current} />} />
+        <Route path="/report" element={<Report engagement={current} onUpdated={(item) => void handleConnected(item)} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

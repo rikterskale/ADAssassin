@@ -12,13 +12,13 @@ export function Overview({
   return (
     <>
       <section className="hero">
-        <div className="brand-sub">Phase 5 · typed-confirm RED</div>
+        <div className="brand-sub">Phase 6 · report and closeout</div>
         <h1>See the estate. Then take the next approved step.</h1>
-        <p className="lede">RED runs require typing the capability id. No global enable-red toggle.</p>
+        <p className="lede">Export Markdown/HTML with the authorization banner, then clear closeout leftovers.</p>
         <div className="actions">
           {guide?.next ? <Link className="btn primary" to={guide.next.href}>Next: {guide.next.title}</Link> : <Link className="btn primary" to="/guided">Open guided path</Link>}
-          <Link className="btn" to="/run">Run</Link>
-          <Link className="btn" to="/catalog?lane=red">RED catalog</Link>
+          <Link className="btn" to="/report">Report</Link>
+          <Link className="btn" to="/rollback">Rollback</Link>
         </div>
       </section>
       <div className="grid">

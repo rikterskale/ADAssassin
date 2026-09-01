@@ -9,8 +9,8 @@ every capability in `docs/CAPABILITY_CATALOG.md` from
 (92 at pin 0.10.1). It does not reimplement those capabilities.
 
 Repo: https://github.com/rikterskale/ADAssassin
-Current slice: **Phase 5 complete. Next work is Phase 6.**
-Package version at this writing: `0.6.0`.
+Current slice: **Phase 6 complete.**
+Package version at this writing: `0.7.0`.
 
 ---
 
@@ -46,6 +46,7 @@ browser  →  FastAPI (adassassin)  →  adaf-attack (pinned)
                 ├─ findings.py    explain / remediate / status
                 ├─ vault.py       metadata list + TTL unmask
                 ├─ rollback.py    preview / force-gated apply
+                ├─ report.py      markdown/html export + closeout
                 ├─ secrets.py     in-memory bind secrets
                 ├─ engagements.py disk sessions under ~/.adassassin
                 └─ web/           React source
@@ -81,7 +82,7 @@ Lanes (console risk bands):
 | 3 | Findings, explain, remediate | **done** on `main` (2026-09-01) |
 | 4 | Vault, tickets, rollback UI | **done** on `main` (2026-09-01) |
 | 5 | Typed-confirm RED execution | **done** on `main` (2026-09-01) |
-| 6 | Report export + closeout | **next** |
+| 6 | Report export + closeout | **done** on `main` (2026-09-01) |
 
 ---
 
@@ -285,17 +286,31 @@ Acceptance that already passed:
 
 ---
 
-## Phase 6 — Report export + closeout
+## Phase 6 — Report export + closeout (done)
 
 Intent: leave the customer with evidence, not a running console.
 
-- Wrap engine report / export capabilities
-- Markdown + HTML download from `/report`
-- Include: scope notes, capabilities run, findings, remediation status,
-  rollback leftovers, authorization banner
-- Closeout checklist: pending rollback, unmasked vault items, live sessions
+Shipped:
 
-Acceptance: a demo engagement can export a report with zero network.
+- `src/adassassin/report.py` — engagement Markdown/HTML export + closeout checklist
+- Wraps engine `generate_report_bundle` for session artifacts when present
+- Report React page with generate + download links
+- Tests: `tests/test_phase6.py`
+
+APIs:
+
+- `GET /api/engagements/{id}/closeout`
+- `GET /api/engagements/{id}/report` — builds markdown/html (no network)
+- `GET /api/engagements/{id}/report.md`
+- `GET /api/engagements/{id}/report.html`
+
+Report contents: authorization banner, scope notes, capabilities run, findings /
+remediation status, rollback leftovers, closeout checklist.
+
+Acceptance that already passed:
+
+- Demo engagement exports Markdown and HTML with zero network
+- `contacts_directory` is false on report/closeout payloads
 
 ---
 
@@ -307,7 +322,7 @@ Acceptance: a demo engagement can export a report with zero network.
 4. Implement the smallest API + UI that meets that phase’s acceptance.
 5. Add tests under `tests/test_phaseN.py`.
 6. Bump version in `__init__.py` and `pyproject.toml` when the phase lands
-   (Phase 5 → `0.6.0`).
+   (Phase 6 → `0.7.0`).
 7. Mark the phase **done** in the status table above and write the date.
 8. Leave `webapp/` fallback working even if you do not rebuild React.
 
@@ -359,3 +374,4 @@ Vite build output must land in `src/adassassin/webapp/` (see `web/vite.config.ts
   Next slice is Phase 6.
 - 2026-09-01 — Phase 0–5 completeness pass: guide red-run step, observe-run
   progress ignores RED jobs, stale Phase 2 acceptance text updated.
+- 2026-09-01 — Phase 6 landed (report export + closeout, 0.7.0).

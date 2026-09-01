@@ -7,12 +7,14 @@ import type {
   FindingDetailResponse,
   FindingExplainResponse,
   FindingStatus,
+  CloseoutResponse,
   FindingStatusResponse,
   FindingsListResponse,
   GlossaryResponse,
   GuideResponse,
   HealthResponse,
   Job,
+  ReportResponse,
   RollbackResponse,
   RunResponse,
   VaultResponse,
@@ -118,4 +120,8 @@ export const api = {
       `/api/engagements/${engagementId}/rollback/apply`,
       { method: "POST", body: JSON.stringify(body) },
     ),
+  closeout: (engagementId: string) =>
+    request<CloseoutResponse>(`/api/engagements/${engagementId}/closeout`),
+  report: (engagementId: string) =>
+    request<ReportResponse>(`/api/engagements/${engagementId}/report`),
 };

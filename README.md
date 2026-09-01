@@ -9,10 +9,10 @@ a guided GUI.
 > Written authorization is required before any live target work.
 > Availability of this repository is not authorization.
 
-Current slice: **Phase 5** (typed-confirm RED / destructive and side-effect
-runs). Report export is Phase 6.
+Current slice: **Phase 6** (report export + closeout). Roadmap phases 0–6 are
+complete for the initial console build.
 
-Build order and acceptance criteria: **[ROADMAP.md](ROADMAP.md)**. Next slice is Phase 6.
+Build order and acceptance criteria: **[ROADMAP.md](ROADMAP.md)**.
 
 ## Quick start
 
@@ -29,16 +29,17 @@ Binds `127.0.0.1:8745`. Doctor and demo never contact a domain controller.
 cd web && npm install && npm run build   # optional React rebuild
 ```
 
-## Phase 5 console
+## Phase 6 console
 
 - Overview doctor checks (Python, catalog, engine, bind)
-- Guided checklist through connect + observe run
+- Guided checklist through connect, observe, and typed-confirm RED
 - Catalog lanes, inspector prompts, and Run for observe + RED
 - Connect preflight (engine live-ad doctor); passwords stay in memory
 - Observe runs plus typed-confirm RED (capability id + ack/force)
 - Findings pane: severity groups, explain, remediation checklist, status
 - Vault metadata inventory with single-item TTL unmask + audit
 - Rollback preview (offline) and typed-YES apply
+- Report Markdown/HTML export with closeout checklist
 - Glossary from the engine when present
 - Offline demo findings
 

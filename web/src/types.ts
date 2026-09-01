@@ -320,3 +320,40 @@ export type RollbackResponse = {
   requires_force?: boolean;
   confirm_token?: string;
 };
+
+export type CloseoutCheck = {
+  id: string;
+  label: string;
+  ok: boolean;
+  detail: string;
+  informational?: boolean;
+};
+
+export type CloseoutResponse = {
+  ok: boolean;
+  engagement_id: string;
+  ready: boolean;
+  checks: CloseoutCheck[];
+  summary: {
+    pending_rollback: number;
+    unmasked_vault: number;
+    live_sessions: number;
+    open_findings: number;
+    capabilities_run: number;
+  };
+  contacts_directory?: boolean;
+};
+
+export type ReportResponse = {
+  ok: boolean;
+  engagement_id: string;
+  generated_at: string;
+  markdown: string;
+  html: string;
+  downloads: { markdown: string; html: string };
+  paths: { markdown: string; html: string };
+  closeout: CloseoutResponse;
+  engine_artifacts?: { session_id: string; finding_count?: number; paths?: string[]; error?: string }[];
+  engagement?: Engagement;
+  contacts_directory?: boolean;
+};

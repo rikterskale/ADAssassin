@@ -27,7 +27,7 @@ export function Shell({ health }: { health: HealthResponse | null }) {
         <div className="rail-foot">
           Local console. Authorized internal use only.
           <br />
-          Phase {health?.phase ?? "5"} · engine pin {health?.engine_pin ?? "0.10.1"}
+          Phase {health?.phase ?? "6"} · engine pin {health?.engine_pin ?? "0.10.1"}
         </div>
       </aside>
       <section className="main">

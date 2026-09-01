@@ -30,6 +30,7 @@ from adassassin.findings import (
     set_finding_status,
 )
 from adassassin.guide import glossary_payload, guide_payload
+from adassassin.report import build_report, closeout_checklist, report_file
 from adassassin.rollback import RollbackError, apply_rollback, list_rollback, preview_rollback
 from adassassin.runner import RunRefused, execute_run
 from adassassin.targets import TargetError, connect_engagement
@@ -103,7 +104,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "ok": True,
             "product": "adassassin",
             "version": __version__,
-            "phase": "5",
+            "phase": "6",
             "engine": engine,
             "engine_pin": ENGINE_PIN,
             "engine_commit": ENGINE_COMMIT,
@@ -319,6 +320,44 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except RollbackError as exc:
             raise HTTPException(status_code=403, detail=str(exc)) from exc
+
+    @app.get("/api/engagements/{engagement_id}/closeout")
+    def engagement_closeout(engagement_id: str) -> dict[str, Any]:
+        try:
+            return closeout_checklist(settings, engagement_id)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.get("/api/engagements/{engagement_id}/report")
+    def engagement_report(engagement_id: str) -> dict[str, Any]:
+        try:
+            return build_report(settings, engagement_id)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.get("/api/engagements/{engagement_id}/report.md")
+    def engagement_report_md(engagement_id: str) -> FileResponse:
+        try:
+            path = report_file(settings, engagement_id, fmt="md")
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        return FileResponse(
+            path,
+            media_type="text/markdown; charset=utf-8",
+            filename=f"{engagement_id}-report.md",
+        )
+
+    @app.get("/api/engagements/{engagement_id}/report.html")
+    def engagement_report_html(engagement_id: str) -> FileResponse:
+        try:
+            path = report_file(settings, engagement_id, fmt="html")
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        return FileResponse(
+            path,
+            media_type="text/html; charset=utf-8",
+            filename=f"{engagement_id}-report.html",
+        )
 
     if WEBAPP.joinpath("index.html").exists():
         assets = WEBAPP / "assets"
