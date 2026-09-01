@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { api } from "../api";
+import { NoEngagement } from "../components/NoEngagement";
 import type { Engagement, VaultItem, VaultResponse } from "../types";
 
 export function Vault({
   engagement,
   onUpdated,
+  onSeedDemo,
 }: {
   engagement: Engagement | null;
   onUpdated: (engagement: Engagement) => void;
+  onSeedDemo: () => void;
 }) {
   const [vault, setVault] = useState<VaultResponse | null>(null);
   const [selected, setSelected] = useState<VaultItem | null>(null);
@@ -72,9 +74,7 @@ export function Vault({
         <div className="panel span-6">
           <h2>Inventory</h2>
           {!engagement ? (
-            <div className="empty">
-              Select an engagement or <Link to="/guided">seed the demo</Link>.
-            </div>
+            <NoEngagement onSeedDemo={onSeedDemo} />
           ) : (
             <>
               <div className="metric-row">

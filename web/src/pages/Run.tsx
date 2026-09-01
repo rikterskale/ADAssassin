@@ -1,6 +1,8 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../api";
+import { CapabilityPicker } from "../components/CapabilityPicker";
+import { NoEngagement } from "../components/NoEngagement";
 import { RiskBadge } from "../components/RiskBadge";
 import type { Capability, Engagement, Job } from "../types";
 
@@ -8,10 +10,12 @@ export function Run({
   engagement,
   catalog,
   onRan,
+  onSeedDemo,
 }: {
   engagement: Engagement | null;
   catalog: Capability[];
   onRan: (engagement: Engagement) => void;
+  onSeedDemo: () => void;
 }) {
   const [params, setParams] = useSearchParams();
   const initialId = params.get("capability") ?? "";
@@ -115,15 +119,15 @@ export function Run({
         <div className="brand-sub">Run</div>
         <h1>Observe freely. RED only with typed confirmation.</h1>
         <p className="lede">
-          Yellow observe needs connect. Destructive and side-effect capabilities require ack, force,
-          and typing the capability id. No global red toggle.
+          Search for a capability below. Yellow observe needs connect. Destructive and side-effect
+          capabilities require ack, force, and typing the capability id. No global red toggle.
         </p>
       </section>
       <div className="grid">
         <div className="panel span-6">
           <h2>Capability</h2>
           {!engagement ? (
-            <div className="empty">Select an engagement first.</div>
+            <NoEngagement onSeedDemo={onSeedDemo} />
           ) : (
             <form className="form" onSubmit={submit}>
               <div className="muted">
@@ -133,17 +137,11 @@ export function Run({
                 {" · "}
                 <Link to="/connect">Connect</Link>
               </div>
-              <select value={capabilityId} onChange={(e) => selectCapability(e.target.value)} required>
-                <option value="">Select capability…</option>
-                {runnable.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    [{item.lane}] {item.id}
-                    {item.requires_red_confirm || item.lane === "red"
-                      ? ` · ${item.risk_label || item.risk}`
-                      : ""}
-                  </option>
-                ))}
-              </select>
+              <CapabilityPicker
+                capabilities={runnable}
+                selectedId={capabilityId}
+                onSelect={selectCapability}
+              />
               {detail && (
                 <div className="muted">
                   <RiskBadge lane={detail.lane} risk={detail.risk} /> {detail.plain ?? detail.summary}

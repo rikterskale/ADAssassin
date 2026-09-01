@@ -1,14 +1,17 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
+import { NoEngagement } from "../components/NoEngagement";
 import type { Engagement } from "../types";
 
 export function Connect({
   engagement,
   onConnected,
+  onSeedDemo,
 }: {
   engagement: Engagement | null;
   onConnected: (engagement: Engagement) => void;
+  onSeedDemo: () => void;
 }) {
   const [domain, setDomain] = useState("");
   const [dc, setDc] = useState("");
@@ -70,9 +73,7 @@ export function Connect({
         <div className="panel span-6">
           <h2>Target</h2>
           {!engagement ? (
-            <div className="empty">
-              No engagement selected. <Link to="/engagements">Create one</Link> first.
-            </div>
+            <NoEngagement onSeedDemo={onSeedDemo} />
           ) : (
             <form className="form" onSubmit={submit}>
               <div className="muted mono">{engagement.name} · {engagement.id}</div>

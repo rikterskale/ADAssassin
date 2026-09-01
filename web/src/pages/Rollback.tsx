@@ -1,14 +1,16 @@
 import { FormEvent, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { api } from "../api";
+import { NoEngagement } from "../components/NoEngagement";
 import type { Engagement, RollbackResponse } from "../types";
 
 export function Rollback({
   engagement,
   onUpdated,
+  onSeedDemo,
 }: {
   engagement: Engagement | null;
   onUpdated: (engagement: Engagement) => void;
+  onSeedDemo: () => void;
 }) {
   const [rollback, setRollback] = useState<RollbackResponse | null>(null);
   const [confirm, setConfirm] = useState("");
@@ -89,9 +91,7 @@ export function Rollback({
         <div className="panel span-7">
           <h2>Pending entries</h2>
           {!engagement ? (
-            <div className="empty">
-              Select an engagement or <Link to="/guided">seed the demo</Link>.
-            </div>
+            <NoEngagement onSeedDemo={onSeedDemo} />
           ) : (rollback?.entries ?? []).length === 0 ? (
             <div className="empty">No cleanup entries. Demo seeds one pending fixture entry.</div>
           ) : (

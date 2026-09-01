@@ -1,11 +1,42 @@
 import { NavLink, Outlet } from "react-router-dom";
 import type { HealthResponse } from "../types";
 
-const links = [
-  ["/", "Overview"], ["/guided", "Guided"], ["/catalog", "Catalog"], ["/glossary", "Glossary"],
-  ["/engagements", "Engagements"], ["/connect", "Connect"], ["/run", "Run"],
-  ["/findings", "Findings"], ["/vault", "Vault"], ["/rollback", "Rollback"], ["/report", "Report"],
-] as const;
+type NavItem = { to: string; label: string; hint: string };
+type NavGroup = { heading: string; items: NavItem[] };
+
+const groups: NavGroup[] = [
+  {
+    heading: "Start",
+    items: [
+      { to: "/", label: "Overview", hint: "Home" },
+      { to: "/guided", label: "Guided", hint: "Step by step" },
+    ],
+  },
+  {
+    heading: "Assess",
+    items: [
+      { to: "/engagements", label: "Engagements", hint: "Workspaces" },
+      { to: "/connect", label: "Connect", hint: "Target preflight" },
+      { to: "/run", label: "Run", hint: "Run a capability" },
+      { to: "/findings", label: "Findings", hint: "Results" },
+    ],
+  },
+  {
+    heading: "Reference",
+    items: [
+      { to: "/catalog", label: "Catalog", hint: "All capabilities" },
+      { to: "/glossary", label: "Glossary", hint: "Plain-English terms" },
+    ],
+  },
+  {
+    heading: "Advanced",
+    items: [
+      { to: "/vault", label: "Vault", hint: "Captured secrets" },
+      { to: "/rollback", label: "Rollback", hint: "Undo changes" },
+      { to: "/report", label: "Report", hint: "Export & closeout" },
+    ],
+  },
+];
 
 export function Shell({ health }: { health: HealthResponse | null }) {
   const engineOk = health?.engine.available;
@@ -20,8 +51,16 @@ export function Shell({ health }: { health: HealthResponse | null }) {
           </div>
         </div>
         <nav>
-          {links.map(([to, label]) => (
-            <NavLink key={to} to={to} end={to === "/"}>{label}</NavLink>
+          {groups.map((group) => (
+            <div className="nav-group" key={group.heading}>
+              <div className="nav-heading">{group.heading}</div>
+              {group.items.map((item) => (
+                <NavLink key={item.to} to={item.to} end={item.to === "/"}>
+                  <span>{item.label}</span>
+                  <span className="nav-hint">{item.hint}</span>
+                </NavLink>
+              ))}
+            </div>
           ))}
         </nav>
         <div className="rail-foot">

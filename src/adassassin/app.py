@@ -39,6 +39,22 @@ from adassassin.vault import VaultServiceError, list_vault, unmask_vault_item
 WEBAPP = Path(__file__).resolve().parent / "webapp"
 
 
+def _webapp_file(full_path: str) -> Path | None:
+    """Resolve a request path to a real file inside WEBAPP, or return None.
+
+    Guards the SPA catch-all against path traversal: any resolved path that
+    escapes the webapp directory (``../`` segments, absolute paths, symlinks)
+    is rejected so only bundled assets can be served.
+    """
+    if not full_path:
+        return None
+    root = WEBAPP.resolve()
+    candidate = (root / full_path).resolve()
+    if not candidate.is_relative_to(root):
+        return None
+    return candidate if candidate.is_file() else None
+
+
 class EngagementIn(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     domain: str = ""
@@ -366,8 +382,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
         @app.get("/{full_path:path}")
         def spa(full_path: str) -> FileResponse:
-            candidate = WEBAPP / full_path
-            if full_path and candidate.is_file():
+            candidate = _webapp_file(full_path)
+            if candidate is not None:
                 return FileResponse(candidate)
             return FileResponse(WEBAPP / "index.html")
 

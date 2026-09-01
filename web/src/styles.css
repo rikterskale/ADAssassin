@@ -129,3 +129,35 @@ input[type="search"], .grow { flex: 1; }
   .rail { border-right: 0; border-bottom: 1px solid var(--line); }
   .span-8, .span-4, .span-6 { grid-column: span 12; }
 }
+
+/* Grouped navigation with plain-language hints */
+.nav-group { display: flex; flex-direction: column; gap: 2px; margin-bottom: 10px; }
+.nav-heading {
+  color: var(--muted); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+  padding: 6px 10px 2px; opacity: 0.65;
+}
+.nav-hint { color: var(--muted); font-size: 11px; }
+
+/* Welcome on-ramp */
+.steps { margin: 0; padding-left: 18px; display: grid; gap: 12px; line-height: 1.55; }
+.steps li { color: var(--text); }
+.linklike {
+  background: none; border: 0; color: var(--gold); cursor: pointer;
+  padding: 0; font: inherit; text-decoration: underline;
+}
+
+/* Searchable capability picker (Run) */
+.picker { display: grid; gap: 10px; }
+.picker-list {
+  display: flex; flex-direction: column; gap: 2px;
+  max-height: 340px; overflow: auto;
+  border: 1px solid var(--line); padding: 6px; background: var(--bg);
+}
+.picker-row {
+  display: grid; gap: 4px; width: 100%; text-align: left; cursor: pointer;
+  background: transparent; border: 1px solid transparent; border-left: 2px solid transparent;
+  padding: 8px 10px; color: var(--text);
+}
+.picker-row:hover { border-color: var(--line); background: rgba(224, 178, 90, 0.05); }
+.picker-row.selected { border-left-color: var(--gold); background: rgba(224, 178, 90, 0.07); }
+.picker-row-head { display: flex; align-items: center; gap: 8px; }

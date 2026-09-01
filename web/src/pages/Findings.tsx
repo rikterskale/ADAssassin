@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
+import { NoEngagement } from "../components/NoEngagement";
 import type { Engagement, Finding, FindingStatus } from "../types";
 
 const STATUSES: FindingStatus[] = ["open", "accepted", "fixed", "retest"];
@@ -14,9 +15,11 @@ function severityClass(severity: string): string {
 export function Findings({
   engagement,
   onUpdated,
+  onSeedDemo,
 }: {
   engagement: Engagement | null;
   onUpdated: (engagement: Engagement) => void;
+  onSeedDemo: () => void;
 }) {
   const [grouped, setGrouped] = useState<{ severity: string; findings: Finding[] }[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -109,9 +112,7 @@ export function Findings({
         <div className="panel span-6">
           <h2>{engagement ? engagement.name : "No engagement"}</h2>
           {!engagement ? (
-            <div className="empty">
-              Select an engagement or <Link to="/guided">seed the demo</Link>.
-            </div>
+            <NoEngagement onSeedDemo={onSeedDemo} />
           ) : findings.length === 0 ? (
             <div className="empty">No findings yet. Seed the demo or run an observe capability.</div>
           ) : (

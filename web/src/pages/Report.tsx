@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { api } from "../api";
+import { NoEngagement } from "../components/NoEngagement";
 import type { CloseoutResponse, Engagement, ReportResponse } from "../types";
 
 export function Report({
   engagement,
   onUpdated,
+  onSeedDemo,
 }: {
   engagement: Engagement | null;
   onUpdated: (engagement: Engagement) => void;
+  onSeedDemo: () => void;
 }) {
   const [closeout, setCloseout] = useState<CloseoutResponse | null>(null);
   const [report, setReport] = useState<ReportResponse | null>(null);
@@ -60,9 +62,7 @@ export function Report({
         <div className="panel span-6">
           <h2>Closeout checklist</h2>
           {!engagement ? (
-            <div className="empty">
-              Select an engagement or <Link to="/guided">seed the demo</Link>.
-            </div>
+            <NoEngagement onSeedDemo={onSeedDemo} />
           ) : !closeout ? (
             <div className="empty">Loading closeout…</div>
           ) : (
