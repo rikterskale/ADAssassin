@@ -7,7 +7,7 @@ from importlib import resources
 from typing import Any
 
 from adassassin import ENGINE_COMMIT, ENGINE_PIN
-from adassassin.engine import live_catalog
+from adassassin.engine import capability_detail, lane_for, live_catalog
 
 CATALOG_URL = (
     "https://raw.githubusercontent.com/rikterskale/ADAF-ATTACK/"
@@ -25,14 +25,6 @@ def _dash(raw: str) -> str | None:
     return None if raw in {"-", "—", ""} else raw
 
 
-def _lane(risk: str, environment: str) -> str:
-    if environment == "offline" and risk == "observe":
-        return "green"
-    if risk in {"destructive", "side_effect"}:
-        return "red"
-    return "yellow"
-
-
 def parse_catalog_markdown(text: str) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
     for line in text.splitlines():
@@ -41,6 +33,7 @@ def parse_catalog_markdown(text: str) -> list[dict[str, Any]]:
         cols = [col.strip() for col in line.strip("|").split("|")]
         risk = cols[7]
         environment = cols[3]
+        lane = lane_for(risk, environment)
         items.append(
             {
                 "id": cols[0].strip("`"),
@@ -58,7 +51,9 @@ def parse_catalog_markdown(text: str) -> list[dict[str, Any]]:
                 "active_authentication": cols[12].lower() == "yes",
                 "noise": cols[13],
                 "sensitivity": cols[14],
-                "lane": _lane(risk, environment),
+                "lane": lane,
+                "required_prompts": [],
+                "runnable": lane in {"green", "yellow"} and risk == "observe",
             }
         )
     return items
@@ -113,3 +108,13 @@ def catalog_payload() -> dict[str, Any]:
         "count": len(live),
         "capabilities": live,
     }
+
+
+def get_capability(capability_id: str) -> dict[str, Any] | None:
+    detail = capability_detail(capability_id)
+    if detail is not None:
+        return detail
+    for item in catalog_payload().get("capabilities", []):
+        if item.get("id") == capability_id:
+            return item
+    return None

@@ -41,8 +41,8 @@ export function Engagements({
         <div className="brand-sub">Engagements</div>
         <h1>One workspace per authorized assessment.</h1>
         <p className="lede">
-          Live fields are stored locally. Phase 0 does not open a directory
-          connection.
+          Domain and DC are stored locally. Use Connect for preflight before
+          yellow observe runs. Passwords never land in engagement JSON.
         </p>
       </section>
       <div className="grid">

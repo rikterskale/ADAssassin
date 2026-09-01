@@ -107,6 +107,23 @@ input[type="search"], .grow { flex: 1; }
 .finding { border-top: 1px solid var(--line); padding: 12px 0; }
 .finding:first-of-type { border-top: 0; padding-top: 0; }
 .empty { color: var(--muted); padding: 24px 0; }
+.banner-error {
+  border: 1px solid rgba(212, 90, 50, 0.45);
+  color: var(--red);
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.log {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  padding: 12px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  max-height: 320px;
+  overflow: auto;
+}
 @media (max-width: 980px) {
   .shell { grid-template-columns: 1fr; }
   .rail { border-right: 0; border-bottom: 1px solid var(--line); }

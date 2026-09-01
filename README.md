@@ -9,10 +9,10 @@ a guided GUI.
 > Written authorization is required before any live target work.
 > Availability of this repository is not authorization.
 
-Current slice: **Phase 1** (doctor, guided checklist, catalog inspector,
-glossary, demo workspace). Capability execution is not enabled yet.
+Current slice: **Phase 2** (live connect / preflight, green/yellow observe
+runs, job log, findings attach). Red execution is Phase 5.
 
-Build order and acceptance criteria: **[ROADMAP.md](ROADMAP.md)**. Next slice is Phase 2.
+Build order and acceptance criteria: **[ROADMAP.md](ROADMAP.md)**. Next slice is Phase 3.
 
 ## Quick start
 
@@ -29,11 +29,13 @@ Binds `127.0.0.1:8745`. Doctor and demo never contact a domain controller.
 cd web && npm install && npm run build   # optional React rebuild
 ```
 
-## Phase 1 console
+## Phase 2 console
 
 - Overview doctor checks (Python, catalog, engine, bind)
-- Guided checklist with persisted marks
-- Catalog lanes plus inspector (approval / rollback / tools)
+- Guided checklist through connect + observe run
+- Catalog lanes, inspector prompts, and **Run** for observe caps
+- Connect preflight (engine live-ad doctor); passwords stay in memory
+- Observe-only runs with job log and findings attach
 - Glossary from the engine when present
 - Offline demo findings
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { RiskBadge } from "../components/RiskBadge";
 import type { Capability, CatalogResponse, Lane } from "../types";
 
@@ -29,12 +29,16 @@ export function Catalog({ catalog, onViewGreen }: { catalog: CatalogResponse | n
     setParams(copy, { replace: true });
   }
 
+  const canRun = selected?.runnable ?? (selected != null && selected.lane !== "red" && selected.risk === "observe");
+
   return (
     <>
       <section className="hero">
         <div className="brand-sub">Advanced catalog</div>
         <h1>{catalog?.count ?? 0} capabilities from the pinned engine.</h1>
-        <p className="lede">Source: {catalog?.source ?? "…"}. Click a row for approval and rollback. Execution is Phase 2.</p>
+        <p className="lede">
+          Source: {catalog?.source ?? "…"}. Observe capabilities can run from here. Red stays Phase 5.
+        </p>
       </section>
       <div className="grid">
         <div className="panel span-8">
@@ -49,17 +53,27 @@ export function Catalog({ catalog, onViewGreen }: { catalog: CatalogResponse | n
           </div>
           <div className="table-wrap">
             <table>
-              <thead><tr><th>ID</th><th>Lane</th><th>Category</th><th>Approval</th><th>Summary</th></tr></thead>
+              <thead><tr><th>ID</th><th>Lane</th><th>Category</th><th>Approval</th><th>Summary</th><th></th></tr></thead>
               <tbody>
-                {filtered.map((item) => (
-                  <tr key={item.id} onClick={() => setSelected(item)} style={{ cursor: "pointer" }}>
-                    <td className="mono">{item.id}</td>
-                    <td><RiskBadge lane={item.lane} risk={item.risk} /></td>
-                    <td>{item.category}</td>
-                    <td className="mono">{item.approval}</td>
-                    <td>{item.plain ?? item.summary}</td>
-                  </tr>
-                ))}
+                {filtered.map((item) => {
+                  const runnable = item.runnable ?? (item.lane !== "red" && item.risk === "observe");
+                  return (
+                    <tr key={item.id} onClick={() => setSelected(item)} style={{ cursor: "pointer" }}>
+                      <td className="mono">{item.id}</td>
+                      <td><RiskBadge lane={item.lane} risk={item.risk} /></td>
+                      <td>{item.category}</td>
+                      <td className="mono">{item.approval}</td>
+                      <td>{item.plain ?? item.summary}</td>
+                      <td>
+                        {runnable ? (
+                          <Link className="btn ghost" to={`/run?capability=${encodeURIComponent(item.id)}`} onClick={(e) => e.stopPropagation()}>
+                            Run
+                          </Link>
+                        ) : null}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -70,8 +84,28 @@ export function Catalog({ catalog, onViewGreen }: { catalog: CatalogResponse | n
             <>
               <div className="mono">{selected.id}</div>
               <p>{selected.summary}</p>
-              <p className="muted">{selected.environment} · {selected.maturity}<br />approval {selected.approval} · rollback {selected.rollback}<br />tools {(selected.tools || []).join(", ") || "none"}</p>
-              {selected.lane === "red" && <p className="muted">RED. Typed confirmation will be required before a run.</p>}
+              <p className="muted">
+                {selected.environment} · {selected.maturity}<br />
+                approval {selected.approval} · rollback {selected.rollback}<br />
+                tools {(selected.tools || []).join(", ") || "none"}
+              </p>
+              {(selected.required_prompts ?? []).length > 0 && (
+                <>
+                  <h2>Required prompts</h2>
+                  {(selected.required_prompts ?? []).map((prompt) => (
+                    <div className="finding" key={prompt.option}>
+                      <div className="mono">{prompt.option}</div>
+                      <div className="muted">{prompt.label} — {prompt.help}</div>
+                    </div>
+                  ))}
+                </>
+              )}
+              {selected.lane === "red" && <p className="muted">RED. Typed confirmation is Phase 5.</p>}
+              {canRun && (
+                <div className="actions">
+                  <Link className="btn primary" to={`/run?capability=${encodeURIComponent(selected.id)}`}>Run observe</Link>
+                </div>
+              )}
             </>
           ) : <p className="muted">Select a capability.</p>}
         </div>

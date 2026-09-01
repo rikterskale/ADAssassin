@@ -10,18 +10,21 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from adassassin import ENGINE_COMMIT, ENGINE_PIN, __version__
-from adassassin.catalog import catalog_payload
+from adassassin.catalog import catalog_payload, get_capability
 from adassassin.config import Settings, get_settings
 from adassassin.doctor import run_doctor
 from adassassin.engagements import (
     create_engagement,
     ensure_demo,
     get_engagement,
+    get_job,
     list_engagements,
     mark_guided,
 )
 from adassassin.engine import probe
 from adassassin.guide import glossary_payload, guide_payload
+from adassassin.runner import RunRefused, execute_observe
+from adassassin.targets import TargetError, connect_engagement
 
 WEBAPP = Path(__file__).resolve().parent / "webapp"
 
@@ -35,6 +38,21 @@ class EngagementIn(BaseModel):
 
 class GuidedMarkIn(BaseModel):
     step_id: str = Field(min_length=1, max_length=40)
+
+
+class ConnectIn(BaseModel):
+    domain: str = Field(min_length=1, max_length=255)
+    dc: str = Field(min_length=1, max_length=255)
+    username: str = ""
+    password: str | None = None
+    hashes: str | None = None
+    timeout: float = Field(default=3.0, ge=0.2, le=30.0)
+
+
+class RunIn(BaseModel):
+    capability_id: str = Field(min_length=1, max_length=120)
+    options: dict[str, Any] = Field(default_factory=dict)
+    ack: bool = False
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -57,7 +75,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "ok": True,
             "product": "adassassin",
             "version": __version__,
-            "phase": "1",
+            "phase": "2",
             "engine": engine,
             "engine_pin": ENGINE_PIN,
             "engine_commit": ENGINE_COMMIT,
@@ -84,6 +102,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.get("/api/catalog")
     def catalog() -> dict[str, Any]:
         return catalog_payload()
+
+    @app.get("/api/catalog/{capability_id}")
+    def catalog_item(capability_id: str) -> dict[str, Any]:
+        item = get_capability(capability_id)
+        if item is None:
+            raise HTTPException(status_code=404, detail="Capability not found")
+        return {"ok": True, "capability": item}
 
     @app.get("/api/engagements")
     def engagements() -> dict[str, Any]:
@@ -117,6 +142,62 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if item is None:
             raise HTTPException(status_code=404, detail="Engagement not found")
         return {"ok": True, "engagement": item}
+
+    @app.post("/api/engagements/{engagement_id}/connect")
+    def engagement_connect(engagement_id: str, body: ConnectIn) -> dict[str, Any]:
+        try:
+            result = connect_engagement(
+                settings,
+                engagement_id,
+                domain=body.domain,
+                dc=body.dc,
+                username=body.username,
+                password=body.password,
+                hashes=body.hashes,
+                timeout=body.timeout,
+            )
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except TargetError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return {
+            "ok": True,
+            "engagement": result["engagement"],
+            "preflight": result["preflight"],
+        }
+
+    @app.post("/api/engagements/{engagement_id}/run")
+    def engagement_run(engagement_id: str, body: RunIn) -> dict[str, Any]:
+        try:
+            result = execute_observe(
+                settings,
+                engagement_id,
+                capability_id=body.capability_id,
+                options=body.options,
+                ack=body.ack,
+            )
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except RunRefused as exc:
+            raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
+        job = result["job"]
+        return {
+            "ok": job.get("status") == "completed",
+            "job_id": job["id"],
+            "status": job["status"],
+            "findings": job.get("findings") or [],
+            "job": job,
+            "engagement": result["engagement"],
+        }
+
+    @app.get("/api/engagements/{engagement_id}/jobs/{job_id}")
+    def engagement_job(engagement_id: str, job_id: str) -> dict[str, Any]:
+        if get_engagement(settings, engagement_id) is None:
+            raise HTTPException(status_code=404, detail="Engagement not found")
+        job = get_job(settings, engagement_id, job_id)
+        if job is None:
+            raise HTTPException(status_code=404, detail="Job not found")
+        return {"ok": True, "job": job}
 
     if WEBAPP.joinpath("index.html").exists():
         assets = WEBAPP / "assets"

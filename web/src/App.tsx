@@ -3,11 +3,14 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { api } from "./api";
 import { Shell } from "./components/Shell";
 import { Catalog } from "./pages/Catalog";
+import { Connect } from "./pages/Connect";
 import { Engagements } from "./pages/Engagements";
+import { Findings } from "./pages/Findings";
 import { Glossary } from "./pages/Glossary";
 import { Guided } from "./pages/Guided";
 import { Overview } from "./pages/Overview";
 import { Placeholder } from "./pages/Placeholder";
+import { Run } from "./pages/Run";
 import type { CatalogResponse, DoctorResponse, Engagement, GuideResponse, HealthResponse } from "./types";
 
 export default function App() {
@@ -34,17 +37,20 @@ export default function App() {
     [engagements, currentId],
   );
 
+  function upsertEngagement(engagement: Engagement) {
+    setEngagements((items) => [engagement, ...items.filter((item) => item.id !== engagement.id)]);
+    setCurrentId(engagement.id);
+  }
+
   async function createEngagement(body: { name: string; domain: string; dc: string; notes: string }) {
     const created = await api.createEngagement(body);
-    setEngagements((items) => [created.engagement, ...items]);
-    setCurrentId(created.engagement.id);
+    upsertEngagement(created.engagement);
     await refresh();
   }
 
   async function seedDemo() {
     const created = await api.demoEngagement();
-    setEngagements((items) => [created.engagement, ...items.filter((item) => item.id !== created.engagement.id)]);
-    setCurrentId(created.engagement.id);
+    upsertEngagement(created.engagement);
     await refresh();
   }
 
@@ -52,6 +58,16 @@ export default function App() {
     if (current) await api.markGuided(current.id, stepId);
     await refresh();
   }, [current, refresh]);
+
+  async function handleConnected(engagement: Engagement) {
+    upsertEngagement(engagement);
+    await refresh();
+  }
+
+  async function handleRan(engagement: Engagement) {
+    upsertEngagement(engagement);
+    await refresh();
+  }
 
   return (
     <Routes>
@@ -61,7 +77,9 @@ export default function App() {
         <Route path="/catalog" element={<Catalog catalog={catalog} onViewGreen={() => void mark("green-catalog")} />} />
         <Route path="/glossary" element={<Glossary onSeen={() => void mark("glossary")} />} />
         <Route path="/engagements" element={<Engagements items={engagements} currentId={current?.id ?? null} onCreate={createEngagement} onDemo={() => void seedDemo()} onSelect={setCurrentId} />} />
-        <Route path="/findings" element={<Placeholder title="Findings" copy="Demo findings are fixture evidence. Live observe capabilities attach here in Phase 2." engagement={current} />} />
+        <Route path="/connect" element={<Connect engagement={current} onConnected={(item) => void handleConnected(item)} />} />
+        <Route path="/run" element={<Run engagement={current} catalog={catalog?.capabilities ?? []} onRan={(item) => void handleRan(item)} />} />
+        <Route path="/findings" element={<Findings engagement={current} />} />
         <Route path="/vault" element={<Placeholder title="Vault" copy="Tickets, certificates, and secrets stay redacted until an operator unmasks a single item." engagement={current} />} />
         <Route path="/rollback" element={<Placeholder title="Rollback" copy="Pending directory mutations from the engine cleanup log will list here." engagement={current} />} />
         <Route path="/report" element={<Placeholder title="Report" copy="Markdown and HTML export wrap the engine report capability." engagement={current} />} />

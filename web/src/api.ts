@@ -1,10 +1,14 @@
 import type {
   CatalogResponse,
+  Capability,
+  ConnectResponse,
   DoctorResponse,
   Engagement,
   GlossaryResponse,
   GuideResponse,
   HealthResponse,
+  Job,
+  RunResponse,
 } from "./types";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -12,7 +16,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
     ...init,
   });
-  if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+  if (!response.ok) {
+    let detail = `${response.status} ${response.statusText}`;
+    try {
+      const body = (await response.json()) as { detail?: unknown };
+      if (typeof body.detail === "string") detail = body.detail;
+    } catch {
+      /* keep status text */
+    }
+    throw new Error(detail);
+  }
   return response.json() as Promise<T>;
 }
 
@@ -22,6 +35,8 @@ export const api = {
   guide: () => request<GuideResponse>("/api/guide"),
   glossary: () => request<GlossaryResponse>("/api/glossary"),
   catalog: () => request<CatalogResponse>("/api/catalog"),
+  capability: (id: string) =>
+    request<{ ok: boolean; capability: Capability }>(`/api/catalog/${encodeURIComponent(id)}`),
   engagements: () => request<{ ok: boolean; engagements: Engagement[] }>("/api/engagements"),
   createEngagement: (body: { name: string; domain?: string; dc?: string; notes?: string }) =>
     request<{ ok: boolean; engagement: Engagement }>("/api/engagements", {
@@ -35,4 +50,22 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ step_id: stepId }),
     }),
+  connect: (
+    engagementId: string,
+    body: { domain: string; dc: string; username?: string; password?: string; hashes?: string },
+  ) =>
+    request<ConnectResponse>(`/api/engagements/${engagementId}/connect`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  run: (
+    engagementId: string,
+    body: { capability_id: string; options?: Record<string, unknown>; ack?: boolean },
+  ) =>
+    request<RunResponse>(`/api/engagements/${engagementId}/run`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  job: (engagementId: string, jobId: string) =>
+    request<{ ok: boolean; job: Job }>(`/api/engagements/${engagementId}/jobs/${jobId}`),
 };

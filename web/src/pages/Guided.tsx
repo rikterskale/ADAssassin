@@ -14,10 +14,11 @@ export function Guided({
       <section className="hero">
         <div className="brand-sub">Guided</div>
         <h1>Do not start from a capability name.</h1>
-        <p className="lede">Complete these local steps first. Live connect is Phase 2.</p>
+        <p className="lede">Finish local steps, then connect an authorized target and run observe capabilities.</p>
         <div className="actions">
           <button className="btn primary" type="button" onClick={onDemo}>Seed offline demo</button>
           <Link className="btn" to="/engagements">Name an engagement</Link>
+          <Link className="btn" to="/connect">Connect target</Link>
         </div>
       </section>
       <div className="grid">

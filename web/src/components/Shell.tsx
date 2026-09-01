@@ -3,8 +3,8 @@ import type { HealthResponse } from "../types";
 
 const links = [
   ["/", "Overview"], ["/guided", "Guided"], ["/catalog", "Catalog"], ["/glossary", "Glossary"],
-  ["/engagements", "Engagements"], ["/findings", "Findings"], ["/vault", "Vault"],
-  ["/rollback", "Rollback"], ["/report", "Report"],
+  ["/engagements", "Engagements"], ["/connect", "Connect"], ["/run", "Run"],
+  ["/findings", "Findings"], ["/vault", "Vault"], ["/rollback", "Rollback"], ["/report", "Report"],
 ] as const;
 
 export function Shell({ health }: { health: HealthResponse | null }) {
@@ -27,7 +27,7 @@ export function Shell({ health }: { health: HealthResponse | null }) {
         <div className="rail-foot">
           Local console. Authorized internal use only.
           <br />
-          Phase {health?.phase ?? "1"} · engine pin {health?.engine_pin ?? "0.10.1"}
+          Phase {health?.phase ?? "2"} · engine pin {health?.engine_pin ?? "0.10.1"}
         </div>
       </aside>
       <section className="main">

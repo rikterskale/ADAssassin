@@ -9,8 +9,8 @@ every capability in `docs/CAPABILITY_CATALOG.md` from
 (92 at pin 0.10.1). It does not reimplement those capabilities.
 
 Repo: https://github.com/rikterskale/ADAssassin
-Current slice: **Phase 1 complete. Next work is Phase 2.**
-Package version at this writing: `0.2.0`.
+Current slice: **Phase 2 complete. Next work is Phase 3.**
+Package version at this writing: `0.3.0`.
 
 ---
 
@@ -41,6 +41,9 @@ browser  →  FastAPI (adassassin)  →  adaf-attack (pinned)
                 ├─ catalog.py     live registry, else pinned markdown
                 ├─ doctor.py      offline readiness
                 ├─ guide.py       next-step checklist + glossary
+                ├─ targets.py     connect / live-ad preflight
+                ├─ runner.py      observe-only capability runs
+                ├─ secrets.py     in-memory bind secrets
                 ├─ engagements.py disk sessions under ~/.adassassin
                 └─ web/           React source
                    webapp/        shipped static fallback (pip install)
@@ -71,8 +74,8 @@ Lanes (console risk bands):
 | --- | --- | --- |
 | 0 | Launcher + catalog + demo + React shell | **done** on `main` |
 | 1 | Doctor, guided checklist, glossary, inspector | **done** on `main` |
-| 2 | Live connect + observe-only runs | **next** |
-| 3 | Findings, explain, remediate | not started |
+| 2 | Live connect + observe-only runs | **done** on `main` (2026-09-01) |
+| 3 | Findings, explain, remediate | **next** |
 | 4 | Vault, tickets, rollback UI | not started |
 | 5 | Typed-confirm RED execution | not started |
 | 6 | Report export + closeout | not started |
@@ -146,95 +149,45 @@ Acceptance that already passed:
 - Demo seeds three fixture findings
 - Guide marks persist on disk
 
-Known leftover (not a Phase 1 blocker):
+Known leftover from Phase 1 (resolved in Phase 2):
 
-- Shipped `webapp/index.html` is still the Phase 0 fallback. Rebuild with
-  `cd web && npm install && npm run build` and commit `src/adassassin/webapp/`
-  when you want pip-install UI to match React Phase 1.
+- Shipped `webapp/` rebuilt from React so pip-install UI matches Connect/Run.
 
 ---
 
-## Phase 2 — Live connect + observe-only runs (next)
+## Phase 2 — Live connect + observe-only runs (done)
 
 Intent: an operator with written scope can point the console at an authorized
 DC and run **green/yellow observe** capabilities. No directory mutation.
 
-Do this first when continuing from Grok CLI.
+Shipped:
 
-### Scope
+- `src/adassassin/targets.py` — connect + live-ad doctor preflight wrap
+- `src/adassassin/runner.py` — observe-only gate + `execute_capability` wrap
+- `src/adassassin/secrets.py` — in-memory bind password/hashes (not on disk)
+- Connect + Run React pages; catalog **Run** button for observe caps
+- Guided steps `connect` and `observe-run`
+- Tests: `tests/test_phase2.py`
 
-In:
+APIs:
 
-- Engagement target fields: domain, DC host/IP, optional bind credentials
-- Preflight / `check` wrap (engine already has target preflight)
-- Run path for capabilities whose lane is green or yellow **and** whose
-  engine `risk` is `observe`
-- Job log in the UI (stdout/stderr or structured engine result)
-- Attach findings the engine returns onto the current engagement
-- Refuse red / destructive / side_effect with a clear message
+- `POST /api/engagements/{id}/connect` — preflight only; no capability run
+- `POST /api/engagements/{id}/run` — 403 red/non-observe, 409 yellow without connect
+- `GET /api/engagements/{id}/jobs/{job_id}`
+- `GET /api/catalog/{capability_id}` — prompts + runnable flag
 
-Out (later phases):
+`target_contacted` behavior: set when connect supplies domain+dc and the
+engine live-ad path runs DC TCP probes (dns/kerberos/ldap/smb). Probes count
+even if they fail. Missing fields never reach that path, so contact stays
+false. Yellow observe runs also set it after a completed engine call.
 
-- RED execution
-- Vault unmask
-- Rollback apply
-- Report export
+Acceptance that already passed:
 
-### Suggested files
-
-- `src/adassassin/runner.py` — thin wrapper over engine run/session APIs
-- `src/adassassin/targets.py` — validate domain/DC, store last preflight
-- `web/src/pages/Run.tsx` — form from `novice.required_prompts` / option spec
-- `web/src/pages/Connect.tsx` or extend Engagements with a Connect panel
-
-### Suggested APIs
-
-```
-POST /api/engagements/{id}/connect
-  { "domain", "dc", "username?", "secret_ref?" }
-  → preflight result. Must not run a capability.
-
-POST /api/engagements/{id}/run
-  { "capability_id", "options": { ... }, "ack": false }
-  → 403 if lane is red or risk is not observe
-  → 409 if connect/preflight missing for yellow
-  → 200 { job_id, status, findings }
-
-GET  /api/engagements/{id}/jobs/{job_id}
-```
-
-Secrets: do not write raw passwords into engagement JSON. Use the engine
-vault or an in-memory session secret. Engagement files on disk may store
-`username` and `dc` only.
-
-### Engine hooks to wrap (do not reinvent)
-
-Inspect ADAF-ATTACK at the pinned commit before coding:
-
-- `adaf_attack.core.registry` — Capability + SafetyProfile
-- `adaf_attack.core.novice` — `required_prompts`, `plain_description`, `safety_summary`
-- session / vault modules
-- whatever the CLI uses for `adaf-attack check` and `adaf-attack run`
-- `suggested_next_actions` for the post-run Guided pane
-
-### Acceptance
-
-- Yellow run against a DC happens only after a successful connect/preflight
-  on that engagement
-- Green/offline caps still run with no DC
-- Red cap POST returns an error that names Phase 5
-- A failed preflight does not leave `target_contacted` true unless the
-  engine actually spoke to the DC (document the actual behavior)
-- Tests cover: refuse red, refuse yellow without connect, accept a mocked
-  observe run
-- No new capability implementations in this repo
-
-### UX notes
-
-- Guided step after Phase 2: “Connect an authorized target” then
-  “Run a GREEN or YELLOW observe capability”
-- Catalog row grows a **Run** button only when the cap is allowed
-- Inspector shows required prompts in plain language
+- Yellow run requires successful connect/preflight on that engagement
+- Green/offline caps run with no DC
+- Red POST names Phase 5
+- Secrets never written into engagement JSON
+- Tests cover refuse red, refuse yellow without connect, mocked observe run
 
 ---
 
@@ -365,3 +318,5 @@ Vite build output must land in `src/adassassin/webapp/` (see `web/vite.config.ts
 
 - 2026-09-01 — Initial roadmap. Phase 0 and Phase 1 recorded as done.
   Phase 2 specified as the next CLI slice.
+- 2026-09-01 — Phase 2 landed (connect, observe runs, jobs, 0.3.0).
+  Next slice is Phase 3.

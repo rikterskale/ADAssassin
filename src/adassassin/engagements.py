@@ -56,17 +56,30 @@ def create_engagement(settings: Settings, *, name: str, domain: str = "", dc: st
         "name": name,
         "domain": domain,
         "dc": dc,
+        "username": "",
         "notes": notes,
         "mode": "demo" if demo else "live-ready",
         "created_at": _now(),
         "updated_at": _now(),
         "findings": DEMO_FINDINGS if demo else [],
+        "jobs": [],
+        "connect": None,
         "vault": {"secrets": 0, "tickets": 0, "certificates": 0},
         "rollback": {"pending": 0},
         "target_contacted": False,
         "guided_marked": ["demo", "findings"] if demo else [],
     }
     return save_engagement(settings, payload)
+
+
+def get_job(settings: Settings, engagement_id: str, job_id: str) -> dict[str, Any] | None:
+    item = get_engagement(settings, engagement_id)
+    if item is None:
+        return None
+    for job in item.get("jobs") or []:
+        if job.get("id") == job_id:
+            return job
+    return None
 
 
 def ensure_demo(settings: Settings) -> dict[str, Any]:

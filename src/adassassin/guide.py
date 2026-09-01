@@ -33,10 +33,21 @@ STEPS = [
     {"id": "findings", "title": "Read demo findings", "why": "Learn the evidence pane before any live work.", "href": "/findings", "complete_when": "has_findings"},
     {"id": "glossary", "title": "Open the glossary", "why": "Plain language for Kerberos, AD CS, and replication terms.", "href": "/glossary", "complete_when": "viewed_glossary"},
     {"id": "engagement", "title": "Name a live-ready engagement", "why": "A workspace to hold scope notes. Still no directory contact.", "href": "/engagements", "complete_when": "has_live_ready"},
+    {"id": "connect", "title": "Connect an authorized target", "why": "Run engine preflight for domain and DC before any yellow observe work.", "href": "/connect", "complete_when": "has_connect"},
+    {"id": "observe-run", "title": "Run a GREEN or YELLOW observe capability", "why": "Execute an observe-only capability and attach findings to the engagement.", "href": "/run", "complete_when": "has_observe_run"},
 ]
 
 
-def _progress_from_state(*, doctor_ok: bool, has_demo: bool, has_findings: bool, has_live_ready: bool, marked: list[str]) -> list[str]:
+def _progress_from_state(
+    *,
+    doctor_ok: bool,
+    has_demo: bool,
+    has_findings: bool,
+    has_live_ready: bool,
+    has_connect: bool,
+    has_observe_run: bool,
+    marked: list[str],
+) -> list[str]:
     done = set(marked)
     if doctor_ok:
         done.add("doctor")
@@ -46,6 +57,10 @@ def _progress_from_state(*, doctor_ok: bool, has_demo: bool, has_findings: bool,
         done.add("findings")
     if has_live_ready:
         done.add("engagement")
+    if has_connect:
+        done.add("connect")
+    if has_observe_run:
+        done.add("observe-run")
     return [step["id"] for step in STEPS if step["id"] in done]
 
 
@@ -55,11 +70,18 @@ def guide_payload(settings: Settings, marked: list[str] | None = None) -> dict[s
     has_demo = any(item.get("mode") == "demo" for item in engagements)
     has_findings = any(item.get("findings") for item in engagements)
     has_live_ready = any(item.get("mode") == "live-ready" for item in engagements)
+    has_connect = any((item.get("connect") or {}).get("preflight_ok") for item in engagements)
+    has_observe_run = any(
+        any(job.get("status") == "completed" for job in (item.get("jobs") or []))
+        for item in engagements
+    )
     completed = _progress_from_state(
         doctor_ok=bool(doctor["ok"]),
         has_demo=has_demo,
         has_findings=has_findings,
         has_live_ready=has_live_ready,
+        has_connect=has_connect,
+        has_observe_run=has_observe_run,
         marked=marked or [],
     )
     catalog = catalog_payload()
