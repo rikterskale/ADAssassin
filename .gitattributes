@@ -1,2 +1,9 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Force LF on HTML so a Windows build and a Linux CI build produce byte-identical
+# output (CI's bundle-sync check compares src/adassassin/webapp exactly). Vite
+# carries the index.html template's line endings straight into its build output,
+# so the HTML must stay LF; minified JS/CSS is already LF on both platforms.
+*.html text eol=lf
+*.woff2 binary
