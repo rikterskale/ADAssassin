@@ -37,6 +37,7 @@ If anything fails, use the platform sections and verbose fix actions in
 ```bash
 cd web && npm install && npm run build   # optional React rebuild
 cd web && npm test                       # frontend suite (Vitest + RTL)
+cd web && npx playwright install chromium && npm run e2e   # user-journey E2E
 python -m pytest                         # backend suite (or rely on CI)
 ```
 

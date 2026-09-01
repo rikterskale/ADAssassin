@@ -12,6 +12,10 @@ build/
 web/node_modules/
 web/dist/
 web/coverage/
+web/test-results/
+web/playwright-report/
+web/blob-report/
+web/.playwright/
 *.log
 .DS_Store
 .env

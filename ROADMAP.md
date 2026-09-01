@@ -349,6 +349,15 @@ component, every page, and app bootstrap/routing:
 cd web && npm install && npm test        # or: npm run test:coverage
 ```
 
+End-to-end user-readiness journey (Playwright) boots the real server against the
+shipped bundle and walks the operator path (demo → findings/explain → vault
+unmask → rollback preview → report export → catalog/glossary/guided) plus the
+RED typed-confirm safety gate, entirely offline:
+
+```bash
+cd web && npx playwright install chromium && npm run e2e
+```
+
 Vite build output must land in `src/adassassin/webapp/` (see `web/vite.config.ts`).
 That built bundle is committed so `pip install` ships the console without a Node
 toolchain. When you change anything under `web/`, rebuild and commit the
@@ -400,3 +409,9 @@ committed bundle drifts from source.
   vault unmask, rollback typed-YES, report export, and Run background polling),
   and App bootstrap (splash, fatal + retry, auto-seed). CI `web` job runs
   `npm test` before the build.
+- 2026-09-01 — User-readiness E2E (Playwright, new CI `e2e` job): boots the real
+  adassassin server against the shipped bundle and drives the full operator
+  journey through the actual GUI — overview/demo, findings inspect + explain +
+  status, vault unmask, rollback preview, report export, catalog/glossary/guided
+  — plus backend readiness (health/doctor/catalog/SPA/traversal) and the RED
+  typed-confirm safety gate. Runs entirely offline (no DC contact).
