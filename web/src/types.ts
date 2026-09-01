@@ -184,6 +184,7 @@ export type Job = {
   findings: Finding[];
   error: string | null;
   next_actions?: { id: string; message: string }[];
+  red?: boolean;
 };
 
 export type Engagement = {
@@ -203,6 +204,19 @@ export type Engagement = {
   vault_audit?: { id: string; action: string; name: string; scope?: string; ttl_seconds?: number; at: string; expires_at?: string }[];
   rollback: { pending: number };
   rollback_audit?: { id: string; action: string; at: string; sessions?: string[] }[];
+  red_ack_audit?: {
+    id: string;
+    actor: string;
+    timestamp: string;
+    capability_id: string;
+    risk?: string;
+    lane?: string;
+    force?: boolean;
+    ack?: boolean;
+    confirm?: string;
+    options?: Record<string, unknown>;
+    rollback?: string;
+  }[];
   target_contacted: boolean;
   guided_marked?: string[];
 };

@@ -26,6 +26,9 @@ def test_doctor_and_guide(tmp_path: Path) -> None:
         "glossary",
         "engagement",
     ]
+    assert "connect" in [step["id"] for step in guide["steps"]]
+    assert "observe-run" in [step["id"] for step in guide["steps"]]
+    assert "red-run" in [step["id"] for step in guide["steps"]]
     glossary = client.get("/api/glossary").json()
     assert glossary["items"]
     marked = client.post(

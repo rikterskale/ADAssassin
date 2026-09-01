@@ -48,6 +48,26 @@ def test_red_run_without_ack_is_403(tmp_path: Path) -> None:
     assert "ack" in detail or "force" in detail or "confirm" in detail
 
 
+def test_red_run_without_connect_is_409(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    engagement = client.post(
+        "/api/engagements",
+        json={"name": "no connect red"},
+    ).json()["engagement"]
+    response = client.post(
+        f"/api/engagements/{engagement['id']}/run",
+        json={
+            "capability_id": "dcsync",
+            "options": {},
+            "ack": True,
+            "force": True,
+            "confirm": "dcsync",
+        },
+    )
+    assert response.status_code == 409
+    assert "connect" in response.json()["detail"].lower() or "preflight" in response.json()["detail"].lower()
+
+
 def test_red_run_wrong_confirm_is_403(tmp_path: Path) -> None:
     client = _client(tmp_path)
     engagement = _connected_engagement(client)
@@ -106,6 +126,10 @@ def test_red_run_with_ack_uses_mock_engine(tmp_path: Path) -> None:
     assert last["confirm"] == "dcsync"
     assert last["options"].get("username") == "admin"
     assert "password" not in last["options"] or last["options"]["password"] == "***"
+    assert "red-run" in detail["guided_marked"]
+    guide = client.get("/api/guide").json()
+    assert "red-run" in guide["completed"]
+    assert "red-run" in [step["id"] for step in guide["steps"]]
 
 
 def test_health_phase_five(tmp_path: Path) -> None:

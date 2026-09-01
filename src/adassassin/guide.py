@@ -35,7 +35,16 @@ STEPS = [
     {"id": "engagement", "title": "Name a live-ready engagement", "why": "A workspace to hold scope notes. Still no directory contact.", "href": "/engagements", "complete_when": "has_live_ready"},
     {"id": "connect", "title": "Connect an authorized target", "why": "Run engine preflight for domain and DC before any yellow observe work.", "href": "/connect", "complete_when": "has_connect"},
     {"id": "observe-run", "title": "Run a GREEN or YELLOW observe capability", "why": "Execute an observe-only capability and attach findings to the engagement.", "href": "/run", "complete_when": "has_observe_run"},
+    {"id": "red-run", "title": "Run a RED capability with typed confirm", "why": "Destructive and side-effect runs require ack, force, and typing the capability id.", "href": "/catalog?lane=red", "complete_when": "has_red_run"},
 ]
+
+
+def _is_observe_job(job: dict[str, Any]) -> bool:
+    if job.get("red"):
+        return False
+    risk = str(job.get("risk") or "observe")
+    lane = str(job.get("lane") or "")
+    return risk == "observe" and lane != "red"
 
 
 def _progress_from_state(
@@ -46,6 +55,7 @@ def _progress_from_state(
     has_live_ready: bool,
     has_connect: bool,
     has_observe_run: bool,
+    has_red_run: bool,
     marked: list[str],
 ) -> list[str]:
     done = set(marked)
@@ -61,6 +71,8 @@ def _progress_from_state(
         done.add("connect")
     if has_observe_run:
         done.add("observe-run")
+    if has_red_run:
+        done.add("red-run")
     return [step["id"] for step in STEPS if step["id"] in done]
 
 
@@ -72,7 +84,16 @@ def guide_payload(settings: Settings, marked: list[str] | None = None) -> dict[s
     has_live_ready = any(item.get("mode") == "live-ready" for item in engagements)
     has_connect = any((item.get("connect") or {}).get("preflight_ok") for item in engagements)
     has_observe_run = any(
-        any(job.get("status") == "completed" for job in (item.get("jobs") or []))
+        "observe-run" in (item.get("guided_marked") or [])
+        or any(
+            job.get("status") == "completed" and _is_observe_job(job)
+            for job in (item.get("jobs") or [])
+        )
+        for item in engagements
+    )
+    has_red_run = any(
+        "red-run" in (item.get("guided_marked") or [])
+        or any(job.get("status") == "completed" and job.get("red") for job in (item.get("jobs") or []))
         for item in engagements
     )
     completed = _progress_from_state(
@@ -82,6 +103,7 @@ def guide_payload(settings: Settings, marked: list[str] | None = None) -> dict[s
         has_live_ready=has_live_ready,
         has_connect=has_connect,
         has_observe_run=has_observe_run,
+        has_red_run=has_red_run,
         marked=marked or [],
     )
     catalog = catalog_payload()

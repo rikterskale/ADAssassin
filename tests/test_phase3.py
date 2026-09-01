@@ -38,6 +38,10 @@ def test_demo_and_live_findings_share_pane(tmp_path: Path) -> None:
         json={"status": "accepted"},
     ).json()
     assert statused["finding"]["status"] == "accepted"
+    reread = client.get(
+        f"/api/engagements/{demo['id']}/findings/{first['id']}"
+    ).json()["finding"]
+    assert reread["status"] == "accepted"
 
     # Live observe finding uses the same endpoints.
     engagement = client.post(

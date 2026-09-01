@@ -42,7 +42,7 @@ browser  →  FastAPI (adassassin)  →  adaf-attack (pinned)
                 ├─ doctor.py      offline readiness
                 ├─ guide.py       next-step checklist + glossary
                 ├─ targets.py     connect / live-ad preflight
-                ├─ runner.py      observe-only capability runs
+                ├─ runner.py      observe + typed-confirm RED runs
                 ├─ findings.py    explain / remediate / status
                 ├─ vault.py       metadata list + TTL unmask
                 ├─ rollback.py    preview / force-gated apply
@@ -147,6 +147,7 @@ Guided steps (keep stable unless you update this file and the UI together):
 6. `engagement` — name a live-ready workspace
 7. `connect` — connect an authorized target (Phase 2)
 8. `observe-run` — run a GREEN or YELLOW observe capability (Phase 2)
+9. `red-run` — run a RED capability with typed confirm (Phase 5)
 
 Acceptance that already passed:
 
@@ -169,7 +170,7 @@ DC and run **green/yellow observe** capabilities. No directory mutation.
 Shipped:
 
 - `src/adassassin/targets.py` — connect + live-ad doctor preflight wrap
-- `src/adassassin/runner.py` — observe-only gate + `execute_capability` wrap
+- `src/adassassin/runner.py` — observe gate + `execute_capability` wrap (RED confirm landed in Phase 5)
 - `src/adassassin/secrets.py` — in-memory bind password/hashes (not on disk)
 - Connect + Run React pages; catalog **Run** button for observe caps
 - Guided steps `connect` and `observe-run`
@@ -178,7 +179,7 @@ Shipped:
 APIs:
 
 - `POST /api/engagements/{id}/connect` — preflight only; no capability run
-- `POST /api/engagements/{id}/run` — 403 red/non-observe, 409 yellow without connect
+- `POST /api/engagements/{id}/run` — observe path; yellow without connect → 409
 - `GET /api/engagements/{id}/jobs/{job_id}`
 - `GET /api/catalog/{capability_id}` — prompts + runnable flag
 
@@ -191,9 +192,9 @@ Acceptance that already passed:
 
 - Yellow run requires successful connect/preflight on that engagement
 - Green/offline caps run with no DC
-- Red POST names Phase 5
+- Red without ack/force/confirm is refused (Phase 5 typed confirm)
 - Secrets never written into engagement JSON
-- Tests cover refuse red, refuse yellow without connect, mocked observe run
+- Tests cover refuse red without confirm, refuse yellow without connect, mocked observe run
 
 ---
 
@@ -264,6 +265,7 @@ Shipped:
 - Catalog/Run buttons label `Run <id> destructive|side effect`
 - Rollback expectation shown before RED submit
 - `red_ack_audit` on engagement (actor, timestamp, capability, redacted options)
+- Guided step `red-run`
 - Engine refusal text surfaced on failed jobs
 - Tests: `tests/test_phase5.py`
 
@@ -277,6 +279,8 @@ Run API additions:
 Acceptance that already passed:
 
 - Red run without ack returns 403
+- Red with wrong confirm returns 403
+- Red without connect returns 409
 - Mocked red run with ack/force/confirm records audit and completes
 
 ---
@@ -353,3 +357,5 @@ Vite build output must land in `src/adassassin/webapp/` (see `web/vite.config.ts
   Next slice is Phase 5.
 - 2026-09-01 — Phase 5 landed (typed-confirm RED runs, 0.6.0).
   Next slice is Phase 6.
+- 2026-09-01 — Phase 0–5 completeness pass: guide red-run step, observe-run
+  progress ignores RED jobs, stale Phase 2 acceptance text updated.
