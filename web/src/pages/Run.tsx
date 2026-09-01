@@ -4,7 +4,7 @@ import { api } from "../api";
 import { CapabilityPicker } from "../components/CapabilityPicker";
 import { NoEngagement } from "../components/NoEngagement";
 import { RiskBadge } from "../components/RiskBadge";
-import type { Capability, Engagement, Job } from "../types";
+import type { Capability, Engagement, Job, Lane } from "../types";
 
 export function Run({
   engagement,
@@ -26,6 +26,8 @@ export function Run({
   const [error, setError] = useState<string | null>(null);
   const [job, setJob] = useState<Job | null>(null);
   const [detail, setDetail] = useState<Capability | null>(null);
+  const [query, setQuery] = useState("");
+  const [lane, setLane] = useState<Lane | "all">("all");
 
   const runnable = useMemo(
     () => catalog.filter((item) => item.runnable ?? true),
@@ -141,6 +143,10 @@ export function Run({
                 capabilities={runnable}
                 selectedId={capabilityId}
                 onSelect={selectCapability}
+                query={query}
+                onQueryChange={setQuery}
+                lane={lane}
+                onLaneChange={setLane}
               />
               {detail && (
                 <div className="muted">
