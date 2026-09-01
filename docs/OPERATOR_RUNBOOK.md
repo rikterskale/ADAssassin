@@ -14,9 +14,16 @@ Engine pin: `adaf-attack==0.10.1` @ `fdb60b90b910ba3dcbd582e2c72ce48189191214`.
 
 ## 1. Install
 
+Follow the full platform guide (Windows / Kali / macOS), including verbose
+error capture and fix actions:
+
+**[INSTALLATION.md](INSTALLATION.md)**
+
+Short path once prerequisites exist:
+
 ```bash
 python -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
+source .venv/bin/activate          # Windows: .venv\Scripts\Activate.ps1
 python -m pip install -U pip
 python -m pip install -e ".[dev]"  # or: pip install .
 adassassin --version
@@ -139,6 +146,7 @@ Default bind: `127.0.0.1:8745` only.
 
 ## Related
 
+- [INSTALLATION.md](INSTALLATION.md) — Windows / Kali / macOS install + troubleshooting
 - [AUTHORIZED_USE.md](../AUTHORIZED_USE.md)
 - [SECURITY.md](../SECURITY.md)
 - [ROADMAP.md](../ROADMAP.md)

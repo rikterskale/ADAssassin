@@ -14,19 +14,25 @@ complete for the initial console build.
 
 Build order and acceptance criteria: **[ROADMAP.md](ROADMAP.md)**.
 
-Operator path (install → doctor → demo → connect → observe → RED → report):
+Install on Windows, Kali, or macOS (full steps + troubleshooting):
+**[docs/INSTALLATION.md](docs/INSTALLATION.md)**.
+
+Operator path (doctor → demo → connect → observe → RED → report):
 **[docs/OPERATOR_RUNBOOK.md](docs/OPERATOR_RUNBOOK.md)**.
 
 ## Quick start
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate          # Windows: .venv\Scripts\Activate.ps1
+python -m pip install -U pip
 python -m pip install -e .
 adassassin
 ```
 
 Binds `127.0.0.1:8745`. Doctor and demo never contact a domain controller.
+If anything fails, use the platform sections and verbose fix actions in
+[docs/INSTALLATION.md](docs/INSTALLATION.md).
 
 ```bash
 cd web && npm install && npm run build   # optional React rebuild
@@ -51,7 +57,8 @@ python -m pytest                         # or rely on GitHub Actions CI
 
 `adaf-attack==0.10.1` @ `fdb60b90b910ba3dcbd582e2c72ce48189191214`
 
-See [ROADMAP.md](ROADMAP.md), [docs/OPERATOR_RUNBOOK.md](docs/OPERATOR_RUNBOOK.md),
+See [ROADMAP.md](ROADMAP.md), [docs/INSTALLATION.md](docs/INSTALLATION.md),
+[docs/OPERATOR_RUNBOOK.md](docs/OPERATOR_RUNBOOK.md),
 [AUTHORIZED_USE.md](AUTHORIZED_USE.md), and [SECURITY.md](SECURITY.md).
 
 ## License
