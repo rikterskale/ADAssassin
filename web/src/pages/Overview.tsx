@@ -12,13 +12,13 @@ export function Overview({
   return (
     <>
       <section className="hero">
-        <div className="brand-sub">Phase 2 · live connect + observe</div>
+        <div className="brand-sub">Phase 3 · findings and remediate</div>
         <h1>See the estate. Then take the next approved step.</h1>
-        <p className="lede">Doctor never contacts a domain controller. Connect runs engine preflight; observe runs stay green/yellow only.</p>
+        <p className="lede">Doctor never contacts a domain controller. Findings explain and remediation stay offline from directory writes.</p>
         <div className="actions">
           {guide?.next ? <Link className="btn primary" to={guide.next.href}>Next: {guide.next.title}</Link> : <Link className="btn primary" to="/guided">Open guided path</Link>}
+          <Link className="btn" to="/findings">Findings</Link>
           <Link className="btn" to="/connect">Connect</Link>
-          <Link className="btn" to="/catalog?lane=green">GREEN catalog</Link>
         </div>
       </section>
       <div className="grid">

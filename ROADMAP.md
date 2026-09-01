@@ -9,8 +9,8 @@ every capability in `docs/CAPABILITY_CATALOG.md` from
 (92 at pin 0.10.1). It does not reimplement those capabilities.
 
 Repo: https://github.com/rikterskale/ADAssassin
-Current slice: **Phase 2 complete. Next work is Phase 3.**
-Package version at this writing: `0.3.0`.
+Current slice: **Phase 3 complete. Next work is Phase 4.**
+Package version at this writing: `0.4.0`.
 
 ---
 
@@ -43,6 +43,7 @@ browser  →  FastAPI (adassassin)  →  adaf-attack (pinned)
                 ├─ guide.py       next-step checklist + glossary
                 ├─ targets.py     connect / live-ad preflight
                 ├─ runner.py      observe-only capability runs
+                ├─ findings.py    explain / remediate / status
                 ├─ secrets.py     in-memory bind secrets
                 ├─ engagements.py disk sessions under ~/.adassassin
                 └─ web/           React source
@@ -75,8 +76,8 @@ Lanes (console risk bands):
 | 0 | Launcher + catalog + demo + React shell | **done** on `main` |
 | 1 | Doctor, guided checklist, glossary, inspector | **done** on `main` |
 | 2 | Live connect + observe-only runs | **done** on `main` (2026-09-01) |
-| 3 | Findings, explain, remediate | **next** |
-| 4 | Vault, tickets, rollback UI | not started |
+| 3 | Findings, explain, remediate | **done** on `main` (2026-09-01) |
+| 4 | Vault, tickets, rollback UI | **next** |
 | 5 | Typed-confirm RED execution | not started |
 | 6 | Report export + closeout | not started |
 
@@ -194,25 +195,32 @@ Acceptance that already passed:
 
 ---
 
-## Phase 3 — Findings, explain, remediate
+## Phase 3 — Findings, explain, remediate (done)
 
 Intent: the console becomes the place you read evidence, not just launch work.
 
-- Findings list grouped by severity, engagement-scoped
-- Finding detail: evidence refs, engine `explain_finding_payload`
-- Remediation checklist from `novice.remediation_checklist`
-- “What next” from `beginner_next_actions` / `suggested_next_actions`
-- Mark finding status: open / accepted / fixed / retest
+Shipped:
 
-Suggested APIs:
+- `src/adassassin/findings.py` — normalize, list/group, explain, status
+- Findings React pane: severity groups, detail, evidence, explain, checklist, status
+- Demo and live observe findings share one shape and one UI
+- Tests: `tests/test_phase3.py`
+
+APIs:
 
 - `GET /api/engagements/{id}/findings`
 - `GET /api/engagements/{id}/findings/{finding_id}`
 - `POST /api/engagements/{id}/findings/{finding_id}/explain`
-- `POST /api/engagements/{id}/findings/{finding_id}/status`
+- `POST /api/engagements/{id}/findings/{finding_id}/status` body `{ "status": "open|accepted|fixed|retest" }`
 
-Acceptance: a demo finding and a live observe finding use the same pane.
-No live directory writes from this phase.
+Explain wraps engine `explain_finding_payload` + `remediation_checklist` and, when a
+source capability is known, `beginner_next_actions`. No directory mutation.
+
+Acceptance that already passed:
+
+- Demo finding and live observe finding use the same pane/APIs
+- Status updates persist on the engagement
+- Invalid status returns 400
 
 ---
 
@@ -281,7 +289,7 @@ Acceptance: a demo engagement can export a report with zero network.
 4. Implement the smallest API + UI that meets that phase’s acceptance.
 5. Add tests under `tests/test_phaseN.py`.
 6. Bump version in `__init__.py` and `pyproject.toml` when the phase lands
-   (Phase 2 → `0.3.0`).
+   (Phase 3 → `0.4.0`).
 7. Mark the phase **done** in the status table above and write the date.
 8. Leave `webapp/` fallback working even if you do not rebuild React.
 
@@ -325,3 +333,5 @@ Vite build output must land in `src/adassassin/webapp/` (see `web/vite.config.ts
   Next slice is Phase 3.
 - 2026-09-01 — Phase 0–2 completeness pass: bundled catalog.json,
   Connect form hydration + hashes, stronger acceptance tests.
+- 2026-09-01 — Phase 3 landed (findings explain/remediate/status, 0.4.0).
+  Next slice is Phase 4.

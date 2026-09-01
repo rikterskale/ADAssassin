@@ -4,6 +4,11 @@ import type {
   ConnectResponse,
   DoctorResponse,
   Engagement,
+  FindingDetailResponse,
+  FindingExplainResponse,
+  FindingStatus,
+  FindingStatusResponse,
+  FindingsListResponse,
   GlossaryResponse,
   GuideResponse,
   HealthResponse,
@@ -68,4 +73,20 @@ export const api = {
     }),
   job: (engagementId: string, jobId: string) =>
     request<{ ok: boolean; job: Job }>(`/api/engagements/${engagementId}/jobs/${jobId}`),
+  findings: (engagementId: string) =>
+    request<FindingsListResponse>(`/api/engagements/${engagementId}/findings`),
+  finding: (engagementId: string, findingId: string) =>
+    request<FindingDetailResponse>(
+      `/api/engagements/${engagementId}/findings/${encodeURIComponent(findingId)}`,
+    ),
+  explainFinding: (engagementId: string, findingId: string) =>
+    request<FindingExplainResponse>(
+      `/api/engagements/${engagementId}/findings/${encodeURIComponent(findingId)}/explain`,
+      { method: "POST" },
+    ),
+  setFindingStatus: (engagementId: string, findingId: string, status: FindingStatus) =>
+    request<FindingStatusResponse>(
+      `/api/engagements/${engagementId}/findings/${encodeURIComponent(findingId)}/status`,
+      { method: "POST", body: JSON.stringify({ status }) },
+    ),
 };

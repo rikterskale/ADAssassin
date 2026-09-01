@@ -9,6 +9,7 @@ from adassassin.catalog import catalog_payload
 from adassassin.config import Settings
 from adassassin.engagements import get_engagement, save_engagement
 from adassassin.engine import capability_detail, lane_for
+from adassassin.findings import normalize_finding
 from adassassin.secrets import resolve_bind_secret
 from adassassin.targets import has_successful_connect
 
@@ -99,18 +100,23 @@ def _extract_findings(engine_result: dict[str, Any], *, capability_id: str) -> l
             continue
         seen.add(finding_id)
         findings.append(
-            {
-                "id": finding_id,
-                "title": str(raw.get("title") or capability_id),
-                "severity": str(raw.get("severity") or "info"),
-                "source": capability_id,
-                "summary": str(
-                    raw.get("impact")
-                    or raw.get("summary")
-                    or raw.get("remediation")
-                    or f"Finding from {capability_id}"
-                ),
-            }
+            normalize_finding(
+                {
+                    **raw,
+                    "id": finding_id,
+                    "title": str(raw.get("title") or capability_id),
+                    "severity": str(raw.get("severity") or "info"),
+                    "source": capability_id,
+                    "source_capability": str(raw.get("source_capability") or capability_id),
+                    "summary": str(
+                        raw.get("impact")
+                        or raw.get("summary")
+                        or raw.get("remediation")
+                        or f"Finding from {capability_id}"
+                    ),
+                    "status": raw.get("status") or "open",
+                }
+            )
         )
     return findings
 

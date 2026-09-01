@@ -155,11 +155,11 @@ def test_failed_preflight_without_fields_does_not_mark_contacted(tmp_path: Path)
     assert detail["target_contacted"] is False
 
 
-def test_health_phase_two(tmp_path: Path) -> None:
+def test_health_reports_current_version(tmp_path: Path) -> None:
     client = _client(tmp_path)
     health = client.get("/api/health").json()
-    assert health["phase"] == "2"
-    assert health["version"].startswith("0.3")
+    assert health["phase"] == "3"
+    assert health["version"].startswith("0.4")
 
 
 def test_yellow_observe_after_successful_connect(tmp_path: Path) -> None:

@@ -22,6 +22,13 @@ from adassassin.engagements import (
     mark_guided,
 )
 from adassassin.engine import probe
+from adassassin.findings import (
+    FindingError,
+    explain_finding,
+    get_finding,
+    list_findings,
+    set_finding_status,
+)
 from adassassin.guide import glossary_payload, guide_payload
 from adassassin.runner import RunRefused, execute_observe
 from adassassin.targets import TargetError, connect_engagement
@@ -55,6 +62,10 @@ class RunIn(BaseModel):
     ack: bool = False
 
 
+class FindingStatusIn(BaseModel):
+    status: str = Field(min_length=1, max_length=20)
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
     settings.data_dir.mkdir(parents=True, exist_ok=True)
@@ -75,7 +86,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "ok": True,
             "product": "adassassin",
             "version": __version__,
-            "phase": "2",
+            "phase": "3",
             "engine": engine,
             "engine_pin": ENGINE_PIN,
             "engine_commit": ENGINE_COMMIT,
@@ -198,6 +209,40 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if job is None:
             raise HTTPException(status_code=404, detail="Job not found")
         return {"ok": True, "job": job}
+
+    @app.get("/api/engagements/{engagement_id}/findings")
+    def engagement_findings(engagement_id: str) -> dict[str, Any]:
+        try:
+            return list_findings(settings, engagement_id)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.get("/api/engagements/{engagement_id}/findings/{finding_id}")
+    def engagement_finding(engagement_id: str, finding_id: str) -> dict[str, Any]:
+        try:
+            return get_finding(settings, engagement_id, finding_id)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.post("/api/engagements/{engagement_id}/findings/{finding_id}/explain")
+    def engagement_finding_explain(engagement_id: str, finding_id: str) -> dict[str, Any]:
+        try:
+            return explain_finding(settings, engagement_id, finding_id)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    @app.post("/api/engagements/{engagement_id}/findings/{finding_id}/status")
+    def engagement_finding_status(
+        engagement_id: str, finding_id: str, body: FindingStatusIn
+    ) -> dict[str, Any]:
+        try:
+            return set_finding_status(
+                settings, engagement_id, finding_id, status=body.status
+            )
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except FindingError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     if WEBAPP.joinpath("index.html").exists():
         assets = WEBAPP / "assets"

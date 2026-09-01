@@ -79,7 +79,7 @@ export default function App() {
         <Route path="/engagements" element={<Engagements items={engagements} currentId={current?.id ?? null} onCreate={createEngagement} onDemo={() => void seedDemo()} onSelect={setCurrentId} />} />
         <Route path="/connect" element={<Connect engagement={current} onConnected={(item) => void handleConnected(item)} />} />
         <Route path="/run" element={<Run engagement={current} catalog={catalog?.capabilities ?? []} onRan={(item) => void handleRan(item)} />} />
-        <Route path="/findings" element={<Findings engagement={current} />} />
+        <Route path="/findings" element={<Findings engagement={current} onUpdated={(item) => void handleConnected(item)} />} />
         <Route path="/vault" element={<Placeholder title="Vault" copy="Tickets, certificates, and secrets stay redacted until an operator unmasks a single item." engagement={current} />} />
         <Route path="/rollback" element={<Placeholder title="Rollback" copy="Pending directory mutations from the engine cleanup log will list here." engagement={current} />} />
         <Route path="/report" element={<Placeholder title="Report" copy="Markdown and HTML export wrap the engine report capability." engagement={current} />} />

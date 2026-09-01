@@ -90,7 +90,59 @@ export type GuideResponse = {
 
 export type GlossaryResponse = { ok: boolean; source: string; items: { term: string; definition: string }[] };
 
-export type Finding = { id: string; title: string; severity: string; source: string; summary: string };
+export type FindingStatus = "open" | "accepted" | "fixed" | "retest";
+
+export type FindingEvidence = { artifact: string; pointer?: string; sha256?: string };
+
+export type FindingExplain = {
+  id: string;
+  title: string;
+  severity: string;
+  meaning: string;
+  why_it_matters: string;
+  evidence: unknown[];
+  recommended_next_step: string;
+  glossary?: Record<string, string>;
+  source?: string;
+};
+
+export type RemediationChecklist = {
+  finding?: FindingExplain;
+  steps: { id: string; label: string }[];
+  status: string;
+  source?: string;
+};
+
+export type Finding = {
+  id: string;
+  title: string;
+  severity: string;
+  source: string;
+  summary: string;
+  status?: FindingStatus | string;
+  confidence?: string;
+  impact?: string;
+  remediation?: string;
+  evidence?: FindingEvidence[];
+  attack_techniques?: string[];
+  affected_assets?: string[];
+  control_mappings?: string[];
+  source_capability?: string;
+  explained?: FindingExplain | null;
+  remediation_checklist?: RemediationChecklist | null;
+  next_actions?: { id: string; message: string }[];
+  status_updated_at?: string | null;
+};
+
+export type FindingsListResponse = {
+  ok: boolean;
+  engagement_id: string;
+  count: number;
+  findings: Finding[];
+  grouped: { severity: string; findings: Finding[] }[];
+};
+
+export type FindingDetailResponse = { ok: boolean; engagement_id: string; finding: Finding };
 
 export type PreflightCheck = {
   id: string;
@@ -170,5 +222,20 @@ export type RunResponse = {
   status: string;
   findings: Finding[];
   job: Job;
+  engagement: Engagement;
+};
+
+export type FindingExplainResponse = {
+  ok: boolean;
+  finding: Finding;
+  explain: FindingExplain;
+  remediation: RemediationChecklist;
+  next_actions: { id: string; message: string }[];
+  engagement: Engagement;
+};
+
+export type FindingStatusResponse = {
+  ok: boolean;
+  finding: Finding;
   engagement: Engagement;
 };

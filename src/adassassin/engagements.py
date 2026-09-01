@@ -8,9 +8,45 @@ from uuid import uuid4
 from adassassin.config import Settings
 
 DEMO_FINDINGS = [
-    {"id": "demo-acl-edge", "title": "Delegated GenericAll on a tier-1 group", "severity": "high", "source": "demo", "summary": "Fixture evidence only. No directory was contacted."},
-    {"id": "demo-esc1", "title": "Certificate template publishes an ESC1 signal", "severity": "high", "source": "demo", "summary": "Offline demo finding for the guided catalog path."},
-    {"id": "demo-kerberoastable", "title": "Service account with an SPN and a weak-password hypothesis", "severity": "medium", "source": "demo", "summary": "Seeded so the findings pane is not empty on first launch."},
+    {
+        "id": "demo-acl-edge",
+        "title": "Delegated GenericAll on a tier-1 group",
+        "severity": "high",
+        "source": "demo",
+        "summary": "Fixture evidence only. No directory was contacted.",
+        "status": "open",
+        "impact": "A principal with GenericAll can take over group membership and escalate.",
+        "remediation": "Remove unintended GenericAll ACEs and review tier-1 group ownership.",
+        "evidence": [{"artifact": "demo-acl-edge.json", "pointer": "/aces/0", "sha256": ""}],
+        "attack_techniques": ["T1484.001"],
+        "affected_assets": ["Tier-1-Operators"],
+    },
+    {
+        "id": "demo-esc1",
+        "title": "Certificate template publishes an ESC1 signal",
+        "severity": "high",
+        "source": "demo",
+        "summary": "Offline demo finding for the guided catalog path.",
+        "status": "open",
+        "impact": "A misconfigured template can allow requester-specified SANs and privilege escalation.",
+        "remediation": "Disable enrollee-supplied subject and tighten enrollment permissions.",
+        "evidence": [{"artifact": "demo-esc1.json", "pointer": "/templates/User", "sha256": ""}],
+        "attack_techniques": ["T1649"],
+        "affected_assets": ["User"],
+    },
+    {
+        "id": "demo-kerberoastable",
+        "title": "Service account with an SPN and a weak-password hypothesis",
+        "severity": "medium",
+        "source": "demo",
+        "summary": "Seeded so the findings pane is not empty on first launch.",
+        "status": "open",
+        "impact": "Offline cracking of a service ticket may expose the account password.",
+        "remediation": "Use long random passwords or managed service accounts; remove unused SPNs.",
+        "evidence": [{"artifact": "demo-kerberoast.json", "pointer": "/accounts/0", "sha256": ""}],
+        "attack_techniques": ["T1558.003"],
+        "affected_assets": ["svc-sql"],
+    },
 ]
 
 
