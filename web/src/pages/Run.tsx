@@ -17,13 +17,14 @@ export function Run({
   const initialId = params.get("capability") ?? "";
   const [capabilityId, setCapabilityId] = useState(initialId);
   const [options, setOptions] = useState<Record<string, string>>({});
+  const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [job, setJob] = useState<Job | null>(null);
   const [detail, setDetail] = useState<Capability | null>(null);
 
   const runnable = useMemo(
-    () => catalog.filter((item) => item.runnable ?? (item.lane !== "red" && item.risk === "observe")),
+    () => catalog.filter((item) => item.runnable ?? true),
     [catalog],
   );
 
@@ -46,6 +47,7 @@ export function Run({
           else next[key] = options[key] ?? "";
         }
         setOptions((current) => ({ ...next, ...current }));
+        setConfirm("");
       }
     }).catch((err) => {
       if (!cancelled) setError(err instanceof Error ? err.message : String(err));
@@ -58,10 +60,20 @@ export function Run({
     setCapabilityId(id);
     setJob(null);
     setError(null);
+    setConfirm("");
     const copy = new URLSearchParams(params);
     if (id) copy.set("capability", id); else copy.delete("capability");
     setParams(copy, { replace: true });
   }
+
+  const isRed = Boolean(
+    detail?.requires_red_confirm
+    || detail?.lane === "red"
+    || detail?.risk === "destructive"
+    || detail?.risk === "side_effect",
+  );
+  const riskLabel = detail?.risk_label
+    || (detail?.risk === "side_effect" ? "side effect" : detail?.risk === "destructive" ? "destructive" : "observe");
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -76,7 +88,10 @@ export function Run({
       const result = await api.run(engagement.id, {
         capability_id: capabilityId,
         options: cleaned,
-        ack: false,
+        ack: isRed,
+        force: isRed,
+        confirm: isRed ? confirm.trim() : "",
+        actor: "operator",
       });
       setJob(result.job);
       onRan(result.engagement);
@@ -89,15 +104,19 @@ export function Run({
 
   const prompts = detail?.required_prompts ?? [];
   const connected = Boolean(engagement?.connect?.preflight_ok);
+  const submitLabel = isRed
+    ? `Run ${capabilityId || "capability"} ${riskLabel}`
+    : "Run observe";
+  const canSubmit = Boolean(capabilityId) && (!isRed || confirm.trim() === capabilityId);
 
   return (
     <>
       <section className="hero">
         <div className="brand-sub">Run</div>
-        <h1>GREEN and YELLOW observe only.</h1>
+        <h1>Observe freely. RED only with typed confirmation.</h1>
         <p className="lede">
-          Red / destructive / side_effect capabilities are refused until Phase 5.
-          Yellow runs need a successful connect on this engagement first.
+          Yellow observe needs connect. Destructive and side-effect capabilities require ack, force,
+          and typing the capability id. No global red toggle.
         </p>
       </section>
       <div className="grid">
@@ -115,10 +134,13 @@ export function Run({
                 <Link to="/connect">Connect</Link>
               </div>
               <select value={capabilityId} onChange={(e) => selectCapability(e.target.value)} required>
-                <option value="">Select observe capability…</option>
+                <option value="">Select capability…</option>
                 {runnable.map((item) => (
                   <option key={item.id} value={item.id}>
                     [{item.lane}] {item.id}
+                    {item.requires_red_confirm || item.lane === "red"
+                      ? ` · ${item.risk_label || item.risk}`
+                      : ""}
                   </option>
                 ))}
               </select>
@@ -142,10 +164,26 @@ export function Run({
                   </label>
                 );
               })}
+              {isRed && (
+                <>
+                  <div className="banner-error">
+                    This run is <strong>{riskLabel}</strong>. Rollback expectation:{" "}
+                    <span className="mono">{detail?.rollback_expectation || detail?.rollback || "none"}</span>.
+                    Type the capability id to confirm.
+                  </div>
+                  <input
+                    placeholder={`Type ${capabilityId}`}
+                    value={confirm}
+                    onChange={(e) => setConfirm(e.target.value)}
+                    autoComplete="off"
+                    required
+                  />
+                </>
+              )}
               {error && <div className="banner-error">{error}</div>}
               <div className="actions">
-                <button className="btn primary" type="submit" disabled={busy || !capabilityId}>
-                  {busy ? "Running…" : "Run observe"}
+                <button className="btn primary" type="submit" disabled={busy || !canSubmit}>
+                  {busy ? "Running…" : submitLabel}
                 </button>
               </div>
             </form>

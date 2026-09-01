@@ -9,8 +9,8 @@ every capability in `docs/CAPABILITY_CATALOG.md` from
 (92 at pin 0.10.1). It does not reimplement those capabilities.
 
 Repo: https://github.com/rikterskale/ADAssassin
-Current slice: **Phase 4 complete. Next work is Phase 5.**
-Package version at this writing: `0.5.0`.
+Current slice: **Phase 5 complete. Next work is Phase 6.**
+Package version at this writing: `0.6.0`.
 
 ---
 
@@ -80,8 +80,8 @@ Lanes (console risk bands):
 | 2 | Live connect + observe-only runs | **done** on `main` (2026-09-01) |
 | 3 | Findings, explain, remediate | **done** on `main` (2026-09-01) |
 | 4 | Vault, tickets, rollback UI | **done** on `main` (2026-09-01) |
-| 5 | Typed-confirm RED execution | **next** |
-| 6 | Report export + closeout | not started |
+| 5 | Typed-confirm RED execution | **done** on `main` (2026-09-01) |
+| 6 | Report export + closeout | **next** |
 
 ---
 
@@ -253,26 +253,31 @@ Acceptance that already passed:
 
 ---
 
-## Phase 5 — Typed-confirm RED execution
+## Phase 5 — Typed-confirm RED execution (done)
 
 Intent: destructive and side-effect capabilities become runnable without
 becoming one-click.
 
-Hard rules:
+Shipped:
 
-- Button label includes the capability id and the word **destructive** or
-  **side effect**
-- Operator types the capability id (or `YES` if that is what the engine
-  `force` path expects — match the engine, do not invent a second language)
-- Show rollback expectation from SafetyProfile before submit
-- Record ack actor, timestamp, capability, options (redact secrets) on the
-  engagement
-- If the engine refuses, surface that refusal verbatim
+- `runner.execute_run` — RED requires `ack`, `force`, and typed capability id
+- Catalog/Run buttons label `Run <id> destructive|side effect`
+- Rollback expectation shown before RED submit
+- `red_ack_audit` on engagement (actor, timestamp, capability, redacted options)
+- Engine refusal text surfaced on failed jobs
+- Tests: `tests/test_phase5.py`
 
-Do not add a global “enable red” toggle that bypasses per-run ack.
+Run API additions:
 
-Acceptance: automated test posts a red run without ack and gets 403.
-Integration test with ack is optional and must use a mock engine.
+- `POST /api/engagements/{id}/run` accepts `{ ack, force, confirm, actor }`
+- Observe path unchanged (no confirm)
+- RED without ack/force/confirm → 403
+- RED without connect → 409
+
+Acceptance that already passed:
+
+- Red run without ack returns 403
+- Mocked red run with ack/force/confirm records audit and completes
 
 ---
 
@@ -298,7 +303,7 @@ Acceptance: a demo engagement can export a report with zero network.
 4. Implement the smallest API + UI that meets that phase’s acceptance.
 5. Add tests under `tests/test_phaseN.py`.
 6. Bump version in `__init__.py` and `pyproject.toml` when the phase lands
-   (Phase 4 → `0.5.0`).
+   (Phase 5 → `0.6.0`).
 7. Mark the phase **done** in the status table above and write the date.
 8. Leave `webapp/` fallback working even if you do not rebuild React.
 
@@ -346,3 +351,5 @@ Vite build output must land in `src/adassassin/webapp/` (see `web/vite.config.ts
   Next slice is Phase 4.
 - 2026-09-01 — Phase 4 landed (vault unmask TTL, rollback preview/apply, 0.5.0).
   Next slice is Phase 5.
+- 2026-09-01 — Phase 5 landed (typed-confirm RED runs, 0.6.0).
+  Next slice is Phase 6.

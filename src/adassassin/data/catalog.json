@@ -45,7 +45,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "acl-abuse",
@@ -100,7 +103,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "acl-enum",
@@ -141,7 +147,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "acl-write",
@@ -203,7 +212,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "ad-cve-scan",
@@ -244,7 +256,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "adcs-enum",
@@ -285,7 +300,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "adcs-policy-probe",
@@ -326,7 +344,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "add-member",
@@ -388,7 +409,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "add-self",
@@ -443,7 +467,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "adidns-wpad",
@@ -498,7 +525,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "adminsdholder-persist",
@@ -546,7 +576,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "anonymous-ldap-probe",
@@ -589,7 +622,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "asrep-roast",
@@ -632,7 +668,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "asreq-userhunt",
@@ -682,7 +721,10 @@
           "param_key": "users"
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "attack-paths",
@@ -708,7 +750,10 @@
         "plain": "Works from saved evidence and does not contact a target."
       },
       "required_prompts": [],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "azureadssoacc-roast",
@@ -751,7 +796,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "badsuccessor",
@@ -806,7 +854,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "blast-radius",
@@ -832,7 +883,10 @@
         "plain": "Works from saved evidence and does not contact a target."
       },
       "required_prompts": [],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "bloodhound-export",
@@ -873,7 +927,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "bloodhound-import",
@@ -914,7 +971,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "campaign-run",
@@ -962,7 +1022,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "cert-request",
@@ -1017,7 +1080,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "coerce",
@@ -1065,7 +1131,10 @@
           "param_key": "listener"
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "side effect",
+      "rollback_expectation": "none"
     },
     {
       "id": "coercion-map",
@@ -1106,7 +1175,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "computer-takeover",
@@ -1161,7 +1233,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "constrained-delegation",
@@ -1204,7 +1279,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "credential-inventory",
@@ -1245,7 +1323,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "dcshadow",
@@ -1302,7 +1383,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "dcsync",
@@ -1343,7 +1427,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "side effect",
+      "rollback_expectation": "none"
     },
     {
       "id": "dcsync-grant-workflow",
@@ -1393,7 +1480,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "dmsa-ouroboros",
@@ -1441,7 +1531,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "dnsadmin-srv",
@@ -1496,7 +1589,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "dpapi-domain-backup",
@@ -1539,7 +1635,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "esc-chain",
@@ -1587,7 +1686,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "esc10",
@@ -1637,7 +1739,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "esc13",
@@ -1687,7 +1792,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "esc14",
@@ -1737,7 +1845,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "esc15",
@@ -1787,7 +1898,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "esc16",
@@ -1837,7 +1951,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "esc8-relay-workflow",
@@ -1895,7 +2012,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "esc9",
@@ -1945,7 +2065,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "external-exposure",
@@ -1988,7 +2111,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "force-change-password",
@@ -2050,7 +2176,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "gmsa-laps-enum",
@@ -2091,7 +2220,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "gmsa-read",
@@ -2132,7 +2264,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "golden-cert",
@@ -2196,7 +2331,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "gpo-abuse",
@@ -2258,7 +2396,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "gpo-link",
@@ -2299,7 +2440,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "gpo-sysvol",
@@ -2361,7 +2505,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "gpp-cpassword-hunt",
@@ -2395,7 +2542,10 @@
           "param_key": "sysvol"
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "hybrid-signals",
@@ -2436,7 +2586,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "impacket-exec",
@@ -2498,7 +2651,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "kerberoast",
@@ -2539,7 +2695,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "krb-relay",
@@ -2596,7 +2755,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "laps-read",
@@ -2637,7 +2799,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "ldap-enum",
@@ -2678,7 +2843,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "maq-add-computer",
@@ -2726,7 +2894,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "maq-rbcd-workflow",
@@ -2783,7 +2954,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "next-actions",
@@ -2809,7 +2983,10 @@
         "plain": "Works from saved evidence and does not contact a target."
       },
       "required_prompts": [],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "nopac-workflow",
@@ -2866,7 +3043,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "ntlm-relay",
@@ -2921,7 +3101,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "passive-discovery",
@@ -2964,7 +3147,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "password-spray",
@@ -3012,7 +3198,10 @@
           "param_key": "spray_password"
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "side effect",
+      "rollback_expectation": "none"
     },
     {
       "id": "pkinit-auth",
@@ -3067,7 +3256,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "pre2k-spray",
@@ -3110,7 +3302,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "purple-feedback",
@@ -3151,7 +3346,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "rbcd",
@@ -3213,7 +3411,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "rbcd-ticket-workflow",
@@ -3282,7 +3483,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "report",
@@ -3308,7 +3512,10 @@
         "plain": "Works from saved evidence and does not contact a target."
       },
       "required_prompts": [],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "rodc-delegation",
@@ -3349,7 +3556,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "rollback",
@@ -3397,7 +3607,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "s4u-abuse",
@@ -3452,7 +3665,10 @@
           "param_key": "spn"
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "side effect",
+      "rollback_expectation": "none"
     },
     {
       "id": "sccm-client-push",
@@ -3507,7 +3723,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "sccm-enum",
@@ -3548,7 +3767,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "sccm-naa",
@@ -3589,7 +3811,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "sccm-takeover",
@@ -3646,7 +3871,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "secretsdump-local",
@@ -3687,7 +3915,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "shadow-creds",
@@ -3742,7 +3973,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "shadow-pkinit-workflow",
@@ -3797,7 +4031,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "sidhistory-inject",
@@ -3859,7 +4096,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "sysvol-hunt",
@@ -3900,7 +4140,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "targeted-kerberoast",
@@ -3957,7 +4200,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "template-mod",
@@ -4012,7 +4258,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "ticket-forge",
@@ -4060,7 +4309,10 @@
           "param_key": "domain_sid"
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "ticket-lifecycle",
@@ -4108,7 +4360,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "timeroast",
@@ -4151,7 +4406,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "trustedtoauth",
@@ -4194,7 +4452,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "trusts-enum",
@@ -4235,7 +4496,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "unconst-tgtdump-workflow",
@@ -4285,7 +4549,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     },
     {
       "id": "unconstrained-delegation",
@@ -4326,7 +4593,10 @@
           "param_key": ""
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "unpac-the-hash",
@@ -4381,7 +4651,10 @@
           "param_key": "pfx"
         }
       ],
-      "runnable": true
+      "runnable": true,
+      "requires_red_confirm": false,
+      "risk_label": "observe",
+      "rollback_expectation": "none"
     },
     {
       "id": "write-spn",
@@ -4436,7 +4709,10 @@
           "param_key": ""
         }
       ],
-      "runnable": false
+      "runnable": true,
+      "requires_red_confirm": true,
+      "risk_label": "destructive",
+      "rollback_expectation": "manual"
     }
   ]
 }

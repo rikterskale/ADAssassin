@@ -68,7 +68,14 @@ export const api = {
     }),
   run: (
     engagementId: string,
-    body: { capability_id: string; options?: Record<string, unknown>; ack?: boolean },
+    body: {
+      capability_id: string;
+      options?: Record<string, unknown>;
+      ack?: boolean;
+      force?: boolean;
+      confirm?: string;
+      actor?: string;
+    },
   ) =>
     request<RunResponse>(`/api/engagements/${engagementId}/run`, {
       method: "POST",

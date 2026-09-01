@@ -28,6 +28,9 @@ export type Capability = {
   lane: Lane;
   required_prompts?: RequiredPrompt[];
   runnable?: boolean;
+  requires_red_confirm?: boolean;
+  risk_label?: string;
+  rollback_expectation?: string;
   safety?: { level: string; network: boolean; plain: string };
 };
 

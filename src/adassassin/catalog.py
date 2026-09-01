@@ -54,7 +54,14 @@ def parse_catalog_markdown(text: str) -> list[dict[str, Any]]:
                 "sensitivity": cols[14],
                 "lane": lane,
                 "required_prompts": [],
-                "runnable": lane in {"green", "yellow"} and risk == "observe",
+                "runnable": (lane in {"green", "yellow"} and risk == "observe") or lane == "red",
+                "requires_red_confirm": lane == "red" or risk in {"destructive", "side_effect"},
+                "risk_label": (
+                    "side effect"
+                    if risk == "side_effect"
+                    else ("destructive" if risk == "destructive" else risk)
+                ),
+                "rollback_expectation": cols[9],
             }
         )
     return items

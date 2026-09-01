@@ -14,7 +14,8 @@ def test_parse_catalog_markdown() -> None:
     assert items[0]["lane"] == "yellow"
     assert items[1]["lane"] == "red"
     assert items[0]["runnable"] is True
-    assert items[1]["runnable"] is False
+    assert items[1]["runnable"] is True
+    assert items[1]["requires_red_confirm"] is True
 
 
 def test_static_catalog_has_capabilities() -> None:

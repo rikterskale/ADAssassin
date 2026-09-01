@@ -67,7 +67,12 @@ def _cap_payload(cap: Any) -> dict[str, Any]:
         "lane": lane,
         "safety": safety_summary(cap),
         "required_prompts": required_prompts(cap),
-        "runnable": lane in {"green", "yellow"} and risk == "observe",
+        "runnable": (lane in {"green", "yellow"} and risk == "observe") or lane == "red",
+        "requires_red_confirm": lane == "red" or risk in {"destructive", "side_effect"},
+        "risk_label": (
+            "side effect" if risk == "side_effect" else ("destructive" if risk == "destructive" else risk)
+        ),
+        "rollback_expectation": safety.get("rollback", "none"),
     }
 
 

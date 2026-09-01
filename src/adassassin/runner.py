@@ -1,4 +1,4 @@
-"""Thin observe-only wrapper over ADAF-ATTACK execute_capability."""
+"""Thin wrapper over ADAF-ATTACK execute_capability (observe + typed-confirm RED)."""
 
 from __future__ import annotations
 
@@ -23,13 +23,6 @@ class RunRefused(Exception):
         self.message = message
 
 
-PHASE5_REFUSAL = (
-    "Capability '{capability_id}' is lane={lane} risk={risk}. "
-    "Destructive and side-effect runs are Phase 5 (typed confirm). "
-    "Phase 2 only allows green/yellow observe capabilities."
-)
-
-
 def _now() -> str:
     from datetime import UTC, datetime
 
@@ -46,8 +39,29 @@ def _catalog_entry(capability_id: str) -> dict[str, Any] | None:
     return None
 
 
-def assert_observe_allowed(capability_id: str, engagement: dict[str, Any]) -> dict[str, Any]:
-    """Refuse red / non-observe; require successful connect for yellow."""
+def _is_red(entry: dict[str, Any]) -> bool:
+    risk = str(entry.get("risk") or "observe")
+    lane = str(entry.get("lane") or "")
+    return lane == "red" or risk in {"destructive", "side_effect"}
+
+
+def _risk_label(risk: str) -> str:
+    if risk == "side_effect":
+        return "side effect"
+    if risk == "destructive":
+        return "destructive"
+    return risk
+
+
+def assert_run_allowed(
+    capability_id: str,
+    engagement: dict[str, Any],
+    *,
+    ack: bool = False,
+    force: bool = False,
+    confirm: str = "",
+) -> dict[str, Any]:
+    """Gate observe and typed-confirm RED runs."""
     entry = _catalog_entry(capability_id)
     if entry is None:
         raise RunRefused(f"Unknown capability: {capability_id}", status_code=404)
@@ -55,10 +69,31 @@ def assert_observe_allowed(capability_id: str, engagement: dict[str, Any]) -> di
     risk = str(entry.get("risk") or "observe")
     environment = str(entry.get("environment") or "unknown")
     lane = str(entry.get("lane") or lane_for(risk, environment))
+    entry = {**entry, "lane": lane, "risk": risk}
 
-    if lane == "red" or risk != "observe":
+    if _is_red(entry):
+        label = _risk_label(risk)
+        if not ack or not force:
+            raise RunRefused(
+                f"Capability '{capability_id}' is {label} and requires explicit ack and force "
+                f"plus typed confirmation of the capability id.",
+                status_code=403,
+            )
+        if (confirm or "").strip() != capability_id:
+            raise RunRefused(
+                f"Type the capability id '{capability_id}' to confirm this {label} run.",
+                status_code=403,
+            )
+        if not has_successful_connect(engagement):
+            raise RunRefused(
+                "RED runs require a successful connect/preflight on this engagement first.",
+                status_code=409,
+            )
+        return entry
+
+    if risk != "observe":
         raise RunRefused(
-            PHASE5_REFUSAL.format(capability_id=capability_id, lane=lane, risk=risk),
+            f"Capability '{capability_id}' risk={risk} is not allowed without RED confirmation.",
             status_code=403,
         )
 
@@ -67,8 +102,12 @@ def assert_observe_allowed(capability_id: str, engagement: dict[str, Any]) -> di
             "Yellow observe runs require a successful connect/preflight on this engagement first.",
             status_code=409,
         )
-
     return entry
+
+
+# Backward-compatible name used by older tests/imports.
+def assert_observe_allowed(capability_id: str, engagement: dict[str, Any]) -> dict[str, Any]:
+    return assert_run_allowed(capability_id, engagement, ack=False, force=False, confirm="")
 
 
 def _extract_findings(engine_result: dict[str, Any], *, capability_id: str) -> list[dict[str, Any]]:
@@ -186,7 +225,6 @@ def _target_for_run(engagement: dict[str, Any], options: dict[str, Any], entry: 
 
 
 def _runner_kwargs(options: dict[str, Any]) -> dict[str, Any]:
-    """Map console options onto execute_capability kwargs / -P style params."""
     reserved = {
         "domain",
         "dc",
@@ -202,6 +240,7 @@ def _runner_kwargs(options: dict[str, Any]) -> dict[str, Any]:
         "aes_key",
         "ack",
         "force",
+        "confirm",
     }
     kwargs: dict[str, Any] = {}
     for key, value in options.items():
@@ -211,23 +250,62 @@ def _runner_kwargs(options: dict[str, Any]) -> dict[str, Any]:
     return kwargs
 
 
-def execute_observe(
+def _redact_options(options: dict[str, Any]) -> dict[str, Any]:
+    redacted: dict[str, Any] = {}
+    for key, value in options.items():
+        if key.lower() in {"password", "hashes", "aes_key", "secret", "ticket"}:
+            redacted[key] = "***"
+        else:
+            redacted[key] = value
+    return redacted
+
+
+def execute_run(
     settings: Settings,
     engagement_id: str,
     *,
     capability_id: str,
     options: dict[str, Any] | None = None,
     ack: bool = False,
+    force: bool = False,
+    confirm: str = "",
+    actor: str = "operator",
 ) -> dict[str, Any]:
-    """Gate, run an observe capability, attach findings, return job payload."""
+    """Gate and run a capability. RED requires ack + force + typed capability id."""
     item = get_engagement(settings, engagement_id)
     if item is None:
         raise LookupError("Engagement not found")
 
     options = dict(options or {})
-    entry = assert_observe_allowed(capability_id, item)
+    entry = assert_run_allowed(
+        capability_id,
+        item,
+        ack=ack,
+        force=force,
+        confirm=confirm,
+    )
+    red = _is_red(entry)
     target = _target_for_run(item, options, entry)
     runner_kwargs = _runner_kwargs(options)
+
+    if red:
+        audit = list(item.get("red_ack_audit") or [])
+        audit.append(
+            {
+                "id": uuid4().hex[:10],
+                "actor": actor,
+                "timestamp": _now(),
+                "capability_id": capability_id,
+                "risk": entry.get("risk"),
+                "lane": entry.get("lane"),
+                "force": True,
+                "ack": True,
+                "confirm": capability_id,
+                "options": _redact_options(options),
+                "rollback": entry.get("rollback"),
+            }
+        )
+        item["red_ack_audit"] = audit[-100:]
 
     job_id = uuid4().hex[:12]
     log_messages: list[str] = []
@@ -244,13 +322,13 @@ def execute_observe(
     findings: list[dict[str, Any]] = []
 
     try:
-        from adaf_attack.core.runner import RunError, execute_capability
+        from adaf_attack.core.runner import execute_capability
 
         engine_result = execute_capability(
             capability_id,
             target,
-            force=False,
-            acknowledged=bool(ack),
+            force=bool(red),
+            acknowledged=bool(ack) if red else True,
             json_mode=True,
             include_secrets=False,
             workspace=workspace,
@@ -258,11 +336,12 @@ def execute_observe(
             **runner_kwargs,
         )
         findings = _extract_findings(engine_result, capability_id=capability_id)
-        if entry.get("lane") == "yellow":
+        if entry.get("lane") in {"yellow", "red"} or red:
             item["target_contacted"] = True
     except RunRefused:
         raise
-    except Exception as exc:  # RunError or engine failure
+    except Exception as exc:
+        # Surface engine PolicyError / RunError text verbatim.
         status = "failed"
         error = str(exc)
         _log(f"run failed: {exc}")
@@ -282,6 +361,7 @@ def execute_observe(
         "result": (engine_result or {}).get("result"),
         "outcome": (engine_result or {}).get("outcome"),
         "next_actions": [],
+        "red": red,
     }
 
     if status == "completed":
@@ -304,8 +384,9 @@ def execute_observe(
                 existing_ids.add(finding["id"])
         item["findings"] = merged
         marked = list(item.get("guided_marked") or [])
-        if "observe-run" not in marked:
-            marked.append("observe-run")
+        step = "red-run" if red else "observe-run"
+        if step not in marked:
+            marked.append(step)
         item["guided_marked"] = marked
 
     jobs = list(item.get("jobs") or [])
@@ -313,3 +394,23 @@ def execute_observe(
     item["jobs"] = jobs[:50]
     saved = save_engagement(settings, item)
     return {"job": job, "engagement": saved}
+
+
+def execute_observe(
+    settings: Settings,
+    engagement_id: str,
+    *,
+    capability_id: str,
+    options: dict[str, Any] | None = None,
+    ack: bool = False,
+) -> dict[str, Any]:
+    """Backward-compatible observe entrypoint."""
+    return execute_run(
+        settings,
+        engagement_id,
+        capability_id=capability_id,
+        options=options,
+        ack=ack,
+        force=False,
+        confirm="",
+    )

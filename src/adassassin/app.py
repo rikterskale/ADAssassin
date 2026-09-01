@@ -31,7 +31,7 @@ from adassassin.findings import (
 )
 from adassassin.guide import glossary_payload, guide_payload
 from adassassin.rollback import RollbackError, apply_rollback, list_rollback, preview_rollback
-from adassassin.runner import RunRefused, execute_observe
+from adassassin.runner import RunRefused, execute_run
 from adassassin.targets import TargetError, connect_engagement
 from adassassin.vault import VaultServiceError, list_vault, unmask_vault_item
 
@@ -62,6 +62,9 @@ class RunIn(BaseModel):
     capability_id: str = Field(min_length=1, max_length=120)
     options: dict[str, Any] = Field(default_factory=dict)
     ack: bool = False
+    force: bool = False
+    confirm: str = ""
+    actor: str = "operator"
 
 
 class FindingStatusIn(BaseModel):
@@ -100,7 +103,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "ok": True,
             "product": "adassassin",
             "version": __version__,
-            "phase": "4",
+            "phase": "5",
             "engine": engine,
             "engine_pin": ENGINE_PIN,
             "engine_commit": ENGINE_COMMIT,
@@ -194,12 +197,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.post("/api/engagements/{engagement_id}/run")
     def engagement_run(engagement_id: str, body: RunIn) -> dict[str, Any]:
         try:
-            result = execute_observe(
+            result = execute_run(
                 settings,
                 engagement_id,
                 capability_id=body.capability_id,
                 options=body.options,
                 ack=body.ack,
+                force=body.force,
+                confirm=body.confirm,
+                actor=body.actor or "operator",
             )
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc

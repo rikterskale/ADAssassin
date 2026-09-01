@@ -28,8 +28,8 @@ def test_refuse_red_capability(tmp_path: Path) -> None:
     )
     assert response.status_code == 403
     detail = response.json()["detail"]
-    assert "Phase 5" in detail
     assert "dcsync" in detail
+    assert "ack" in detail.lower() or "force" in detail.lower() or "confirm" in detail.lower()
 
 
 def test_refuse_yellow_without_connect(tmp_path: Path) -> None:

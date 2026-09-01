@@ -3,6 +3,13 @@ import { Link, useSearchParams } from "react-router-dom";
 import { RiskBadge } from "../components/RiskBadge";
 import type { Capability, CatalogResponse, Lane } from "../types";
 
+function runLabel(item: Capability): string {
+  const red = item.requires_red_confirm || item.lane === "red" || item.risk === "destructive" || item.risk === "side_effect";
+  if (!red) return "Run";
+  const label = item.risk_label || (item.risk === "side_effect" ? "side effect" : "destructive");
+  return `Run ${item.id} ${label}`;
+}
+
 export function Catalog({ catalog, onViewGreen }: { catalog: CatalogResponse | null; onViewGreen: () => void }) {
   const [params, setParams] = useSearchParams();
   const [query, setQuery] = useState(params.get("q") ?? "");
@@ -29,7 +36,11 @@ export function Catalog({ catalog, onViewGreen }: { catalog: CatalogResponse | n
     setParams(copy, { replace: true });
   }
 
-  const canRun = selected?.runnable ?? (selected != null && selected.lane !== "red" && selected.risk === "observe");
+  const canRun = Boolean(selected?.runnable ?? selected);
+  const selectedRed = Boolean(
+    selected
+    && (selected.requires_red_confirm || selected.lane === "red" || selected.risk === "destructive" || selected.risk === "side_effect"),
+  );
 
   return (
     <>
@@ -37,7 +48,8 @@ export function Catalog({ catalog, onViewGreen }: { catalog: CatalogResponse | n
         <div className="brand-sub">Advanced catalog</div>
         <h1>{catalog?.count ?? 0} capabilities from the pinned engine.</h1>
         <p className="lede">
-          Source: {catalog?.source ?? "…"}. Observe capabilities can run from here. Red stays Phase 5.
+          Source: {catalog?.source ?? "…"}. Observe runs freely. RED buttons name the capability and
+          destructive/side effect risk; typed confirm is required on the Run page.
         </p>
       </section>
       <div className="grid">
@@ -56,7 +68,7 @@ export function Catalog({ catalog, onViewGreen }: { catalog: CatalogResponse | n
               <thead><tr><th>ID</th><th>Lane</th><th>Category</th><th>Approval</th><th>Summary</th><th></th></tr></thead>
               <tbody>
                 {filtered.map((item) => {
-                  const runnable = item.runnable ?? (item.lane !== "red" && item.risk === "observe");
+                  const runnable = item.runnable ?? true;
                   return (
                     <tr key={item.id} onClick={() => setSelected(item)} style={{ cursor: "pointer" }}>
                       <td className="mono">{item.id}</td>
@@ -67,7 +79,7 @@ export function Catalog({ catalog, onViewGreen }: { catalog: CatalogResponse | n
                       <td>
                         {runnable ? (
                           <Link className="btn ghost" to={`/run?capability=${encodeURIComponent(item.id)}`} onClick={(e) => e.stopPropagation()}>
-                            Run
+                            {runLabel(item)}
                           </Link>
                         ) : null}
                       </td>
@@ -86,7 +98,7 @@ export function Catalog({ catalog, onViewGreen }: { catalog: CatalogResponse | n
               <p>{selected.summary}</p>
               <p className="muted">
                 {selected.environment} · {selected.maturity}<br />
-                approval {selected.approval} · rollback {selected.rollback}<br />
+                approval {selected.approval} · rollback {selected.rollback_expectation || selected.rollback}<br />
                 tools {(selected.tools || []).join(", ") || "none"}
               </p>
               {(selected.required_prompts ?? []).length > 0 && (
@@ -100,10 +112,17 @@ export function Catalog({ catalog, onViewGreen }: { catalog: CatalogResponse | n
                   ))}
                 </>
               )}
-              {selected.lane === "red" && <p className="muted">RED. Typed confirmation is Phase 5.</p>}
-              {canRun && (
+              {selectedRed && (
+                <p className="muted">
+                  RED ({selected.risk_label || selected.risk}). Button and Run page require typing{" "}
+                  <span className="mono">{selected.id}</span>.
+                </p>
+              )}
+              {canRun && selected && (
                 <div className="actions">
-                  <Link className="btn primary" to={`/run?capability=${encodeURIComponent(selected.id)}`}>Run observe</Link>
+                  <Link className="btn primary" to={`/run?capability=${encodeURIComponent(selected.id)}`}>
+                    {runLabel(selected)}
+                  </Link>
                 </div>
               )}
             </>
