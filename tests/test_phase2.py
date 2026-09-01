@@ -9,7 +9,7 @@ from adassassin.config import Settings
 
 
 def _client(tmp_path: Path) -> TestClient:
-    return TestClient(create_app(Settings(data_dir=tmp_path)))
+    return TestClient(create_app(Settings(data_dir=tmp_path, run_synchronous=True)))
 
 
 def _engagement(client: TestClient) -> dict[str, Any]:

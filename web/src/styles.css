@@ -161,3 +161,40 @@ input[type="search"], .grow { flex: 1; }
 .picker-row:hover { border-color: var(--line); background: rgba(224, 178, 90, 0.05); }
 .picker-row.selected { border-left-color: var(--gold); background: rgba(224, 178, 90, 0.07); }
 .picker-row-head { display: flex; align-items: center; gap: 8px; }
+
+/* Keyboard focus ring (previously relied on the browser default) */
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+a:focus-visible, button:focus-visible, input:focus-visible,
+select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--gold); outline-offset: 2px;
+}
+
+/* Live-run indicator on the Run job log */
+.live-dot {
+  display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--yellow); vertical-align: middle;
+  animation: live-pulse 1.4s ease-out infinite;
+}
+@keyframes live-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(210, 165, 74, 0.5); }
+  70% { box-shadow: 0 0 0 7px rgba(210, 165, 74, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(210, 165, 74, 0); }
+}
+@media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
+
+/* Startup splash + fatal (backend unreachable / render error) screens */
+.splash, .fatal { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+.splash { gap: 8px; align-content: center; text-align: center; }
+.splash-mark {
+  width: 44px; height: 44px; border: 1px solid var(--gold); color: var(--gold);
+  display: grid; place-items: center; margin: 0 auto 6px;
+  font-family: "IBM Plex Mono", monospace; letter-spacing: 0.08em;
+}
+.splash .brand-name { font-size: 14px; letter-spacing: 0.22em; text-transform: uppercase; }
+.fatal-card {
+  background: var(--bg-elev); border: 1px solid var(--line); box-shadow: var(--shadow);
+  padding: 28px; max-width: 520px; display: grid; gap: 12px;
+}
+.fatal-card h1 { font-size: 22px; }
+.fatal-card .log { width: 100%; }
+.fatal-card .actions { margin-top: 4px; }

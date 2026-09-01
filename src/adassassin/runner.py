@@ -1,17 +1,31 @@
-"""Thin wrapper over ADAF-ATTACK execute_capability (observe + typed-confirm RED)."""
+"""Thin wrapper over ADAF-ATTACK execute_capability (observe + typed-confirm RED).
+
+Runs execute on a background thread so the HTTP request returns immediately with
+a "running" job. Live progress (status + streamed log) is held in an in-memory
+registry and exposed through GET /jobs/{id}; the final job is also persisted
+onto the engagement. Gating (ack/force/typed-confirm/connect) is enforced
+synchronously before the thread starts, so refusals still map to 403/409.
+"""
 
 from __future__ import annotations
 
+from threading import Lock, Thread
 from typing import Any
 from uuid import uuid4
 
 from adassassin.catalog import catalog_payload
 from adassassin.config import Settings
-from adassassin.engagements import get_engagement, save_engagement
+from adassassin.engagements import _IO_LOCK, get_engagement, save_engagement
 from adassassin.engine import capability_detail, lane_for
 from adassassin.findings import normalize_finding
 from adassassin.secrets import resolve_bind_secret
 from adassassin.targets import has_successful_connect
+
+# In-memory live-job registry: job_id -> job dict (mutated by the worker thread).
+_LIVE_LOCK = Lock()
+_LIVE_JOBS: dict[str, dict[str, Any]] = {}
+# Cap the registry so a long-lived process cannot grow it without bound.
+_LIVE_MAX = 200
 
 
 class RunRefused(Exception):
@@ -27,6 +41,41 @@ def _now() -> str:
     from datetime import UTC, datetime
 
     return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _job_snapshot(job: dict[str, Any]) -> dict[str, Any]:
+    """Return a copy safe to serialize while the worker mutates the original."""
+    with _LIVE_LOCK:
+        snap = dict(job)
+        snap["log"] = list(job.get("log") or [])
+        snap["findings"] = list(job.get("findings") or [])
+        snap["next_actions"] = list(job.get("next_actions") or [])
+        return snap
+
+
+def _publish_live(job: dict[str, Any]) -> None:
+    with _LIVE_LOCK:
+        _LIVE_JOBS[job["id"]] = job
+        if len(_LIVE_JOBS) > _LIVE_MAX:
+            # Drop the oldest terminal jobs first; keep anything still running.
+            for key in list(_LIVE_JOBS):
+                if len(_LIVE_JOBS) <= _LIVE_MAX:
+                    break
+                if _LIVE_JOBS[key].get("status") != "running":
+                    del _LIVE_JOBS[key]
+
+
+def get_live_job(job_id: str) -> dict[str, Any] | None:
+    """Return a serialization-safe snapshot of a live/terminal job, or None."""
+    with _LIVE_LOCK:
+        job = _LIVE_JOBS.get(job_id)
+        if job is None:
+            return None
+        snap = dict(job)
+        snap["log"] = list(job.get("log") or [])
+        snap["findings"] = list(job.get("findings") or [])
+        snap["next_actions"] = list(job.get("next_actions") or [])
+        return snap
 
 
 def _catalog_entry(capability_id: str) -> dict[str, Any] | None:
@@ -260,61 +309,24 @@ def _redact_options(options: dict[str, Any]) -> dict[str, Any]:
     return redacted
 
 
-def execute_run(
+def _run_worker(
     settings: Settings,
     engagement_id: str,
     *,
     capability_id: str,
-    options: dict[str, Any] | None = None,
-    ack: bool = False,
-    force: bool = False,
-    confirm: str = "",
-    actor: str = "operator",
-) -> dict[str, Any]:
-    """Gate and run a capability. RED requires ack + force + typed capability id."""
-    item = get_engagement(settings, engagement_id)
-    if item is None:
-        raise LookupError("Engagement not found")
-
-    options = dict(options or {})
-    entry = assert_run_allowed(
-        capability_id,
-        item,
-        ack=ack,
-        force=force,
-        confirm=confirm,
-    )
-    red = _is_red(entry)
-    target = _target_for_run(item, options, entry)
-    runner_kwargs = _runner_kwargs(options)
-
-    if red:
-        audit = list(item.get("red_ack_audit") or [])
-        audit.append(
-            {
-                "id": uuid4().hex[:10],
-                "actor": actor,
-                "timestamp": _now(),
-                "capability_id": capability_id,
-                "risk": entry.get("risk"),
-                "lane": entry.get("lane"),
-                "force": True,
-                "ack": True,
-                "confirm": capability_id,
-                "options": _redact_options(options),
-                "rollback": entry.get("rollback"),
-            }
-        )
-        item["red_ack_audit"] = audit[-100:]
-
-    job_id = uuid4().hex[:12]
-    log_messages: list[str] = []
+    target: Any,
+    runner_kwargs: dict[str, Any],
+    red: bool,
+    ack: bool,
+    entry: dict[str, Any],
+    job: dict[str, Any],
+    workspace,
+) -> None:
+    """Execute the engine capability and fold the result back into the engagement."""
 
     def _log(message: str) -> None:
-        log_messages.append(message)
-
-    workspace = settings.data_dir / "workspaces" / engagement_id
-    workspace.mkdir(parents=True, exist_ok=True)
+        with _LIVE_LOCK:
+            job["log"].append(str(message))
 
     engine_result: dict[str, Any] | None = None
     error: str | None = None
@@ -336,34 +348,13 @@ def execute_run(
             **runner_kwargs,
         )
         findings = _extract_findings(engine_result, capability_id=capability_id)
-        if entry.get("lane") in {"yellow", "red"} or red:
-            item["target_contacted"] = True
-    except RunRefused:
-        raise
     except Exception as exc:
         # Surface engine PolicyError / RunError text verbatim.
         status = "failed"
         error = str(exc)
         _log(f"run failed: {exc}")
 
-    job = {
-        "id": job_id,
-        "capability_id": capability_id,
-        "lane": entry.get("lane"),
-        "risk": entry.get("risk"),
-        "status": status,
-        "created_at": _now(),
-        "log": _build_log(log_messages, engine_result, error),
-        "findings": findings,
-        "error": error,
-        "session_id": (engine_result or {}).get("session_id"),
-        "session_path": (engine_result or {}).get("session_path"),
-        "result": (engine_result or {}).get("result"),
-        "outcome": (engine_result or {}).get("outcome"),
-        "next_actions": [],
-        "red": red,
-    }
-
+    next_actions: list[dict[str, Any]] = []
     if status == "completed":
         try:
             from adaf_attack.core.novice import beginner_next_actions
@@ -372,28 +363,165 @@ def execute_run(
             load_builtin_capabilities()
             cap = capability_registry.get(capability_id)
             if cap is not None:
-                job["next_actions"] = beginner_next_actions(cap)
+                next_actions = beginner_next_actions(cap)
         except Exception:
-            job["next_actions"] = []
+            next_actions = []
 
-        existing_ids = {f.get("id") for f in item.get("findings") or []}
-        merged = list(item.get("findings") or [])
-        for finding in findings:
-            if finding["id"] not in existing_ids:
-                merged.append(finding)
-                existing_ids.add(finding["id"])
-        item["findings"] = merged
-        marked = list(item.get("guided_marked") or [])
-        step = "red-run" if red else "observe-run"
-        if step not in marked:
-            marked.append(step)
-        item["guided_marked"] = marked
+    with _LIVE_LOCK:
+        raw_log = list(job["log"])
+    final_log = _build_log(raw_log, engine_result, error)
 
-    jobs = list(item.get("jobs") or [])
-    jobs.insert(0, job)
-    item["jobs"] = jobs[:50]
-    saved = save_engagement(settings, item)
-    return {"job": job, "engagement": saved}
+    with _LIVE_LOCK:
+        job["status"] = status
+        job["log"] = final_log
+        job["findings"] = findings
+        job["error"] = error
+        job["session_id"] = (engine_result or {}).get("session_id")
+        job["session_path"] = (engine_result or {}).get("session_path")
+        job["result"] = (engine_result or {}).get("result")
+        job["outcome"] = (engine_result or {}).get("outcome")
+        job["next_actions"] = next_actions
+        job["finished_at"] = _now()
+
+    snapshot = _job_snapshot(job)
+
+    with _IO_LOCK:
+        item = get_engagement(settings, engagement_id)
+        if item is None:
+            return
+        jobs = [j for j in (item.get("jobs") or []) if j.get("id") != job["id"]]
+        jobs.insert(0, snapshot)
+        item["jobs"] = jobs[:50]
+        if status == "completed":
+            if entry.get("lane") in {"yellow", "red"} or red:
+                item["target_contacted"] = True
+            existing_ids = {f.get("id") for f in item.get("findings") or []}
+            merged = list(item.get("findings") or [])
+            for finding in findings:
+                if finding["id"] not in existing_ids:
+                    merged.append(finding)
+                    existing_ids.add(finding["id"])
+            item["findings"] = merged
+            marked = list(item.get("guided_marked") or [])
+            step = "red-run" if red else "observe-run"
+            if step not in marked:
+                marked.append(step)
+            item["guided_marked"] = marked
+        save_engagement(settings, item)
+
+
+def execute_run(
+    settings: Settings,
+    engagement_id: str,
+    *,
+    capability_id: str,
+    options: dict[str, Any] | None = None,
+    ack: bool = False,
+    force: bool = False,
+    confirm: str = "",
+    actor: str = "operator",
+    background: bool = True,
+) -> dict[str, Any]:
+    """Gate and start a capability run. RED requires ack + force + typed id.
+
+    Returns immediately with a "running" job; progress is available from the
+    live registry / GET /jobs/{id}. Pass background=False to run inline (used by
+    the backward-compatible observe entrypoint and callers that want a completed
+    job synchronously).
+    """
+    item = get_engagement(settings, engagement_id)
+    if item is None:
+        raise LookupError("Engagement not found")
+
+    options = dict(options or {})
+    entry = assert_run_allowed(
+        capability_id,
+        item,
+        ack=ack,
+        force=force,
+        confirm=confirm,
+    )
+    red = _is_red(entry)
+    target = _target_for_run(item, options, entry)
+    runner_kwargs = _runner_kwargs(options)
+
+    job_id = uuid4().hex[:12]
+    job: dict[str, Any] = {
+        "id": job_id,
+        "capability_id": capability_id,
+        "lane": entry.get("lane"),
+        "risk": entry.get("risk"),
+        "status": "running",
+        "created_at": _now(),
+        "log": [f"queued {capability_id}"],
+        "findings": [],
+        "error": None,
+        "session_id": None,
+        "session_path": None,
+        "result": None,
+        "outcome": None,
+        "next_actions": [],
+        "red": red,
+    }
+    _publish_live(job)
+
+    # Record the RED authorization and the queued job synchronously so the audit
+    # trail and job list reflect the run even before the engine finishes.
+    with _IO_LOCK:
+        item = get_engagement(settings, engagement_id)
+        if item is None:
+            raise LookupError("Engagement not found")
+        if red:
+            audit = list(item.get("red_ack_audit") or [])
+            audit.append(
+                {
+                    "id": uuid4().hex[:10],
+                    "actor": actor,
+                    "timestamp": _now(),
+                    "capability_id": capability_id,
+                    "risk": entry.get("risk"),
+                    "lane": entry.get("lane"),
+                    "force": True,
+                    "ack": True,
+                    "confirm": capability_id,
+                    "options": _redact_options(options),
+                    "rollback": entry.get("rollback"),
+                }
+            )
+            item["red_ack_audit"] = audit[-100:]
+        jobs = list(item.get("jobs") or [])
+        jobs.insert(0, _job_snapshot(job))
+        item["jobs"] = jobs[:50]
+        saved = save_engagement(settings, item)
+
+    workspace = settings.data_dir / "workspaces" / engagement_id
+    workspace.mkdir(parents=True, exist_ok=True)
+
+    worker_kwargs = {
+        "capability_id": capability_id,
+        "target": target,
+        "runner_kwargs": runner_kwargs,
+        "red": red,
+        "ack": ack,
+        "entry": entry,
+        "job": job,
+        "workspace": workspace,
+    }
+
+    if background:
+        Thread(
+            target=_run_worker,
+            args=(settings, engagement_id),
+            kwargs=worker_kwargs,
+            name=f"run-{job_id}",
+            daemon=True,
+        ).start()
+        return {"job": _job_snapshot(job), "engagement": saved}
+
+    # Inline execution: run to completion, then return the persisted job.
+    _run_worker(settings, engagement_id, **worker_kwargs)
+    final = get_live_job(job_id) or _job_snapshot(job)
+    return {"job": final, "engagement": get_engagement(settings, engagement_id) or saved}
 
 
 def execute_observe(
@@ -404,7 +532,7 @@ def execute_observe(
     options: dict[str, Any] | None = None,
     ack: bool = False,
 ) -> dict[str, Any]:
-    """Backward-compatible observe entrypoint."""
+    """Backward-compatible observe entrypoint (runs inline to completion)."""
     return execute_run(
         settings,
         engagement_id,
@@ -413,4 +541,5 @@ def execute_observe(
         ack=ack,
         force=False,
         confirm="",
+        background=False,
     )

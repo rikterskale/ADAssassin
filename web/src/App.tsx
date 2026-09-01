@@ -23,16 +23,24 @@ export default function App() {
   const [engagements, setEngagements] = useState<Engagement[]>([]);
   const [currentId, setCurrentId] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const autoSeededRef = useRef(false);
 
   const refresh = useCallback(async () => {
-    const [nextHealth, nextDoctor, nextGuide, nextCatalog, nextEngagements] = await Promise.all([
-      api.health(), api.doctor(), api.guide(), api.catalog(), api.engagements(),
-    ]);
-    setHealth(nextHealth); setDoctor(nextDoctor); setGuide(nextGuide); setCatalog(nextCatalog);
-    setEngagements(nextEngagements.engagements);
-    setCurrentId((current) => current ?? nextEngagements.engagements[0]?.id ?? null);
-    setLoaded(true);
+    try {
+      const [nextHealth, nextDoctor, nextGuide, nextCatalog, nextEngagements] = await Promise.all([
+        api.health(), api.doctor(), api.guide(), api.catalog(), api.engagements(),
+      ]);
+      setHealth(nextHealth); setDoctor(nextDoctor); setGuide(nextGuide); setCatalog(nextCatalog);
+      setEngagements(nextEngagements.engagements);
+      setCurrentId((current) => current ?? nextEngagements.engagements[0]?.id ?? null);
+      setError(null);
+      setLoaded(true);
+    } catch (err) {
+      // Leave `loaded` false on the first failure so the retry screen shows;
+      // a later transient failure keeps the already-rendered console up.
+      setError(err instanceof Error ? err.message : String(err));
+    }
   }, []);
 
   useEffect(() => { void refresh(); }, [refresh]);
@@ -63,9 +71,13 @@ export default function App() {
   }
 
   async function seedDemo() {
-    const created = await api.demoEngagement();
-    upsertEngagement(created.engagement);
-    await refresh();
+    try {
+      const created = await api.demoEngagement();
+      upsertEngagement(created.engagement);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
   }
 
   const mark = useCallback(async (stepId: string) => {
@@ -81,6 +93,13 @@ export default function App() {
   async function handleRan(engagement: Engagement) {
     upsertEngagement(engagement);
     await refresh();
+  }
+
+  if (!loaded && error) {
+    return <Fatal message={error} onRetry={() => void refresh()} />;
+  }
+  if (!loaded) {
+    return <Splash />;
   }
 
   return (
@@ -100,5 +119,37 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
+  );
+}
+
+function Splash() {
+  return (
+    <div className="splash">
+      <div className="splash-mark">AD</div>
+      <div className="brand-name">Assassin</div>
+      <div className="muted">Starting console…</div>
+    </div>
+  );
+}
+
+function Fatal({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="fatal">
+      <div className="fatal-card">
+        <div className="splash-mark">AD</div>
+        <h1>Cannot reach the console</h1>
+        <p className="muted">
+          The page loaded but could not reach the local API. The server may still be starting, or it
+          stopped. Make sure <span className="mono">adassassin</span> is running in your terminal,
+          then retry.
+        </p>
+        <pre className="log">{message}</pre>
+        <div className="actions">
+          <button className="btn primary" type="button" onClick={onRetry}>
+            Retry
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

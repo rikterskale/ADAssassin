@@ -2,10 +2,16 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
+from threading import RLock
 from typing import Any
 from uuid import uuid4
 
 from adassassin.config import Settings
+
+# All engagement JSON reads/writes are serialized through this reentrant lock.
+# Runs now execute on a background thread (see runner.py), so concurrent access
+# to an engagement file is possible; the lock prevents torn reads/writes.
+_IO_LOCK = RLock()
 
 DEMO_FINDINGS = [
     {
@@ -61,27 +67,34 @@ def _path(settings: Settings, engagement_id: str):
 def list_engagements(settings: Settings) -> list[dict[str, Any]]:
     settings.engagements_dir.mkdir(parents=True, exist_ok=True)
     items: list[dict[str, Any]] = []
-    for path in sorted(settings.engagements_dir.glob("*.json")):
-        try:
-            items.append(json.loads(path.read_text(encoding="utf-8")))
-        except json.JSONDecodeError:
-            continue
+    with _IO_LOCK:
+        for path in sorted(settings.engagements_dir.glob("*.json")):
+            try:
+                items.append(json.loads(path.read_text(encoding="utf-8")))
+            except json.JSONDecodeError:
+                continue
     items.sort(key=lambda item: item.get("updated_at", ""), reverse=True)
     return items
 
 
 def get_engagement(settings: Settings, engagement_id: str) -> dict[str, Any] | None:
     path = _path(settings, engagement_id)
-    if not path.exists():
-        return None
-    return json.loads(path.read_text(encoding="utf-8"))
+    with _IO_LOCK:
+        if not path.exists():
+            return None
+        return json.loads(path.read_text(encoding="utf-8"))
 
 
 def save_engagement(settings: Settings, payload: dict[str, Any]) -> dict[str, Any]:
     payload["updated_at"] = _now()
     settings.engagements_dir.mkdir(parents=True, exist_ok=True)
     path = _path(settings, payload["id"])
-    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    with _IO_LOCK:
+        # Write to a temp file and replace so a concurrent reader never sees a
+        # half-written file even outside the lock window.
+        tmp = path.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        tmp.replace(path)
     return payload
 
 
@@ -139,11 +152,12 @@ def ensure_demo(settings: Settings) -> dict[str, Any]:
 
 
 def mark_guided(settings: Settings, engagement_id: str, step_id: str) -> dict[str, Any] | None:
-    item = get_engagement(settings, engagement_id)
-    if item is None:
-        return None
-    marked = list(item.get("guided_marked") or [])
-    if step_id not in marked:
-        marked.append(step_id)
-    item["guided_marked"] = marked
-    return save_engagement(settings, item)
+    with _IO_LOCK:
+        item = get_engagement(settings, engagement_id)
+        if item is None:
+            return None
+        marked = list(item.get("guided_marked") or [])
+        if step_id not in marked:
+            marked.append(step_id)
+        item["guided_marked"] = marked
+        return save_engagement(settings, item)

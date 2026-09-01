@@ -32,7 +32,7 @@ from adassassin.findings import (
 from adassassin.guide import glossary_payload, guide_payload
 from adassassin.report import build_report, closeout_checklist, report_file
 from adassassin.rollback import RollbackError, apply_rollback, list_rollback, preview_rollback
-from adassassin.runner import RunRefused, execute_run
+from adassassin.runner import RunRefused, execute_run, get_live_job
 from adassassin.targets import TargetError, connect_engagement
 from adassassin.vault import VaultServiceError, list_vault, unmask_vault_item
 
@@ -223,6 +223,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 force=body.force,
                 confirm=body.confirm,
                 actor=body.actor or "operator",
+                background=not settings.run_synchronous,
             )
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -230,7 +231,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
         job = result["job"]
         return {
-            "ok": job.get("status") == "completed",
+            # A run now starts in the background; "running" is an accepted start.
+            "ok": job.get("status") != "failed",
             "job_id": job["id"],
             "status": job["status"],
             "findings": job.get("findings") or [],
@@ -242,7 +244,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def engagement_job(engagement_id: str, job_id: str) -> dict[str, Any]:
         if get_engagement(settings, engagement_id) is None:
             raise HTTPException(status_code=404, detail="Engagement not found")
-        job = get_job(settings, engagement_id, job_id)
+        # Prefer the live registry so an in-flight run reports fresh status/log.
+        job = get_live_job(job_id) or get_job(settings, engagement_id, job_id)
         if job is None:
             raise HTTPException(status_code=404, detail="Job not found")
         return {"ok": True, "job": job}

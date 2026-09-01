@@ -9,7 +9,7 @@ from adassassin.config import Settings
 
 
 def _client(tmp_path: Path) -> TestClient:
-    return TestClient(create_app(Settings(data_dir=tmp_path)))
+    return TestClient(create_app(Settings(data_dir=tmp_path, run_synchronous=True)))
 
 
 def test_demo_and_live_findings_share_pane(tmp_path: Path) -> None:

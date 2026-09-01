@@ -1,4 +1,5 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { useEffect } from "react";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import type { HealthResponse } from "../types";
 
 type NavItem = { to: string; label: string; hint: string };
@@ -39,6 +40,12 @@ const groups: NavGroup[] = [
 ];
 
 export function Shell({ health }: { health: HealthResponse | null }) {
+  const location = useLocation();
+  useEffect(() => {
+    const active = groups.flatMap((group) => group.items).find((item) => item.to === location.pathname);
+    document.title = active && active.to !== "/" ? `${active.label} · ADAssassin` : "ADAssassin";
+  }, [location.pathname]);
+
   const engineOk = health?.engine.available;
   return (
     <div className="shell">

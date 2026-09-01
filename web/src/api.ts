@@ -48,6 +48,8 @@ export const api = {
   capability: (id: string) =>
     request<{ ok: boolean; capability: Capability }>(`/api/catalog/${encodeURIComponent(id)}`),
   engagements: () => request<{ ok: boolean; engagements: Engagement[] }>("/api/engagements"),
+  engagement: (id: string) =>
+    request<{ ok: boolean; engagement: Engagement }>(`/api/engagements/${encodeURIComponent(id)}`),
   createEngagement: (body: { name: string; domain?: string; dc?: string; notes?: string }) =>
     request<{ ok: boolean; engagement: Engagement }>("/api/engagements", {
       method: "POST",

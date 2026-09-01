@@ -14,6 +14,11 @@ class Settings(BaseSettings):
     port: int = DEFAULT_PORT
     data_dir: Path = Path.home() / ".adassassin"
     open_browser: bool = True
+    # When true, capability runs execute inline instead of on a background
+    # thread. Production leaves this false (non-blocking runs + live progress);
+    # tests enable it so a run completes within the POST for deterministic
+    # assertions.
+    run_synchronous: bool = False
 
     @property
     def engagements_dir(self) -> Path:

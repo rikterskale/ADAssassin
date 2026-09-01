@@ -51,3 +51,12 @@ target-version = "py311"
 [tool.ruff.lint]
 # Optional engine imports and offline fallbacks intentionally catch broadly.
 ignore = ["BLE001", "S110", "S112", "FURB162"]
+
+[tool.pytest.ini_options]
+# Silence third-party deprecation noise (FastAPI on 3.14, ldap3/pyasn1 in the
+# pinned engine) so the suite output stays clean. App-owned warnings still show.
+filterwarnings = [
+    "ignore:'asyncio.iscoroutinefunction' is deprecated:DeprecationWarning",
+    "ignore:tagMap is deprecated:DeprecationWarning",
+    "ignore:typeMap is deprecated:DeprecationWarning",
+]
