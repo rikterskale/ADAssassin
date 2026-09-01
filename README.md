@@ -12,6 +12,8 @@ a guided GUI.
 Current slice: **Phase 1** (doctor, guided checklist, catalog inspector,
 glossary, demo workspace). Capability execution is not enabled yet.
 
+Build order and acceptance criteria: **[ROADMAP.md](ROADMAP.md)**. Next slice is Phase 2.
+
 ## Quick start
 
 ```bash
@@ -39,7 +41,7 @@ cd web && npm install && npm run build   # optional React rebuild
 
 `adaf-attack==0.10.1` @ `fdb60b90b910ba3dcbd582e2c72ce48189191214`
 
-See [AUTHORIZED_USE.md](AUTHORIZED_USE.md) and [SECURITY.md](SECURITY.md).
+See [ROADMAP.md](ROADMAP.md), [AUTHORIZED_USE.md](AUTHORIZED_USE.md), and [SECURITY.md](SECURITY.md).
 
 ## License
 
