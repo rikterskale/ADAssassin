@@ -8,27 +8,9 @@ from uuid import uuid4
 from adassassin.config import Settings
 
 DEMO_FINDINGS = [
-    {
-        "id": "demo-acl-edge",
-        "title": "Delegated GenericAll on a tier-1 group",
-        "severity": "high",
-        "source": "demo",
-        "summary": "Fixture evidence only. No directory was contacted.",
-    },
-    {
-        "id": "demo-esc1",
-        "title": "Certificate template publishes an ESC1 signal",
-        "severity": "high",
-        "source": "demo",
-        "summary": "Offline demo finding for the guided catalog path.",
-    },
-    {
-        "id": "demo-kerberoastable",
-        "title": "Service account with an SPN and a weak-password hypothesis",
-        "severity": "medium",
-        "source": "demo",
-        "summary": "Seeded so the findings pane is not empty on first launch.",
-    },
+    {"id": "demo-acl-edge", "title": "Delegated GenericAll on a tier-1 group", "severity": "high", "source": "demo", "summary": "Fixture evidence only. No directory was contacted."},
+    {"id": "demo-esc1", "title": "Certificate template publishes an ESC1 signal", "severity": "high", "source": "demo", "summary": "Offline demo finding for the guided catalog path."},
+    {"id": "demo-kerberoastable", "title": "Service account with an SPN and a weak-password hypothesis", "severity": "medium", "source": "demo", "summary": "Seeded so the findings pane is not empty on first launch."},
 ]
 
 
@@ -41,6 +23,7 @@ def _path(settings: Settings, engagement_id: str):
 
 
 def list_engagements(settings: Settings) -> list[dict[str, Any]]:
+    settings.engagements_dir.mkdir(parents=True, exist_ok=True)
     items: list[dict[str, Any]] = []
     for path in sorted(settings.engagements_dir.glob("*.json")):
         try:
@@ -66,15 +49,7 @@ def save_engagement(settings: Settings, payload: dict[str, Any]) -> dict[str, An
     return payload
 
 
-def create_engagement(
-    settings: Settings,
-    *,
-    name: str,
-    domain: str = "",
-    dc: str = "",
-    notes: str = "",
-    demo: bool = False,
-) -> dict[str, Any]:
+def create_engagement(settings: Settings, *, name: str, domain: str = "", dc: str = "", notes: str = "", demo: bool = False) -> dict[str, Any]:
     engagement_id = ("demo-" if demo else "") + uuid4().hex[:10]
     payload = {
         "id": engagement_id,
@@ -89,6 +64,7 @@ def create_engagement(
         "vault": {"secrets": 0, "tickets": 0, "certificates": 0},
         "rollback": {"pending": 0},
         "target_contacted": False,
+        "guided_marked": ["demo", "findings"] if demo else [],
     }
     return save_engagement(settings, payload)
 
@@ -97,9 +73,15 @@ def ensure_demo(settings: Settings) -> dict[str, Any]:
     for item in list_engagements(settings):
         if item.get("mode") == "demo":
             return item
-    return create_engagement(
-        settings,
-        name="Offline demo",
-        notes="Fixture workspace. No domain controller is contacted.",
-        demo=True,
-    )
+    return create_engagement(settings, name="Offline demo", notes="Fixture workspace. No domain controller is contacted.", demo=True)
+
+
+def mark_guided(settings: Settings, engagement_id: str, step_id: str) -> dict[str, Any] | None:
+    item = get_engagement(settings, engagement_id)
+    if item is None:
+        return None
+    marked = list(item.get("guided_marked") or [])
+    if step_id not in marked:
+        marked.append(step_id)
+    item["guided_marked"] = marked
+    return save_engagement(settings, item)
