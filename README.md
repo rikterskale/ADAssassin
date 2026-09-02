@@ -50,10 +50,14 @@ python -m pytest                         # backend suite (or rely on CI)
 - Observe runs plus typed-confirm RED (capability id + ack/force)
 - Findings pane: severity groups, explain, remediation checklist, status
 - Vault metadata inventory with single-item TTL unmask + audit
+- Restart-safe vault interoperability through the engine's operator-supplied
+  `ADAF_SESSION_VAULT_KEY`
 - Rollback preview (offline) and typed-YES apply
 - Report Markdown/HTML export with closeout checklist
 - Glossary from the engine when present
 - Offline demo findings
+- Permanent server-side demo isolation, scoped approval-token support, local
+  capability readiness, and interrupted-job recovery
 
 ## Engine pin
 

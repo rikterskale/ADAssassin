@@ -59,4 +59,21 @@ describe("Catalog", () => {
     );
     expect(onViewGreen).toHaveBeenCalled();
   });
+
+  it("shows dependency readiness and withholds run links when blocked", async () => {
+    const cap = makeCapability({
+      runnable: false,
+      readiness: {
+        ready: false,
+        runner_available: true,
+        verification: "fixture-tested",
+        reason: "missing declared dependencies",
+        dependencies: [{ id: "certipy", available: false, detail: "Install adaf-attack[certipy]" }],
+      },
+    });
+    const { user } = renderWithRouter(<Catalog catalog={catalogOf(cap)} onViewGreen={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: new RegExp(cap.id, "i") }));
+    expect(screen.getByText(/missing declared dependencies/i)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /^run$/i })).not.toBeInTheDocument();
+  });
 });

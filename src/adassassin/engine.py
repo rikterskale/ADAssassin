@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import shutil
+from importlib import metadata, util
 from typing import Any
 
 from adassassin import ENGINE_COMMIT, ENGINE_PIN
@@ -13,6 +15,36 @@ def lane_for(risk: str, environment: str) -> str:
     if risk in {"destructive", "side_effect"}:
         return "red"
     return "yellow"
+
+
+def _tool_readiness(tool: str) -> dict[str, Any]:
+    normalized = tool.strip().lower()
+    if normalized == "impacket":
+        available = util.find_spec("impacket") is not None
+        return {
+            "id": tool,
+            "available": available,
+            "detail": "Python package installed" if available else "Install adaf-attack[kerberos]",
+        }
+    if normalized == "certipy":
+        installed = False
+        try:
+            metadata.version("certipy-ad")
+            installed = True
+        except metadata.PackageNotFoundError:
+            pass
+        available = installed and shutil.which("certipy") is not None
+        return {
+            "id": tool,
+            "available": available,
+            "detail": "certipy-ad and CLI available" if available else "Install adaf-attack[certipy]",
+        }
+    available = shutil.which(tool) is not None
+    return {
+        "id": tool,
+        "available": available,
+        "detail": "CLI available" if available else f"'{tool}' is not on PATH",
+    }
 
 
 def probe() -> dict[str, Any]:
@@ -47,6 +79,9 @@ def _cap_payload(cap: Any) -> dict[str, Any]:
     safety = cap.safety.as_dict() if cap.safety else {}
     risk = safety.get("risk", "observe")
     lane = lane_for(risk, cap.environment)
+    dependencies = [_tool_readiness(tool) for tool in cap.tools]
+    runner_available = cap.runner is not None
+    ready = runner_available and all(item["available"] for item in dependencies)
     return {
         "id": cap.id,
         "summary": cap.summary,
@@ -67,7 +102,22 @@ def _cap_payload(cap: Any) -> dict[str, Any]:
         "lane": lane,
         "safety": safety_summary(cap),
         "required_prompts": required_prompts(cap),
-        "runnable": (lane in {"green", "yellow"} and risk == "observe") or lane == "red",
+        "runnable": ready,
+        "readiness": {
+            "ready": ready,
+            "runner_available": runner_available,
+            "verification": cap.maturity,
+            "dependencies": dependencies,
+            "reason": (
+                "ready"
+                if ready
+                else (
+                    "engine runner unavailable"
+                    if not runner_available
+                    else "missing declared dependencies"
+                )
+            ),
+        },
         "requires_red_confirm": lane == "red" or risk in {"destructive", "side_effect"},
         "risk_label": (
             "side effect" if risk == "side_effect" else ("destructive" if risk == "destructive" else risk)

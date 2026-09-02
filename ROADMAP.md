@@ -10,7 +10,7 @@ every capability in `docs/CAPABILITY_CATALOG.md` from
 
 Repo: https://github.com/rikterskale/ADAssassin
 Current slice: **Phase 6 complete.**
-Package version at this writing: `0.7.0`.
+Package version at this writing: `0.8.0`.
 
 ---
 
@@ -370,7 +370,7 @@ committed bundle drifts from source.
 
 - Rewriting ADAF-ATTACK capabilities inside this repo
 - Shipping a remote multi-user SaaS
-- Binding `0.0.0.0` by default
+- Binding any non-loopback address (including `0.0.0.0`)
 - Embedding real customer credentials in git
 - A first-run “I have authorization” modal that blocks doctor/demo
 - Ranking or hiding catalog entries that the engine ships — lanes filter,
@@ -415,3 +415,8 @@ committed bundle drifts from source.
   status, vault unmask, rollback preview, report export, catalog/glossary/guided
   — plus backend readiness (health/doctor/catalog/SPA/traversal) and the RED
   typed-confirm safety gate. Runs entirely offline (no DC contact).
+- 2026-09-02 — Production hardening release `0.8.0`: permanent demo isolation,
+  restart-stable engine-compatible vault keys, scoped approval-token fields,
+  engagement-scoped jobs, interrupted-run reconciliation, capability-level
+  readiness, enforced loopback-only binding, and transactional engagement
+  updates. Added offline regression coverage for every boundary.

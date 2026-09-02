@@ -38,6 +38,10 @@ export function Connect({
       setError("Create or select an engagement first.");
       return;
     }
+    if (engagement.mode === "demo") {
+      setError("Offline demo engagements cannot contact a directory. Create a live-ready engagement first.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -77,6 +81,11 @@ export function Connect({
           ) : (
             <form className="form" onSubmit={submit}>
               <div className="muted mono">{engagement.name} · {engagement.id}</div>
+              {engagement.mode === "demo" && (
+                <div className="banner-error">
+                  This is an offline demo engagement. Create or select a live-ready engagement before connecting.
+                </div>
+              )}
               <input
                 placeholder="Domain (e.g. corp.local)"
                 value={domain}
@@ -109,7 +118,7 @@ export function Connect({
               />
               {error && <div className="banner-error">{error}</div>}
               <div className="actions">
-                <button className="btn primary" type="submit" disabled={busy}>
+                <button className="btn primary" type="submit" disabled={busy || engagement.mode === "demo"}>
                   {busy ? "Checking…" : "Run preflight"}
                 </button>
                 <Link className="btn ghost" to="/run">

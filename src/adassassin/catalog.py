@@ -135,7 +135,22 @@ def catalog_payload() -> dict[str, Any]:
             "count": len(live),
             "capabilities": live,
         }
-    return static_catalog()
+    static = static_catalog()
+    capabilities = [
+        {
+            **item,
+            "runnable": False,
+            "readiness": {
+                "ready": False,
+                "runner_available": False,
+                "verification": item.get("maturity"),
+                "dependencies": [],
+                "reason": "pinned engine is unavailable",
+            },
+        }
+        for item in static.get("capabilities", [])
+    ]
+    return {**static, "capabilities": capabilities, "count": len(capabilities)}
 
 
 def get_capability(capability_id: str) -> dict[str, Any] | None:

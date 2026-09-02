@@ -62,4 +62,12 @@ describe("Connect", () => {
     await user.click(screen.getByRole("button", { name: /run preflight/i }));
     expect(await screen.findByText(/dns resolution failed/i)).toBeInTheDocument();
   });
+
+  it("keeps demo engagements offline", () => {
+    renderWithRouter(
+      <Connect engagement={makeEngagement({ mode: "demo" })} onConnected={vi.fn()} onSeedDemo={vi.fn()} />,
+    );
+    expect(screen.getByText(/offline demo engagement/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /run preflight/i })).toBeDisabled();
+  });
 });

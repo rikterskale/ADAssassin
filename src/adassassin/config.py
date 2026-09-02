@@ -6,6 +6,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from adassassin import DEFAULT_HOST, DEFAULT_PORT
 
+LOOPBACK_HOSTS = {"127.0.0.1", "localhost"}
+
+
+def is_loopback_host(host: str) -> bool:
+    return (host or "").strip().lower() in LOOPBACK_HOSTS
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="ADASSASSIN_", extra="ignore")

@@ -32,6 +32,13 @@ export type Capability = {
   risk_label?: string;
   rollback_expectation?: string;
   safety?: { level: string; network: boolean; plain: string };
+  readiness?: {
+    ready: boolean;
+    runner_available: boolean;
+    verification?: string;
+    reason: string;
+    dependencies: { id: string; available: boolean; detail: string }[];
+  };
 };
 
 export type CatalogResponse = {
@@ -71,6 +78,7 @@ export type DoctorResponse = {
   summary: string;
   contacts_directory: boolean;
   checks: DoctorCheck[];
+  capability_readiness?: { total: number; ready: number; blocked: number };
 };
 
 export type GuideStep = {
@@ -174,6 +182,7 @@ export type ConnectState = {
 } | null;
 
 export type Job = {
+  engagement_id?: string;
   id: string;
   capability_id: string;
   lane?: string;
@@ -216,6 +225,8 @@ export type Engagement = {
     confirm?: string;
     options?: Record<string, unknown>;
     rollback?: string;
+    approval?: string;
+    scoped_approval_submitted?: boolean;
   }[];
   target_contacted: boolean;
   guided_marked?: string[];

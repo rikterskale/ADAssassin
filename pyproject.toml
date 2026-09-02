@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "adassassin"
-version = "0.7.0"
+version = "0.8.0"
 description = "Vendor-grade web console for authorized Active Directory red team operations"
 readme = "README.md"
 requires-python = ">=3.11,<3.15"

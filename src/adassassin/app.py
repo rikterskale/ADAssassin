@@ -7,11 +7,12 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from adassassin import ENGINE_COMMIT, ENGINE_PIN, __version__
 from adassassin.catalog import catalog_payload, get_capability
-from adassassin.config import Settings, get_settings
+from adassassin.config import Settings, get_settings, is_loopback_host
 from adassassin.doctor import run_doctor
 from adassassin.engagements import (
     create_engagement,
@@ -20,6 +21,7 @@ from adassassin.engagements import (
     get_job,
     list_engagements,
     mark_guided,
+    reconcile_interrupted_jobs,
 )
 from adassassin.engine import probe
 from adassassin.findings import (
@@ -82,6 +84,8 @@ class RunIn(BaseModel):
     force: bool = False
     confirm: str = ""
     actor: str = "operator"
+    approval_token: SecretStr | None = None
+    approval_engagement_id: str = Field(default="", max_length=120)
 
 
 class FindingStatusIn(BaseModel):
@@ -102,9 +106,16 @@ class RollbackApplyIn(BaseModel):
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
+    if not is_loopback_host(settings.host):
+        raise ValueError("ADAssassin refuses non-loopback bind settings")
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     settings.engagements_dir.mkdir(parents=True, exist_ok=True)
+    reconcile_interrupted_jobs(settings)
     app = FastAPI(title="ADAssassin", version=__version__, docs_url=None, redoc_url=None)
+    app.add_middleware(
+        TrustedHostMiddleware,
+        allowed_hosts=["127.0.0.1", "localhost", "testserver"],
+    )
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["http://127.0.0.1:5173", "http://localhost:5173"],
@@ -223,6 +234,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 force=body.force,
                 confirm=body.confirm,
                 actor=body.actor or "operator",
+                approval_token=(
+                    body.approval_token.get_secret_value() if body.approval_token else None
+                ),
+                approval_engagement_id=body.approval_engagement_id or None,
                 background=not settings.run_synchronous,
             )
         except LookupError as exc:
@@ -245,7 +260,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if get_engagement(settings, engagement_id) is None:
             raise HTTPException(status_code=404, detail="Engagement not found")
         # Prefer the live registry so an in-flight run reports fresh status/log.
-        job = get_live_job(job_id) or get_job(settings, engagement_id, job_id)
+        job = get_live_job(engagement_id, job_id) or get_job(settings, engagement_id, job_id)
         if job is None:
             raise HTTPException(status_code=404, detail="Job not found")
         return {"ok": True, "job": job}

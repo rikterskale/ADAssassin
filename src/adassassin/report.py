@@ -9,7 +9,7 @@ from uuid import uuid4
 
 from adassassin import ENGINE_COMMIT, ENGINE_PIN, __version__
 from adassassin.config import Settings
-from adassassin.engagements import get_engagement, save_engagement
+from adassassin.engagements import get_engagement, update_engagement
 from adassassin.findings import normalize_finding
 from adassassin.rollback import list_rollback
 from adassassin.vault import list_vault
@@ -405,8 +405,11 @@ def build_report(settings: Settings, engagement_id: str) -> dict[str, Any]:
         "finding_count": len(findings),
         "capabilities_run": len(capabilities),
     }
-    item["report"] = report_meta
-    saved = save_engagement(settings, item)
+    saved = update_engagement(
+        settings,
+        engagement_id,
+        lambda current: current.update({"report": report_meta}),
+    )
 
     return {
         "ok": True,

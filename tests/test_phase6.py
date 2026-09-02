@@ -57,4 +57,4 @@ def test_health_phase_six(tmp_path: Path) -> None:
     client = _client(tmp_path)
     health = client.get("/api/health").json()
     assert health["phase"] == "6"
-    assert health["version"].startswith("0.7")
+    assert health["version"].startswith("0.8")

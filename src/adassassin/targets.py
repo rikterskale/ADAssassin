@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from adassassin.config import Settings
-from adassassin.engagements import get_engagement, save_engagement
+from adassassin.engagements import get_engagement, update_engagement
 from adassassin.secrets import clear_bind_secret, put_bind_secret
 
 
@@ -72,6 +72,10 @@ def connect_engagement(
     item = get_engagement(settings, engagement_id)
     if item is None:
         raise LookupError("Engagement not found")
+    if item.get("mode") == "demo":
+        raise TargetError(
+            "Offline demo engagements cannot contact a directory. Create a live-ready engagement first."
+        )
 
     domain, dc = validate_target_fields(domain=domain, dc=dc)
     username = (username or "").strip()
@@ -85,35 +89,40 @@ def connect_engagement(
 
     preflight = run_preflight(domain=domain, dc=dc, timeout=timeout)
 
-    item["domain"] = domain
-    item["dc"] = dc
-    item["username"] = username
-    if preflight["target_contacted"]:
-        item["target_contacted"] = True
-    item["connect"] = {
-        "domain": domain,
-        "dc": dc,
-        "username": username,
-        "secret_ref": secret_ref,
-        "has_secret": bool(secret_ref),
-        "preflight_ok": bool(preflight["ok"]),
-        "preflight": {
-            "ok": preflight["ok"],
-            "ready": preflight["ready"],
-            "blocking_checks": preflight["blocking_checks"],
-            "advisory_checks": preflight["advisory_checks"],
-            "next_step": preflight["next_step"],
-            "checks": preflight["checks"],
-            "target_contacted": preflight["target_contacted"],
-        },
-    }
-    if preflight["ok"]:
-        marked = list(item.get("guided_marked") or [])
-        if "connect" not in marked:
-            marked.append("connect")
-        item["guided_marked"] = marked
+    def _apply(current: dict[str, Any]) -> None:
+        if current.get("mode") == "demo":
+            raise TargetError(
+                "Offline demo engagements cannot contact a directory. Create a live-ready engagement first."
+            )
+        current["domain"] = domain
+        current["dc"] = dc
+        current["username"] = username
+        if preflight["target_contacted"]:
+            current["target_contacted"] = True
+        current["connect"] = {
+            "domain": domain,
+            "dc": dc,
+            "username": username,
+            "secret_ref": secret_ref,
+            "has_secret": bool(secret_ref),
+            "preflight_ok": bool(preflight["ok"]),
+            "preflight": {
+                "ok": preflight["ok"],
+                "ready": preflight["ready"],
+                "blocking_checks": preflight["blocking_checks"],
+                "advisory_checks": preflight["advisory_checks"],
+                "next_step": preflight["next_step"],
+                "checks": preflight["checks"],
+                "target_contacted": preflight["target_contacted"],
+            },
+        }
+        if preflight["ok"]:
+            marked = list(current.get("guided_marked") or [])
+            if "connect" not in marked:
+                marked.append("connect")
+            current["guided_marked"] = marked
 
-    saved = save_engagement(settings, item)
+    saved = update_engagement(settings, engagement_id, _apply)
     return {"engagement": saved, "preflight": preflight}
 
 

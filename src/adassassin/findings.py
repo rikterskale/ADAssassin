@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from adassassin.config import Settings
-from adassassin.engagements import get_engagement, save_engagement
+from adassassin.engagements import get_engagement, update_engagement
 
 FINDING_STATUSES = ("open", "accepted", "fixed", "retest")
 SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4, "unknown": 5}
@@ -167,32 +167,41 @@ def _engine_explain(finding: dict[str, Any]) -> dict[str, Any]:
 
 def explain_finding(settings: Settings, engagement_id: str, finding_id: str) -> dict[str, Any]:
     """Wrap engine explain + remediation. Read-only; no directory writes."""
-    item = get_engagement(settings, engagement_id)
-    if item is None:
-        raise LookupError("Engagement not found")
+    result: dict[str, Any] = {}
 
-    findings = list(item.get("findings") or [])
-    index = next(
-        (i for i, raw in enumerate(findings) if isinstance(raw, dict) and raw.get("id") == finding_id),
-        None,
-    )
-    if index is None:
-        raise LookupError("Finding not found")
+    def _apply(item: dict[str, Any]) -> None:
+        findings = list(item.get("findings") or [])
+        index = next(
+            (
+                i
+                for i, raw in enumerate(findings)
+                if isinstance(raw, dict) and raw.get("id") == finding_id
+            ),
+            None,
+        )
+        if index is None:
+            raise LookupError("Finding not found")
+        normalized = normalize_finding(findings[index])
+        payload = _engine_explain(normalized)
+        findings[index] = {
+            **findings[index],
+            **{
+                k: v
+                for k, v in normalized.items()
+                if k not in {"explained", "remediation_checklist", "next_actions"}
+            },
+            "explained": payload["explain"],
+            "remediation_checklist": payload["remediation"],
+            "next_actions": payload["next_actions"],
+        }
+        item["findings"] = findings
+        result.update({"finding": findings[index], "payload": payload})
 
-    normalized = normalize_finding(findings[index])
-    payload = _engine_explain(normalized)
-    findings[index] = {
-        **findings[index],
-        **{k: v for k, v in normalized.items() if k not in {"explained", "remediation_checklist", "next_actions"}},
-        "explained": payload["explain"],
-        "remediation_checklist": payload["remediation"],
-        "next_actions": payload["next_actions"],
-    }
-    item["findings"] = findings
-    saved = save_engagement(settings, item)
+    saved = update_engagement(settings, engagement_id, _apply)
+    payload = result["payload"]
     return {
         "ok": True,
-        "finding": normalize_finding(findings[index]),
+        "finding": normalize_finding(result["finding"]),
         "explain": payload["explain"],
         "remediation": payload["remediation"],
         "next_actions": payload["next_actions"],
@@ -212,21 +221,31 @@ def set_finding_status(
         raise FindingError(
             f"Invalid status '{status}'. Allowed: {', '.join(FINDING_STATUSES)}"
         )
-    item = get_engagement(settings, engagement_id)
-    if item is None:
-        raise LookupError("Engagement not found")
-    findings = list(item.get("findings") or [])
-    index = next(
-        (i for i, raw in enumerate(findings) if isinstance(raw, dict) and raw.get("id") == finding_id),
-        None,
-    )
-    if index is None:
-        raise LookupError("Finding not found")
-    findings[index] = {
-        **findings[index],
-        "status": status,
-        "status_updated_at": _now(),
+    result: dict[str, Any] = {}
+
+    def _apply(item: dict[str, Any]) -> None:
+        findings = list(item.get("findings") or [])
+        index = next(
+            (
+                i
+                for i, raw in enumerate(findings)
+                if isinstance(raw, dict) and raw.get("id") == finding_id
+            ),
+            None,
+        )
+        if index is None:
+            raise LookupError("Finding not found")
+        findings[index] = {
+            **findings[index],
+            "status": status,
+            "status_updated_at": _now(),
+        }
+        item["findings"] = findings
+        result["finding"] = findings[index]
+
+    saved = update_engagement(settings, engagement_id, _apply)
+    return {
+        "ok": True,
+        "finding": normalize_finding(result["finding"]),
+        "engagement": saved,
     }
-    item["findings"] = findings
-    saved = save_engagement(settings, item)
-    return {"ok": True, "finding": normalize_finding(findings[index]), "engagement": saved}

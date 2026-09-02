@@ -55,4 +55,14 @@ describe("Rollback", () => {
       confirm: "YES",
     });
   });
+
+  it("makes demo rollback preview-only", async () => {
+    vi.mocked(api.rollback).mockResolvedValue(makeRollbackResponse());
+    const { user } = renderWithRouter(
+      <Rollback engagement={makeEngagement({ mode: "demo" })} onUpdated={vi.fn()} onSeedDemo={vi.fn()} />,
+    );
+    expect(await screen.findByText(/demo rollback is preview-only/i)).toBeInTheDocument();
+    await user.type(screen.getByPlaceholderText(/type yes/i), "YES");
+    expect(screen.getByRole("button", { name: /apply rollback/i })).toBeDisabled();
+  });
 });

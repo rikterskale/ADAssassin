@@ -8,7 +8,7 @@ test.describe("backend readiness", () => {
     expect(res.ok()).toBeTruthy();
     const body = await res.json();
     expect(body.product).toBe("adassassin");
-    expect(body.version).toMatch(/^0\.7\./);
+    expect(body.version).toMatch(/^0\.8\./);
     expect(body.engine.available).toBe(true);
     expect(body.catalog_count).toBeGreaterThanOrEqual(90);
     expect(body.bind).toMatch(/^127\.0\.0\.1:/);

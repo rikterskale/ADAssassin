@@ -8,7 +8,7 @@ from typing import Any
 
 from adassassin import ENGINE_COMMIT, ENGINE_PIN, __version__
 from adassassin.catalog import catalog_payload
-from adassassin.config import Settings
+from adassassin.config import Settings, is_loopback_host
 from adassassin.engine import probe
 
 WEBAPP = Path(__file__).resolve().parent / "webapp"
@@ -37,7 +37,12 @@ def run_doctor(settings: Settings) -> dict[str, Any]:
     py_ok = sys.version_info >= (3, 11)
     catalog_ok = catalog.get("count", 0) >= 90
     webapp_ok = (WEBAPP / "index.html").exists()
-    localhost = settings.host in {"127.0.0.1", "localhost", "::1"}
+    localhost = is_loopback_host(settings.host)
+    capabilities = list(catalog.get("capabilities") or [])
+    ready_capabilities = sum(
+        bool((item.get("readiness") or {}).get("ready")) for item in capabilities
+    )
+    blocked_capabilities = len(capabilities) - ready_capabilities
 
     checks = [
         _check("python", py_ok, f"Python {sys.version.split()[0]} (need 3.11+)"),
@@ -55,6 +60,13 @@ def run_doctor(settings: Settings) -> dict[str, Any]:
                 if engine["available"]
                 else f"not imported ({engine.get('error') or 'unavailable'}); catalog fallback active"
             ),
+            level="warn",
+        ),
+        _check(
+            "capability-readiness",
+            blocked_capabilities == 0,
+            f"{ready_capabilities}/{len(capabilities)} capabilities locally ready; "
+            f"{blocked_capabilities} blocked by engine or declared dependencies",
             level="warn",
         ),
         _check(
@@ -80,4 +92,9 @@ def run_doctor(settings: Settings) -> dict[str, Any]:
         "contacts_directory": False,
         "summary": "ready" if not failed and not warned else ("ready-with-warnings" if not failed else "blocked"),
         "checks": checks,
+        "capability_readiness": {
+            "total": len(capabilities),
+            "ready": ready_capabilities,
+            "blocked": blocked_capabilities,
+        },
     }

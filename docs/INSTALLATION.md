@@ -17,7 +17,7 @@ After install, use [OPERATOR_RUNBOOK.md](OPERATOR_RUNBOOK.md) for doctor → dem
 
 | Item | Value |
 | --- | --- |
-| Product | ADAssassin `0.7.0` |
+| Product | ADAssassin `0.8.0` |
 | Python | `>=3.11,<3.15` (3.11, 3.12, 3.13, or 3.14) |
 | Engine pin | `adaf-attack==0.10.1` @ `fdb60b90b910ba3dcbd582e2c72ce48189191214` |
 | Default bind | `127.0.0.1:8745` only |
@@ -319,7 +319,7 @@ python -m pytest -q
 
 Expect:
 
-- version `0.7.0`
+- version `0.8.0`
 - pin `0.10.1` and commit `fdb60b90...`
 - catalog count `92`
 - pytest all passed
@@ -710,7 +710,7 @@ Expect:
 | Field | Expected |
 | --- | --- |
 | `product` | `adassassin` |
-| `version` | `0.7.0` |
+| `version` | `0.8.0` |
 | `phase` | `6` |
 | `catalog_count` | `92` |
 | `engine_pin` | `0.10.1` |
@@ -984,16 +984,20 @@ adassassin --no-browser
 | Variable / flag | Meaning |
 | --- | --- |
 | `ADASSASSIN_DATA_DIR` | Override data root (default `~/.adassassin`) |
-| `ADASSASSIN_HOST` | Bind host (default `127.0.0.1`) |
+| `ADASSASSIN_HOST` | Loopback bind host only (default `127.0.0.1`) |
 | `ADASSASSIN_PORT` | Bind port (default `8745`) |
 | `ADASSASSIN_OPEN_BROWSER` | Open browser on start (`true`/`false`) |
-| `adassassin --host` | CLI bind host |
+| `ADAF_SESSION_VAULT_KEY` | Operator-supplied Fernet key for live engine vault evidence |
+| `adassassin --host` | Loopback bind host (`127.0.0.1` or `localhost`) |
 | `adassassin --port` | CLI bind port |
 | `adassassin --no-browser` | Do not open a browser |
 | `adassassin --version` | Print version |
 
-Do not bind `0.0.0.0` unless you have a separate access-control plan
-([SECURITY.md](../SECURITY.md)).
+Non-loopback binds such as `0.0.0.0` are refused. ADAssassin is not a remote
+or multi-user service. Before collecting or unmasking live vault material, load
+the approved engagement Fernet key into `ADAF_SESSION_VAULT_KEY`; use the same
+key after restart. Never paste that key into source, logs, reports, or support
+requests. See [SECURITY.md](../SECURITY.md).
 
 ---
 
@@ -1001,7 +1005,7 @@ Do not bind `0.0.0.0` unless you have a separate access-control plan
 
 You are done with installation when all of the following are true:
 
-1. Venv Python is 3.11–3.14 and `adassassin --version` prints `0.7.0`
+1. Venv Python is 3.11–3.14 and `adassassin --version` prints `0.8.0`
 2. `ENGINE_PIN` is `0.10.1` and commit starts with `fdb60b90`
 3. Catalog count is `92`
 4. `adassassin --no-browser` serves `/api/health` on `127.0.0.1`

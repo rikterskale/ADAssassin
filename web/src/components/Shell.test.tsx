@@ -49,8 +49,8 @@ describe("Shell", () => {
   });
 
   it("reports the product version, capability count, and bind address", () => {
-    renderShell(makeHealth({ version: "0.7.0", catalog_count: 92, bind: "127.0.0.1:8745" }));
-    expect(screen.getByText(/ADAssassin 0\.7\.0/)).toBeInTheDocument();
+    renderShell(makeHealth({ version: "0.8.0", catalog_count: 92, bind: "127.0.0.1:8745" }));
+    expect(screen.getByText(/ADAssassin 0\.8\.0/)).toBeInTheDocument();
     expect(screen.getByText(/92 capabilities/)).toBeInTheDocument();
     expect(screen.getByText("127.0.0.1:8745")).toBeInTheDocument();
   });

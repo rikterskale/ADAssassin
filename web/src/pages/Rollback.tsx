@@ -128,13 +128,22 @@ export function Rollback({
             <p className="muted">
               Apply contacts the authorized DC through the engine cleanup path. Type YES to confirm.
             </p>
+            {engagement?.mode === "demo" && (
+              <div className="banner-error">
+                Demo rollback is preview-only. It can never be applied to a directory.
+              </div>
+            )}
             <input
               placeholder="Type YES"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               autoComplete="off"
             />
-            <button className="btn primary" type="submit" disabled={busy || !engagement || confirm.trim() !== "YES"}>
+            <button
+              className="btn primary"
+              type="submit"
+              disabled={busy || !engagement || engagement.mode === "demo" || confirm.trim() !== "YES"}
+            >
               {busy ? "Working…" : "Apply rollback"}
             </button>
           </form>

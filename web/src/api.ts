@@ -79,6 +79,8 @@ export const api = {
       force?: boolean;
       confirm?: string;
       actor?: string;
+      approval_token?: string;
+      approval_engagement_id?: string;
     },
   ) =>
     request<RunResponse>(`/api/engagements/${engagementId}/run`, {

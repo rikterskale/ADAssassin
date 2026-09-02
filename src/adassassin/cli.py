@@ -8,7 +8,7 @@ import uvicorn
 
 from adassassin import DEFAULT_HOST, DEFAULT_PORT, __version__
 from adassassin.app import create_app
-from adassassin.config import get_settings
+from adassassin.config import get_settings, is_loopback_host
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -16,14 +16,23 @@ def main(argv: list[str] | None = None) -> int:
         prog="adassassin",
         description="ADAssassin web console for authorized AD assessments.",
     )
-    parser.add_argument("--host", default=DEFAULT_HOST, help="Bind address (default 127.0.0.1)")
+    parser.add_argument(
+        "--host",
+        default=None,
+        help="Loopback bind address only (default 127.0.0.1)",
+    )
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument("--no-browser", action="store_true")
     parser.add_argument("--version", action="version", version=f"adassassin {__version__}")
     args = parser.parse_args(argv)
 
     settings = get_settings()
-    settings.host = args.host
+    settings.host = args.host or settings.host or DEFAULT_HOST
+    if not is_loopback_host(settings.host):
+        parser.error(
+            "ADAssassin is a local single-operator console and refuses non-loopback binds. "
+            "Use 127.0.0.1 or localhost."
+        )
     settings.port = args.port
     settings.open_browser = not args.no_browser
 

@@ -61,6 +61,8 @@ Mark guided step **Check the console** when ready.
 2. Confirm three fixture findings appear under **Findings**.
 3. Open **Glossary** once.
 4. Demo and Doctor never contact a DC.
+5. The server rejects Connect, YELLOW/RED runs, and rollback application for a
+   demo engagement. Create a separate live-ready engagement before live work.
 
 ---
 
@@ -97,6 +99,9 @@ Destructive and side-effect capabilities are not one-click.
 3. Review rollback expectation before submit.
 4. Type the **capability id** exactly (for example `dcsync`).
 5. Submit. The console sends `ack` + `force` + that confirm string.
+   Capabilities marked `scoped_token` also require the approved scoped token
+   and its approval engagement ID; the token is sent to the engine but never
+   persisted by the console.
 6. Refusal text from the engine is shown verbatim on failure.
 7. Successful RED acks are recorded on the engagement (`red_ack_audit`) with
    secrets redacted.
@@ -108,7 +113,8 @@ There is no global “enable red” toggle.
 ## 7. Report and closeout
 
 1. Open **Vault** — metadata only until you unmask a single item (short TTL,
-   audited).
+   audited). Live vault evidence requires the same operator-supplied
+   `ADAF_SESSION_VAULT_KEY` used by the engine.
 2. Open **Rollback** — **Preview** never contacts a DC. **Apply** requires
    typed `YES` plus force/ack and a successful connect.
 3. Open **Report** → **Generate report**.

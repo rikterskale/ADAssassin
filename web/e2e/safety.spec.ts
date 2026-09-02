@@ -7,24 +7,36 @@ import { expect, test } from "@playwright/test";
 test("RED capabilities require typing the id to confirm before running", async ({ page, request }) => {
   const catalog = await (await request.get("/api/catalog")).json();
   const red = catalog.capabilities.find(
-    (c: { lane: string }) => c.lane === "red",
+    (c: { lane: string; runnable?: boolean; readiness?: { ready: boolean }; approval?: string }) =>
+      c.lane === "red"
+      && (c.readiness?.ready ?? c.runnable ?? false)
+      && c.approval !== "scoped_token",
   ) as { id: string } | undefined;
-  expect(red, "the pinned catalog should expose at least one RED capability").toBeTruthy();
+  expect(red, "the local engine should expose a ready RED capability").toBeTruthy();
   const id = red!.id;
 
-  // A current engagement is needed for the Run form; the offline demo provides one.
+  // Demo workspaces remain permanently offline, even when RED confirmation is exact.
   await page.goto("/");
   await page.getByRole("button", { name: /explore the offline demo/i }).click();
   await expect(page).toHaveURL(/\/findings$/);
+  await page.goto(`/run?capability=${encodeURIComponent(id)}`);
+  await expect(page.getByText(/this run is/i)).toBeVisible();
+  await expect(page.getByText(/offline demo engagements can run green capabilities only/i)).toBeVisible();
+  await page.getByPlaceholder(`Type ${id}`).fill(id);
+  await expect(page.locator('form button[type="submit"]')).toBeDisabled();
 
+  // Create an offline, live-ready workspace solely to exercise the UI gate.
+  // No connect or run request is submitted, so no directory can be contacted.
+  await page.goto("/engagements");
+  await page.getByPlaceholder("Name").fill("E2E confirmation gate");
+  await page.getByPlaceholder("Scope notes").fill("Offline UI safety-gate verification only.");
+  await page.getByRole("button", { name: /^create$/i }).click();
+  await expect(page.getByText(/e2e confirmation gate/i)).toBeVisible();
   await page.goto(`/run?capability=${encodeURIComponent(id)}`);
 
-  // RED warning + typed-confirm input are present.
-  await expect(page.getByText(/this run is/i)).toBeVisible();
+  // The run button stays disabled until the id is typed exactly.
   const confirm = page.getByPlaceholder(`Type ${id}`);
   await expect(confirm).toBeVisible();
-
-  // The run button stays disabled until the id is typed exactly.
   const submit = page.locator('form button[type="submit"]');
   await expect(submit).toBeDisabled();
   await confirm.fill(id);

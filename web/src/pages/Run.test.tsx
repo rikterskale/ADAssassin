@@ -99,6 +99,48 @@ describe("Run", () => {
     );
   });
 
+  it("requires and forwards scoped approval without displaying it in the job", async () => {
+    const scoped = makeRedCapability({ id: "password-spray", approval: "scoped_token" });
+    vi.mocked(api.capability).mockResolvedValue({ ok: true, capability: scoped });
+    vi.mocked(api.run).mockResolvedValue({
+      ok: true,
+      job_id: "job-scoped",
+      status: "completed",
+      findings: [],
+      job: completedJob({ id: "job-scoped", capability_id: "password-spray", red: true }),
+      engagement: makeEngagement(),
+    });
+    const { user } = renderWithRouter(
+      <Run engagement={makeEngagement()} catalog={[scoped]} onRan={vi.fn()} onSeedDemo={vi.fn()} />,
+      { route: "/run?capability=password-spray" },
+    );
+    await screen.findByText(/requires a scoped approval token/i);
+    const submit = screen.getByRole("button", { name: /run password-spray destructive/i });
+    await user.type(screen.getByPlaceholderText("Type password-spray"), "password-spray");
+    await user.type(screen.getByPlaceholderText(/scoped approval token/i), "token-fixture");
+    await user.type(screen.getByPlaceholderText(/approval engagement id/i), "approval-123");
+    expect(submit).toBeEnabled();
+    await user.click(submit);
+    await waitFor(() => expect(vi.mocked(api.run)).toHaveBeenCalledWith(
+      "eng-001",
+      expect.objectContaining({
+        approval_token: "token-fixture",
+        approval_engagement_id: "approval-123",
+      }),
+    ));
+  });
+
+  it("blocks target-interacting capabilities for demo engagements", async () => {
+    vi.mocked(api.capability).mockResolvedValue({ ok: true, capability: redCap });
+    const { user } = renderWithRouter(
+      <Run engagement={makeEngagement({ mode: "demo" })} catalog={[redCap]} onRan={vi.fn()} onSeedDemo={vi.fn()} />,
+      { route: "/run?capability=dcsync" },
+    );
+    expect(await screen.findByText(/offline demo engagements can run green capabilities only/i)).toBeInTheDocument();
+    await user.type(screen.getByPlaceholderText("Type dcsync"), "dcsync");
+    expect(screen.getByRole("button", { name: /run dcsync destructive/i })).toBeDisabled();
+  });
+
   it("polls a backgrounded run until it reaches a terminal state", async () => {
     vi.mocked(api.capability).mockResolvedValue({ ok: true, capability: observeCap });
     const onRan = vi.fn();

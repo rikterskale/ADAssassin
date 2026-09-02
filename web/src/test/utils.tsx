@@ -82,7 +82,7 @@ export function makeHealth(overrides: Partial<HealthResponse> = {}): HealthRespo
   return {
     ok: true,
     product: "adassassin",
-    version: "0.7.0",
+    version: "0.8.0",
     phase: "6",
     engine: {
       available: true,
@@ -104,7 +104,7 @@ export function makeHealth(overrides: Partial<HealthResponse> = {}): HealthRespo
 export function makeDoctor(overrides: Partial<DoctorResponse> = {}): DoctorResponse {
   return {
     ok: true,
-    version: "0.7.0",
+    version: "0.8.0",
     summary: "ready",
     contacts_directory: false,
     checks: [
@@ -168,7 +168,7 @@ export function makeEngagement(overrides: Partial<Engagement> = {}): Engagement 
     dc: "10.0.0.1",
     username: "operator",
     notes: "Scope: DA path only.",
-    mode: "demo",
+    mode: "live-ready",
     created_at: "2026-09-01T10:00:00Z",
     updated_at: "2026-09-01T10:05:00Z",
     findings: [makeFinding()],

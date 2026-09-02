@@ -65,11 +65,11 @@ def _publish_live(job: dict[str, Any]) -> None:
                     del _LIVE_JOBS[key]
 
 
-def get_live_job(job_id: str) -> dict[str, Any] | None:
+def get_live_job(engagement_id: str, job_id: str) -> dict[str, Any] | None:
     """Return a serialization-safe snapshot of a live/terminal job, or None."""
     with _LIVE_LOCK:
         job = _LIVE_JOBS.get(job_id)
-        if job is None:
+        if job is None or job.get("engagement_id") != engagement_id:
             return None
         snap = dict(job)
         snap["log"] = list(job.get("log") or [])
@@ -119,6 +119,13 @@ def assert_run_allowed(
     environment = str(entry.get("environment") or "unknown")
     lane = str(entry.get("lane") or lane_for(risk, environment))
     entry = {**entry, "lane": lane, "risk": risk}
+
+    if engagement.get("mode") == "demo" and lane != "green":
+        raise RunRefused(
+            "Offline demo engagements may run GREEN capabilities only. "
+            "Create a live-ready engagement for target-interacting work.",
+            status_code=403,
+        )
 
     if _is_red(entry):
         label = _risk_label(risk)
@@ -290,6 +297,8 @@ def _runner_kwargs(options: dict[str, Any]) -> dict[str, Any]:
         "ack",
         "force",
         "confirm",
+        "approval_token",
+        "approval_engagement_id",
     }
     kwargs: dict[str, Any] = {}
     for key, value in options.items():
@@ -302,7 +311,15 @@ def _runner_kwargs(options: dict[str, Any]) -> dict[str, Any]:
 def _redact_options(options: dict[str, Any]) -> dict[str, Any]:
     redacted: dict[str, Any] = {}
     for key, value in options.items():
-        if key.lower() in {"password", "hashes", "aes_key", "secret", "ticket"}:
+        if key.lower() in {
+            "password",
+            "hashes",
+            "aes_key",
+            "secret",
+            "ticket",
+            "approval_token",
+            "vault_key",
+        }:
             redacted[key] = "***"
         else:
             redacted[key] = value
@@ -318,6 +335,8 @@ def _run_worker(
     runner_kwargs: dict[str, Any],
     red: bool,
     ack: bool,
+    approval_token: str | None,
+    approval_engagement_id: str | None,
     entry: dict[str, Any],
     job: dict[str, Any],
     workspace,
@@ -341,6 +360,8 @@ def _run_worker(
             target,
             force=bool(red),
             acknowledged=bool(ack) if red else True,
+            approval_token=approval_token,
+            approval_engagement_id=approval_engagement_id,
             json_mode=True,
             include_secrets=False,
             workspace=workspace,
@@ -420,6 +441,8 @@ def execute_run(
     force: bool = False,
     confirm: str = "",
     actor: str = "operator",
+    approval_token: str | None = None,
+    approval_engagement_id: str | None = None,
     background: bool = True,
 ) -> dict[str, Any]:
     """Gate and start a capability run. RED requires ack + force + typed id.
@@ -442,12 +465,26 @@ def execute_run(
         confirm=confirm,
     )
     red = _is_red(entry)
+    readiness = entry.get("readiness") or {}
+    if not bool(readiness.get("ready", entry.get("runnable", False))):
+        raise RunRefused(
+            f"Capability '{capability_id}' is not locally ready: "
+            f"{readiness.get('reason') or 'engine runner or declared dependency unavailable'}.",
+            status_code=409,
+        )
+    scoped_approval = str(entry.get("approval") or "") == "scoped_token"
+    if scoped_approval and (not approval_token or not approval_engagement_id):
+        raise RunRefused(
+            f"Capability '{capability_id}' requires a scoped approval token and approval engagement ID.",
+            status_code=403,
+        )
     target = _target_for_run(item, options, entry)
     runner_kwargs = _runner_kwargs(options)
 
     job_id = uuid4().hex[:12]
     job: dict[str, Any] = {
         "id": job_id,
+        "engagement_id": engagement_id,
         "capability_id": capability_id,
         "lane": entry.get("lane"),
         "risk": entry.get("risk"),
@@ -486,6 +523,8 @@ def execute_run(
                     "confirm": capability_id,
                     "options": _redact_options(options),
                     "rollback": entry.get("rollback"),
+                    "approval": entry.get("approval"),
+                    "scoped_approval_submitted": scoped_approval,
                 }
             )
             item["red_ack_audit"] = audit[-100:]
@@ -503,6 +542,8 @@ def execute_run(
         "runner_kwargs": runner_kwargs,
         "red": red,
         "ack": ack,
+        "approval_token": approval_token,
+        "approval_engagement_id": approval_engagement_id,
         "entry": entry,
         "job": job,
         "workspace": workspace,
@@ -520,7 +561,7 @@ def execute_run(
 
     # Inline execution: run to completion, then return the persisted job.
     _run_worker(settings, engagement_id, **worker_kwargs)
-    final = get_live_job(job_id) or _job_snapshot(job)
+    final = get_live_job(engagement_id, job_id) or _job_snapshot(job)
     return {"job": final, "engagement": get_engagement(settings, engagement_id) or saved}
 
 

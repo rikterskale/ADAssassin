@@ -41,7 +41,7 @@ jobs:
       - name: Packaging smoke
         run: |
           python -m pip install .
-          python -c "from adassassin import __version__, ENGINE_PIN, ENGINE_COMMIT; assert __version__ == '0.7.0'; assert ENGINE_PIN == '0.10.1'"
+          python -c "from adassassin import __version__, ENGINE_PIN, ENGINE_COMMIT; assert __version__ == '0.8.0'; assert ENGINE_PIN == '0.10.1'"
           python -c "from adassassin.catalog import static_catalog; c=static_catalog(); assert c['count'] == 92"
           python -c "from adassassin.engine import probe; p=probe(); assert p['available'], p; assert p['version'] == '0.10.1', p; assert p['capability_count'] >= 90, p"
           adassassin --version

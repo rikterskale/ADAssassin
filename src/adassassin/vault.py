@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from threading import Lock
@@ -9,11 +10,10 @@ from typing import Any
 from uuid import uuid4
 
 from adassassin.config import Settings
-from adassassin.engagements import get_engagement, save_engagement
+from adassassin.engagements import get_engagement, update_engagement
 from adassassin.workspace import engagement_workspace, session_dirs
 
 _LOCK = Lock()
-_VAULT_KEYS: dict[str, str] = {}
 _UNMASKED: dict[str, dict[str, Any]] = {}  # key = engagement_id:name
 
 
@@ -29,31 +29,70 @@ def _iso(dt: datetime) -> str:
     return dt.replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
-def vault_key_for(engagement_id: str) -> str:
-    """Process-memory Fernet key for engagement vault secrets. Never written to disk JSON."""
-    with _LOCK:
-        existing = _VAULT_KEYS.get(engagement_id)
-        if existing:
-            return existing
-        from cryptography.fernet import Fernet
+def _demo_key(settings: Settings, engagement_id: str) -> str:
+    """Return a restart-stable key used only for synthetic demo material."""
+    from cryptography.fernet import Fernet
 
+    root = settings.data_dir / "demo-vault-keys"
+    root.mkdir(parents=True, exist_ok=True)
+    try:
+        root.chmod(0o700)
+    except OSError:
+        pass
+    path = root / f"{engagement_id}.key"
+    with _LOCK:
+        if path.is_file():
+            candidate = path.read_text(encoding="ascii").strip()
+            try:
+                Fernet(candidate.encode("ascii"))
+                return candidate
+            except (ValueError, TypeError):
+                # Demo evidence is synthetic. Replace a corrupt key so the
+                # normal demo migration path can safely recreate its fixtures.
+                pass
         key = Fernet.generate_key().decode("ascii")
-        _VAULT_KEYS[engagement_id] = key
+        path.write_text(key + "\n", encoding="ascii")
+        try:
+            path.chmod(0o600)
+        except OSError:
+            pass
         return key
 
 
-def _session_vault(session_root: Path, *, engagement_id: str):
+def _session_vault(
+    settings: Settings,
+    session_root: Path,
+    *,
+    engagement_id: str,
+    demo: bool = False,
+):
     from adaf_attack.core.vault import SessionVault
 
-    return SessionVault(session_root, key=vault_key_for(engagement_id))
+    # Live engine sessions use the engine's operator-supplied key. Never create
+    # an unrelated ephemeral key: it would make persisted evidence unreadable
+    # after restart and would not match secrets written by ADAF-ATTACK.
+    key = os.environ.get("ADAF_SESSION_VAULT_KEY")
+    if not key and demo:
+        key = _demo_key(settings, engagement_id)
+    return SessionVault(session_root, key=key)
 
 
 def ensure_demo_vault(settings: Settings, engagement_id: str) -> None:
     """Seed metadata-only / encrypted demo vault items for offline console demos."""
     workspace = engagement_workspace(settings, engagement_id)
-    vault = _session_vault(workspace, engagement_id=engagement_id)
+    vault = _session_vault(settings, workspace, engagement_id=engagement_id, demo=True)
     if vault.list():
-        return
+        try:
+            required = {"demo-cert-metadata", "demo-ticket", "demo-hash"}
+            if not all(vault.exists(name) for name in required):
+                raise VaultServiceError("Incomplete demo vault")
+            vault.get("demo-ticket")
+            vault.get("demo-hash")
+            return
+        except Exception:
+            # Demo material is synthetic and can be safely recreated when
+            # upgrading from the former process-memory key implementation.
+            vault.purge_all()
     vault.put(
         "demo-cert-metadata",
         "certificate",
@@ -77,12 +116,28 @@ def ensure_demo_vault(settings: Settings, engagement_id: str) -> None:
     )
 
 
-def _iter_vault_roots(settings: Settings, engagement_id: str) -> list[tuple[str, Any]]:
+def _iter_vault_roots(
+    settings: Settings, engagement_id: str, *, demo: bool = False
+) -> list[tuple[str, Any]]:
     roots: list[tuple[str, Any]] = []
     workspace = engagement_workspace(settings, engagement_id)
-    roots.append(("engagement", _session_vault(workspace, engagement_id=engagement_id)))
+    roots.append(
+        (
+            "engagement",
+            _session_vault(
+                settings, workspace, engagement_id=engagement_id, demo=demo
+            ),
+        )
+    )
     for session in session_dirs(settings, engagement_id):
-        roots.append((session.name, _session_vault(session, engagement_id=engagement_id)))
+        roots.append(
+            (
+                session.name,
+                _session_vault(
+                    settings, session, engagement_id=engagement_id, demo=demo
+                ),
+            )
+        )
     return roots
 
 
@@ -119,7 +174,9 @@ def list_vault(settings: Settings, engagement_id: str) -> dict[str, Any]:
 
     entries: list[dict[str, Any]] = []
     seen: set[str] = set()
-    for scope, vault in _iter_vault_roots(settings, engagement_id):
+    for scope, vault in _iter_vault_roots(
+        settings, engagement_id, demo=item.get("mode") == "demo"
+    ):
         try:
             for vault_item in vault.list():
                 key = f"{scope}:{vault_item.name}"
@@ -152,8 +209,11 @@ def list_vault(settings: Settings, engagement_id: str) -> dict[str, Any]:
 
     previous = item.get("vault") or {}
     if previous != counters:
-        item["vault"] = counters
-        save_engagement(settings, item)
+        item = update_engagement(
+            settings,
+            engagement_id,
+            lambda current: current.update({"vault": counters}),
+        )
 
     active = []
     with _LOCK:
@@ -194,11 +254,21 @@ def unmask_vault_item(
 
     vault = None
     if scope == "engagement":
-        vault = _session_vault(engagement_workspace(settings, engagement_id), engagement_id=engagement_id)
+        vault = _session_vault(
+            settings,
+            engagement_workspace(settings, engagement_id),
+            engagement_id=engagement_id,
+            demo=item.get("mode") == "demo",
+        )
     else:
         for session in session_dirs(settings, engagement_id):
             if session.name == scope:
-                vault = _session_vault(session, engagement_id=engagement_id)
+                vault = _session_vault(
+                    settings,
+                    session,
+                    engagement_id=engagement_id,
+                    demo=item.get("mode") == "demo",
+                )
                 break
     if vault is None:
         raise LookupError("Vault scope not found")
@@ -220,20 +290,22 @@ def unmask_vault_item(
             "expires_at": _iso(expires),
         }
 
-    audit = list(item.get("vault_audit") or [])
-    audit.append(
-        {
-            "id": uuid4().hex[:10],
-            "action": "unmask",
-            "name": name,
-            "scope": scope,
-            "ttl_seconds": ttl_seconds,
-            "at": _iso(_now()),
-            "expires_at": _iso(expires),
-        }
-    )
-    item["vault_audit"] = audit[-100:]
-    saved = save_engagement(settings, item)
+    def _audit(current: dict[str, Any]) -> None:
+        audit = list(current.get("vault_audit") or [])
+        audit.append(
+            {
+                "id": uuid4().hex[:10],
+                "action": "unmask",
+                "name": name,
+                "scope": scope,
+                "ttl_seconds": ttl_seconds,
+                "at": _iso(_now()),
+                "expires_at": _iso(expires),
+            }
+        )
+        current["vault_audit"] = audit[-100:]
+
+    saved = update_engagement(settings, engagement_id, _audit)
     # Refresh counters after audit save (may no-op if unchanged).
     listed = list_vault(settings, engagement_id)
     refreshed = get_engagement(settings, engagement_id) or saved

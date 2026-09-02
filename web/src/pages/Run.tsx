@@ -22,6 +22,8 @@ export function Run({
   const [capabilityId, setCapabilityId] = useState(initialId);
   const [options, setOptions] = useState<Record<string, string>>({});
   const [confirm, setConfirm] = useState("");
+  const [approvalToken, setApprovalToken] = useState("");
+  const [approvalEngagementId, setApprovalEngagementId] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [job, setJob] = useState<Job | null>(null);
@@ -58,6 +60,8 @@ export function Run({
         }
         setOptions((current) => ({ ...next, ...current }));
         setConfirm("");
+        setApprovalToken("");
+        setApprovalEngagementId("");
       }
     }).catch((err) => {
       if (!cancelled) setError(err instanceof Error ? err.message : String(err));
@@ -115,6 +119,8 @@ export function Run({
     setJob(null);
     setError(null);
     setConfirm("");
+    setApprovalToken("");
+    setApprovalEngagementId("");
     setPollId(null);
     setStartedAt(null);
     const copy = new URLSearchParams(params);
@@ -130,6 +136,8 @@ export function Run({
   );
   const riskLabel = detail?.risk_label
     || (detail?.risk === "side_effect" ? "side effect" : detail?.risk === "destructive" ? "destructive" : "observe");
+  const requiresScopedApproval = detail?.approval === "scoped_token";
+  const demoBlocked = engagement?.mode === "demo" && detail?.lane !== "green";
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -150,6 +158,8 @@ export function Run({
         force: isRed,
         confirm: isRed ? confirm.trim() : "",
         actor: "operator",
+        approval_token: requiresScopedApproval ? approvalToken : undefined,
+        approval_engagement_id: requiresScopedApproval ? approvalEngagementId.trim() : undefined,
       });
       setJob(result.job);
       if (result.job.status === "running") {
@@ -163,6 +173,7 @@ export function Run({
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
+      setApprovalToken("");
       setBusy(false);
     }
   }
@@ -178,7 +189,11 @@ export function Run({
     : pollId
       ? `Running… ${elapsed}s`
       : submitLabel;
-  const canSubmit = Boolean(capabilityId) && (!isRed || confirm.trim() === capabilityId);
+  const canSubmit = Boolean(capabilityId)
+    && !demoBlocked
+    && Boolean(detail?.readiness?.ready ?? detail?.runnable ?? true)
+    && (!isRed || confirm.trim() === capabilityId)
+    && (!requiresScopedApproval || Boolean(approvalToken && approvalEngagementId.trim()));
 
   return (
     <>
@@ -218,6 +233,19 @@ export function Run({
                   <RiskBadge lane={detail.lane} risk={detail.risk} /> {detail.plain ?? detail.summary}
                 </div>
               )}
+              {detail?.readiness && !detail.readiness.ready && (
+                <div className="banner-error">
+                  Not locally ready: {detail.readiness.reason}. {detail.readiness.dependencies
+                    .filter((dependency) => !dependency.available)
+                    .map((dependency) => dependency.detail)
+                    .join(" · ")}
+                </div>
+              )}
+              {demoBlocked && (
+                <div className="banner-error">
+                  Offline demo engagements can run GREEN capabilities only. Create a live-ready engagement first.
+                </div>
+              )}
               {prompts.map((prompt) => {
                 const key = prompt.is_param && prompt.param_key
                   ? prompt.param_key
@@ -248,6 +276,29 @@ export function Run({
                     required
                   />
                 </>
+              )}
+              {requiresScopedApproval && (
+                <div className="form">
+                  <div className="banner-error">
+                    This engine capability requires a scoped approval token bound to the approved engagement,
+                    target, capability, and parameters. The token is sent to the engine and is never persisted.
+                  </div>
+                  <input
+                    type="password"
+                    placeholder="Scoped approval token"
+                    value={approvalToken}
+                    onChange={(e) => setApprovalToken(e.target.value)}
+                    autoComplete="off"
+                    required
+                  />
+                  <input
+                    placeholder="Approval engagement ID"
+                    value={approvalEngagementId}
+                    onChange={(e) => setApprovalEngagementId(e.target.value)}
+                    autoComplete="off"
+                    required
+                  />
+                </div>
               )}
               {error && <div className="banner-error">{error}</div>}
               <div className="actions">

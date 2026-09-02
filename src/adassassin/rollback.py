@@ -7,7 +7,7 @@ from typing import Any
 from uuid import uuid4
 
 from adassassin.config import Settings
-from adassassin.engagements import get_engagement, save_engagement
+from adassassin.engagements import get_engagement, update_engagement
 from adassassin.secrets import resolve_bind_secret
 from adassassin.workspace import engagement_workspace, session_dirs
 
@@ -90,8 +90,11 @@ def list_rollback(settings: Settings, engagement_id: str) -> dict[str, Any]:
 
     previous = (item.get("rollback") or {}).get("pending")
     if previous != pending:
-        item["rollback"] = {"pending": pending}
-        item = save_engagement(settings, item)
+        item = update_engagement(
+            settings,
+            engagement_id,
+            lambda current: current.update({"rollback": {"pending": pending}}),
+        )
     return {
         "ok": True,
         "engagement_id": engagement_id,
@@ -146,6 +149,11 @@ def apply_rollback(
     item = get_engagement(settings, engagement_id)
     if item is None:
         raise LookupError("Engagement not found")
+    if item.get("mode") == "demo":
+        raise RollbackError(
+            "Offline demo rollback is preview-only and can never contact a directory. "
+            "Use a live-ready engagement for authorized cleanup."
+        )
 
     connect = item.get("connect") or {}
     domain = str(connect.get("domain") or item.get("domain") or "").strip()
@@ -188,21 +196,25 @@ def apply_rollback(
             }
         )
 
-    audit = list(item.get("rollback_audit") or [])
-    audit.append(
-        {
-            "id": uuid4().hex[:10],
-            "action": "apply",
-            "at": _now(),
-            "force": True,
-            "ack": True,
-            "confirm": CONFIRM_TOKEN,
-            "sessions": [row["session_id"] for row in results],
-        }
-    )
-    item["rollback_audit"] = audit[-100:]
-    item["target_contacted"] = True
-    save_engagement(settings, item)
+    def _record(current: dict[str, Any]) -> None:
+        if current.get("mode") == "demo":
+            raise RollbackError("Demo engagements cannot apply rollback.")
+        audit = list(current.get("rollback_audit") or [])
+        audit.append(
+            {
+                "id": uuid4().hex[:10],
+                "action": "apply",
+                "at": _now(),
+                "force": True,
+                "ack": True,
+                "confirm": CONFIRM_TOKEN,
+                "sessions": [row["session_id"] for row in results],
+            }
+        )
+        current["rollback_audit"] = audit[-100:]
+        current["target_contacted"] = True
+
+    update_engagement(settings, engagement_id, _record)
     refreshed = list_rollback(settings, engagement_id)
     return {
         "ok": True,

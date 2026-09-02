@@ -87,6 +87,16 @@ export function Catalog({ catalog, onViewGreen }: { catalog: CatalogResponse | n
                 approval {selected.approval} · rollback {selected.rollback_expectation || selected.rollback}<br />
                 tools {(selected.tools || []).join(", ") || "none"}
               </p>
+              {selected.readiness && (
+                <div className={selected.readiness.ready ? "finding" : "banner-error"}>
+                  Local readiness: {selected.readiness.ready ? "ready" : selected.readiness.reason}.
+                  {selected.readiness.dependencies.map((dependency) => (
+                    <div className="muted" key={dependency.id}>
+                      {dependency.id}: {dependency.available ? "available" : dependency.detail}
+                    </div>
+                  ))}
+                </div>
+              )}
               {(selected.required_prompts ?? []).length > 0 && (
                 <>
                   <h2>Required prompts</h2>
@@ -110,6 +120,9 @@ export function Catalog({ catalog, onViewGreen }: { catalog: CatalogResponse | n
                     {runLabel(selected)}
                   </Link>
                 </div>
+              )}
+              {!canRun && (
+                <p className="muted">Install the declared dependency or restore the pinned engine before running.</p>
               )}
             </>
           ) : (

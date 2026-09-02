@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from datetime import UTC, datetime
 from threading import RLock
 from typing import Any
@@ -98,6 +99,43 @@ def save_engagement(settings: Settings, payload: dict[str, Any]) -> dict[str, An
     return payload
 
 
+def update_engagement(
+    settings: Settings,
+    engagement_id: str,
+    mutator: Callable[[dict[str, Any]], None],
+) -> dict[str, Any]:
+    """Atomically read, mutate, and replace one engagement document."""
+    with _IO_LOCK:
+        item = get_engagement(settings, engagement_id)
+        if item is None:
+            raise LookupError("Engagement not found")
+        mutator(item)
+        return save_engagement(settings, item)
+
+
+def reconcile_interrupted_jobs(settings: Settings) -> int:
+    """Mark jobs abandoned by a previous process as interrupted.
+
+    Capability execution is intentionally in-process. A process restart cannot
+    resume the engine call, so persisted ``running`` records must become an
+    explicit terminal state instead of remaining stuck forever.
+    """
+    reconciled = 0
+    with _IO_LOCK:
+        for item in list_engagements(settings):
+            changed = False
+            for job in item.get("jobs") or []:
+                if isinstance(job, dict) and job.get("status") == "running":
+                    job["status"] = "interrupted"
+                    job["error"] = "Run interrupted by a console restart. Review target state before retrying."
+                    job["finished_at"] = _now()
+                    changed = True
+                    reconciled += 1
+            if changed:
+                save_engagement(settings, item)
+    return reconciled
+
+
 def create_engagement(settings: Settings, *, name: str, domain: str = "", dc: str = "", notes: str = "", demo: bool = False) -> dict[str, Any]:
     engagement_id = ("demo-" if demo else "") + uuid4().hex[:10]
     payload = {
@@ -132,14 +170,16 @@ def get_job(settings: Settings, engagement_id: str, job_id: str) -> dict[str, An
 
 
 def ensure_demo(settings: Settings) -> dict[str, Any]:
-    from adassassin.rollback import seed_demo_pending_cleanup
-    from adassassin.vault import ensure_demo_vault
+    from adassassin.rollback import list_rollback, seed_demo_pending_cleanup
+    from adassassin.vault import ensure_demo_vault, list_vault
 
     for item in list_engagements(settings):
         if item.get("mode") == "demo":
             ensure_demo_vault(settings, item["id"])
             seed_demo_pending_cleanup(settings, item["id"])
-            return item
+            list_vault(settings, item["id"])
+            list_rollback(settings, item["id"])
+            return get_engagement(settings, item["id"]) or item
     created = create_engagement(
         settings,
         name="Offline demo",
@@ -148,7 +188,9 @@ def ensure_demo(settings: Settings) -> dict[str, Any]:
     )
     ensure_demo_vault(settings, created["id"])
     seed_demo_pending_cleanup(settings, created["id"])
-    return created
+    list_vault(settings, created["id"])
+    list_rollback(settings, created["id"])
+    return get_engagement(settings, created["id"]) or created
 
 
 def mark_guided(settings: Settings, engagement_id: str, step_id: str) -> dict[str, Any] | None:
