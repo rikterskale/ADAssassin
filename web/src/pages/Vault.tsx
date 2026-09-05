@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
+import { CopyButton } from "../components/CopyButton";
 import { NoEngagement } from "../components/NoEngagement";
+import { useToast } from "../components/Toasts";
+import { formatWhen, secondsLeft } from "../format";
 import type { Engagement, VaultItem, VaultResponse } from "../types";
 
 export function Vault({
@@ -12,9 +15,11 @@ export function Vault({
   onUpdated: (engagement: Engagement) => void;
   onSeedDemo: () => void;
 }) {
+  const notify = useToast();
   const [vault, setVault] = useState<VaultResponse | null>(null);
   const [selected, setSelected] = useState<VaultItem | null>(null);
   const [revealed, setRevealed] = useState<{ name: string; value: unknown; expires_at: string } | null>(null);
+  const [remaining, setRemaining] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,6 +42,19 @@ export function Vault({
     return () => { cancelled = true; };
   }, [engagement?.id, engagement?.updated_at]);
 
+  useEffect(() => {
+    if (!revealed) {
+      setRemaining(0);
+      return;
+    }
+    function tick() {
+      setRemaining(secondsLeft(revealed!.expires_at));
+    }
+    tick();
+    const handle = window.setInterval(tick, 250);
+    return () => window.clearInterval(handle);
+  }, [revealed]);
+
   async function unmask() {
     if (!engagement || !selected) return;
     setBusy(true);
@@ -53,12 +71,15 @@ export function Vault({
       });
       onUpdated(result.engagement);
       setVault(await api.vault(engagement.id));
+      notify("Unmasked for 30 seconds. This is audited.");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(false);
     }
   }
+
+  const revealedText = revealed ? JSON.stringify(revealed.value, null, 2) : "";
 
   return (
     <>
@@ -89,16 +110,7 @@ export function Vault({
                   <button
                     key={`${item.scope}:${item.name}`}
                     type="button"
-                    className="finding"
-                    style={{
-                      display: "block",
-                      width: "100%",
-                      textAlign: "left",
-                      background: "transparent",
-                      borderLeft: selected?.name === item.name && selected.scope === item.scope ? "2px solid var(--gold)" : "2px solid transparent",
-                      paddingLeft: 10,
-                      cursor: "pointer",
-                    }}
+                    className={`finding${selected?.name === item.name && selected.scope === item.scope ? " selected" : ""}`}
                     onClick={() => { setSelected(item); setRevealed(null); }}
                   >
                     <div>
@@ -113,7 +125,7 @@ export function Vault({
             </>
           )}
         </div>
-        <div className="panel span-6">
+        <div className="panel span-6 sticky-side">
           <h2>Item</h2>
           {!selected ? (
             <div className="empty">Select a vault item.</div>
@@ -131,8 +143,14 @@ export function Vault({
               {revealed && revealed.name === selected.name && (
                 <>
                   <h2>Unmasked value</h2>
-                  <p className="muted">Expires {revealed.expires_at}</p>
-                  <pre className="log">{JSON.stringify(revealed.value, null, 2)}</pre>
+                  <p className="muted">
+                    Expires {revealed.expires_at}
+                    {remaining > 0 && <> · <span className="countdown">{remaining}s remaining</span></>}
+                  </p>
+                  <div className="actions">
+                    <CopyButton value={revealedText} label="Copy value" />
+                  </div>
+                  <pre className="log">{revealedText}</pre>
                 </>
               )}
               {(engagement?.vault_audit?.length ?? 0) > 0 && (
@@ -141,7 +159,7 @@ export function Vault({
                   {(engagement?.vault_audit ?? []).slice().reverse().slice(0, 8).map((row) => (
                     <div className="finding" key={row.id}>
                       <div className="mono">{row.action} · {row.name}</div>
-                      <div className="muted">{row.at} · ttl {row.ttl_seconds}s</div>
+                      <div className="muted">{formatWhen(row.at)} · ttl {row.ttl_seconds}s</div>
                     </div>
                   ))}
                 </>

@@ -221,17 +221,29 @@ def _markdown_report(
 
 def _html_report(markdown_like_title: str, item: dict[str, Any], body_sections: str) -> str:
     return (
-        "<!doctype html><html><head><meta charset='utf-8'>"
+        "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
+        "<meta name='viewport' content='width=device-width, initial-scale=1'>"
         f"<title>{_esc(markdown_like_title)}</title>"
         "<style>"
-        "body{font-family:IBM Plex Sans,Segoe UI,sans-serif;background:#090b0e;color:#efe6d2;margin:0}"
-        "main{max-width:960px;margin:auto;padding:32px}"
-        ".banner{border:1px solid rgba(224,178,90,.45);color:#e0b25a;padding:12px 14px;margin-bottom:20px;"
-        "letter-spacing:.04em;text-transform:uppercase;font-size:12px}"
-        "h1,h2,h3{font-weight:500} h2{color:#e0b25a;border-bottom:1px solid rgba(232,214,176,.12);padding-bottom:8px}"
-        ".meta{color:#8d8674} .card{border:1px solid rgba(232,214,176,.12);padding:12px 14px;margin:10px 0}"
+        "body{font-family:'IBM Plex Sans',Segoe UI,sans-serif;background:#090b0e;color:#efe6d2;"
+        "margin:0;line-height:1.5;-webkit-font-smoothing:antialiased}"
+        "main{max-width:960px;margin:auto;padding:40px 28px 64px}"
+        ".banner{border:1px solid rgba(224,178,90,.45);color:#e0b25a;padding:12px 14px;margin-bottom:24px;"
+        "letter-spacing:.06em;text-transform:uppercase;font-size:12px}"
+        "h1,h2,h3{font-weight:500;letter-spacing:-.02em} h1{font-size:28px;margin:0 0 8px}"
+        "h2{color:#e0b25a;border-bottom:1px solid rgba(232,214,176,.12);padding-bottom:8px;margin:28px 0 12px;"
+        "font-size:13px;letter-spacing:.16em;text-transform:uppercase}"
+        ".meta{color:#8d8674} .card{border:1px solid rgba(232,214,176,.12);padding:14px 16px;margin:10px 0;"
+        "background:#10141a}"
         "table{width:100%;border-collapse:collapse} th,td{border-bottom:1px solid rgba(232,214,176,.12);"
-        "padding:8px;text-align:left;vertical-align:top} .ok{color:#7ea36b} .open{color:#d45a32}"
+        "padding:8px;text-align:left;vertical-align:top} th{color:#8d8674;font-size:11px;letter-spacing:.08em;"
+        "text-transform:uppercase;font-weight:500}"
+        "code{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px}"
+        ".ok{color:#7ea36b} .open{color:#d45a32}"
+        ".sev-high{color:#d45a32} .sev-med{color:#d2a54a} .sev-low{color:#7ea36b}"
+        "@media print{body{background:#fff;color:#111} .banner{color:#111;border-color:#111}"
+        "h2{color:#111} .card{background:#fff} .ok{color:#0a6} .open,.sev-high{color:#a30}"
+        ".meta{color:#444}}"
         "</style></head><body><main>"
         f"<div class='banner'>{_esc(AUTHORIZED_BANNER)}</div>"
         f"<h1>{_esc(markdown_like_title)}</h1>"
@@ -285,9 +297,16 @@ def _html_body(
         parts.append("<p class='meta'>No findings attached.</p>")
     else:
         for finding in findings:
+            sev = str(finding.get("severity") or "info").lower()
+            sev_cls = (
+                "sev-high"
+                if sev in {"critical", "high"}
+                else "sev-med" if sev == "medium" else "sev-low"
+            )
             parts.append(
                 "<div class='card'>"
-                f"<h3>[{_esc(str(finding.get('severity') or 'info').upper())}] {_esc(finding.get('title'))}</h3>"
+                f"<h3><span class='{sev_cls}'>[{_esc(str(finding.get('severity') or 'info').upper())}]</span> "
+                f"{_esc(finding.get('title'))}</h3>"
                 f"<div class='meta'>{_esc(finding.get('id'))} · status {_esc(finding.get('status'))} · "
                 f"source {_esc(finding.get('source'))}</div>"
                 f"<p>{_esc(finding.get('summary'))}</p>"

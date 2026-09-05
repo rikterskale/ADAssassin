@@ -1,7 +1,9 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
+import { Field, SecretField } from "../components/Field";
 import { NoEngagement } from "../components/NoEngagement";
+import { useToast } from "../components/Toasts";
 import type { Engagement } from "../types";
 
 export function Connect({
@@ -13,6 +15,7 @@ export function Connect({
   onConnected: (engagement: Engagement) => void;
   onSeedDemo: () => void;
 }) {
+  const notify = useToast();
   const [domain, setDomain] = useState("");
   const [dc, setDc] = useState("");
   const [username, setUsername] = useState("");
@@ -56,6 +59,10 @@ export function Connect({
       setHashes("");
       setPreflight(result.preflight);
       onConnected(result.engagement);
+      notify(
+        result.preflight.ok ? "Preflight ready. Target checks completed." : "Preflight blocked. Review the checks before running.",
+        result.preflight.ok ? "ok" : "warn",
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -86,35 +93,45 @@ export function Connect({
                   This is an offline demo engagement. Create or select a live-ready engagement before connecting.
                 </div>
               )}
-              <input
-                placeholder="Domain (e.g. corp.local)"
-                value={domain}
-                onChange={(e) => setDomain(e.target.value)}
-                required
-              />
-              <input
-                placeholder="DC host or IP"
-                value={dc}
-                onChange={(e) => setDc(e.target.value)}
-                required
-              />
-              <input
-                placeholder="Username (optional)"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-              />
-              <input
-                type="password"
+              <Field label="Domain" hint="FQDN of the authorized forest or domain.">
+                <input
+                  placeholder="Domain (e.g. corp.local)"
+                  value={domain}
+                  onChange={(e) => setDomain(e.target.value)}
+                  required
+                  spellCheck={false}
+                />
+              </Field>
+              <Field label="Domain controller" hint="Hostname or IP of the authorized DC.">
+                <input
+                  placeholder="DC host or IP"
+                  value={dc}
+                  onChange={(e) => setDc(e.target.value)}
+                  required
+                  spellCheck={false}
+                />
+              </Field>
+              <Field label="Username" hint="Optional bind account. Stored on the engagement; the password is not.">
+                <input
+                  placeholder="Username (optional)"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  spellCheck={false}
+                />
+              </Field>
+              <SecretField
+                label="Password"
+                hint="Held in process memory only. Never written to disk."
                 placeholder="Password (optional, not saved to disk)"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="off"
+                onChange={setPassword}
               />
-              <input
+              <SecretField
+                label="NTLM hashes"
+                hint="LM:NT or NT. Held in process memory only."
                 placeholder="NTLM hashes LM:NT or NT (optional, not saved to disk)"
                 value={hashes}
-                onChange={(e) => setHashes(e.target.value)}
-                autoComplete="off"
+                onChange={setHashes}
               />
               {error && <div className="banner-error">{error}</div>}
               <div className="actions">
@@ -128,7 +145,7 @@ export function Connect({
             </form>
           )}
         </div>
-        <div className="panel span-6">
+        <div className="panel span-6 sticky-side">
           <h2>Preflight result</h2>
           {!preflight ? (
             <div className="empty">No preflight yet.</div>

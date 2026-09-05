@@ -1,4 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
+import { formatWhen } from "../format";
 import type { DoctorResponse, Engagement, GuideResponse, HealthResponse } from "../types";
 
 export function Overview({
@@ -16,6 +17,8 @@ export function Overview({
 }) {
   const navigate = useNavigate();
   const hasEngagement = Boolean(engagement);
+  const connected = Boolean(engagement?.connect?.preflight_ok);
+  const recentJobs = (engagement?.jobs ?? []).slice(-3).reverse();
 
   async function exploreDemo() {
     await onSeedDemo();
@@ -66,8 +69,46 @@ export function Overview({
               run observe work. Destructive steps require a typed confirmation.
             </li>
           </ol>
+          {hasEngagement && (
+            <>
+              <h2>Current workspace</h2>
+              <p>
+                <strong>{engagement!.name}</strong>
+                {" · "}
+                <span className={`badge ${engagement!.mode === "demo" ? "yellow" : connected ? "green" : ""}`}>
+                  {engagement!.mode}
+                </span>
+                {connected && <>{" "}<span className="badge green">connected</span></>}
+              </p>
+              <p className="muted">
+                {engagement!.domain || "No domain yet"}
+                {engagement!.dc ? ` · ${engagement!.dc}` : ""}
+                {engagement!.notes ? ` · ${engagement!.notes}` : ""}
+              </p>
+              {recentJobs.length > 0 && (
+                <>
+                  <h2>Recent runs</h2>
+                  {recentJobs.map((job) => (
+                    <div className="finding" key={job.id}>
+                      <div className="mono">{job.capability_id}</div>
+                      <div className="muted">
+                        <span className={`badge ${job.status === "completed" ? "green" : job.status === "running" ? "yellow" : "red"}`}>
+                          {job.status}
+                        </span>
+                        {" · "}
+                        {formatWhen(job.created_at)}
+                      </div>
+                    </div>
+                  ))}
+                  <div className="actions">
+                    <Link className="btn ghost" to="/run">Open run</Link>
+                  </div>
+                </>
+              )}
+            </>
+          )}
         </div>
-        <div className="panel span-4">
+        <div className="panel span-4 sticky-side">
           <h2>Console health</h2>
           <p className="muted">
             <span className={`badge ${doctor?.ok ? "green" : "yellow"}`}>{doctor?.summary ?? "…"}</span>{" "}
@@ -84,11 +125,14 @@ export function Overview({
           </div>
           <div style={{ marginTop: 14 }}>
             {(doctor?.checks ?? []).map((check) => (
-              <div className="finding" key={check.id}>
+              <div className="health-row" key={check.id}>
                 <span className={`badge ${check.status === "pass" ? "green" : check.status === "warn" ? "yellow" : "red"}`}>
                   {check.status}
-                </span>{" "}
-                {check.id}
+                </span>
+                <div>
+                  <div className="mono">{check.id}</div>
+                  <div className="muted">{check.detail}</div>
+                </div>
               </div>
             ))}
           </div>

@@ -82,7 +82,7 @@ export function makeHealth(overrides: Partial<HealthResponse> = {}): HealthRespo
   return {
     ok: true,
     product: "adassassin",
-    version: "0.8.0",
+    version: "1.0.0",
     phase: "6",
     engine: {
       available: true,
@@ -104,7 +104,7 @@ export function makeHealth(overrides: Partial<HealthResponse> = {}): HealthRespo
 export function makeDoctor(overrides: Partial<DoctorResponse> = {}): DoctorResponse {
   return {
     ok: true,
-    version: "0.8.0",
+    version: "1.0.0",
     summary: "ready",
     contacts_directory: false,
     checks: [

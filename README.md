@@ -9,8 +9,8 @@ a guided GUI.
 > Written authorization is required before any live target work.
 > Availability of this repository is not authorization.
 
-Current slice: **Phase 6** (report export + closeout). Roadmap phases 0–6 are
-complete for the initial console build.
+Current slice: **1.0.0** (production operator console). Roadmap phases 0–6 are
+complete; the GUI is the vendor-grade operator chrome on top of that.
 
 Build order and acceptance criteria: **[ROADMAP.md](ROADMAP.md)**.
 
@@ -41,7 +41,7 @@ cd web && npx playwright install chromium && npm run e2e   # user-journey E2E
 python -m pytest                         # backend suite (or rely on CI)
 ```
 
-## Phase 6 console
+## Console
 
 - Overview doctor checks (Python, catalog, engine, bind)
 - Guided checklist through connect, observe, and typed-confirm RED
@@ -58,6 +58,8 @@ python -m pytest                         # backend suite (or rely on CI)
 - Offline demo findings
 - Permanent server-side demo isolation, scoped approval-token support, local
   capability readiness, and interrupted-job recovery
+- Operator chrome: Ctrl+K command palette, sticky engagement switcher, labeled
+  forms, toasts, copy controls, finding/glossary search, and mobile navigation
 
 ## Engine pin
 

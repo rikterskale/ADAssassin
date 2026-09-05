@@ -1,4 +1,6 @@
 import { FormEvent, useState } from "react";
+import { Field } from "../components/Field";
+import { formatWhen } from "../format";
 import type { Engagement } from "../types";
 
 export function Engagements({
@@ -49,13 +51,21 @@ export function Engagements({
         <div className="panel span-6">
           <h2>New engagement</h2>
           <form className="form" onSubmit={submit}>
-            <input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
-            <input placeholder="Domain (optional)" value={domain} onChange={(e) => setDomain(e.target.value)} />
-            <input placeholder="DC host or IP (optional)" value={dc} onChange={(e) => setDc(e.target.value)} />
-            <textarea placeholder="Scope notes" rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} />
+            <Field label="Name">
+              <input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} required />
+            </Field>
+            <Field label="Domain" hint="Optional. You can fill this in later on Connect.">
+              <input placeholder="Domain (optional)" value={domain} onChange={(e) => setDomain(e.target.value)} spellCheck={false} />
+            </Field>
+            <Field label="Domain controller">
+              <input placeholder="DC host or IP (optional)" value={dc} onChange={(e) => setDc(e.target.value)} spellCheck={false} />
+            </Field>
+            <Field label="Scope notes" hint="Written authorization, in-scope OUs, and out-of-scope systems.">
+              <textarea placeholder="Scope notes" rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} />
+            </Field>
             <div className="actions">
               <button className="btn primary" type="submit" disabled={busy}>
-                Create
+                {busy ? "Creating…" : "Create"}
               </button>
               <button className="btn ghost" type="button" onClick={onDemo}>
                 Seed demo
@@ -71,21 +81,21 @@ export function Engagements({
             items.map((item) => (
               <button
                 key={item.id}
-                className="finding"
-                style={{
-                  display: "block",
-                  width: "100%",
-                  textAlign: "left",
-                  background: "transparent",
-                  borderLeft: currentId === item.id ? "2px solid var(--gold)" : "2px solid transparent",
-                  paddingLeft: 10,
-                }}
+                className={`finding${currentId === item.id ? " selected" : ""}`}
                 type="button"
                 onClick={() => onSelect(item.id)}
               >
                 <div>{item.name}</div>
                 <div className="muted mono">
                   {item.id} · {item.mode}
+                </div>
+                <div className="muted">
+                  {item.findings.length} findings
+                  {" · "}
+                  {item.domain || "no domain"}
+                  {item.dc ? ` · ${item.dc}` : ""}
+                  {" · "}
+                  {formatWhen(item.updated_at)}
                 </div>
               </button>
             ))

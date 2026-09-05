@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { api } from "./api";
 import { Shell } from "./components/Shell";
+import { ToastProvider, useToast } from "./components/Toasts";
 import { Catalog } from "./pages/Catalog";
 import { Connect } from "./pages/Connect";
 import { Engagements } from "./pages/Engagements";
@@ -13,9 +14,19 @@ import { Report } from "./pages/Report";
 import { Rollback } from "./pages/Rollback";
 import { Run } from "./pages/Run";
 import { Vault } from "./pages/Vault";
+import { readCurrentEngagement, writeCurrentEngagement } from "./storage";
 import type { CatalogResponse, DoctorResponse, Engagement, GuideResponse, HealthResponse } from "./types";
 
 export default function App() {
+  return (
+    <ToastProvider>
+      <Console />
+    </ToastProvider>
+  );
+}
+
+function Console() {
+  const notify = useToast();
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [doctor, setDoctor] = useState<DoctorResponse | null>(null);
   const [guide, setGuide] = useState<GuideResponse | null>(null);
@@ -33,7 +44,13 @@ export default function App() {
       ]);
       setHealth(nextHealth); setDoctor(nextDoctor); setGuide(nextGuide); setCatalog(nextCatalog);
       setEngagements(nextEngagements.engagements);
-      setCurrentId((current) => current ?? nextEngagements.engagements[0]?.id ?? null);
+      setCurrentId((current) => {
+        const ids = new Set(nextEngagements.engagements.map((item) => item.id));
+        if (current && ids.has(current)) return current;
+        const stored = readCurrentEngagement();
+        if (stored && ids.has(stored)) return stored;
+        return nextEngagements.engagements[0]?.id ?? null;
+      });
       setError(null);
       setLoaded(true);
     } catch (err) {
@@ -45,11 +62,23 @@ export default function App() {
 
   useEffect(() => { void refresh(); }, [refresh]);
 
+  useEffect(() => {
+    if (currentId) writeCurrentEngagement(currentId);
+  }, [currentId]);
+
   // Zero-friction start: if nothing exists yet, seed the offline demo once so no page is empty.
   useEffect(() => {
     if (loaded && !autoSeededRef.current && engagements.length === 0) {
       autoSeededRef.current = true;
-      void seedDemo();
+      void (async () => {
+        try {
+          const created = await api.demoEngagement();
+          upsertEngagement(created.engagement);
+          await refresh();
+        } catch (err) {
+          setError(err instanceof Error ? err.message : String(err));
+        }
+      })();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded, engagements.length]);
@@ -67,6 +96,7 @@ export default function App() {
   async function createEngagement(body: { name: string; domain: string; dc: string; notes: string }) {
     const created = await api.createEngagement(body);
     upsertEngagement(created.engagement);
+    notify(`Engagement “${created.engagement.name}” ready`);
     await refresh();
   }
 
@@ -74,6 +104,7 @@ export default function App() {
     try {
       const created = await api.demoEngagement();
       upsertEngagement(created.engagement);
+      notify("Offline demo ready. No directory was contacted.");
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -104,7 +135,17 @@ export default function App() {
 
   return (
     <Routes>
-      <Route element={<Shell health={health} />}>
+      <Route
+        element={(
+          <Shell
+            health={health}
+            engagements={engagements}
+            current={current}
+            onSelectEngagement={setCurrentId}
+            catalog={catalog?.capabilities ?? []}
+          />
+        )}
+      >
         <Route path="/" element={<Overview health={health} doctor={doctor} guide={guide} engagement={current} onSeedDemo={seedDemo} />} />
         <Route path="/guided" element={<Guided guide={guide} engagement={current} onDemo={() => void seedDemo()} onMark={(id) => void mark(id)} />} />
         <Route path="/catalog" element={<Catalog catalog={catalog} onViewGreen={() => void mark("green-catalog")} />} />
@@ -128,6 +169,7 @@ function Splash() {
       <div className="splash-mark">AD</div>
       <div className="brand-name">Assassin</div>
       <div className="muted">Starting console…</div>
+      <div className="splash-bar" aria-hidden="true"><i /></div>
     </div>
   );
 }

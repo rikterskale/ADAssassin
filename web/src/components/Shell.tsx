@@ -1,55 +1,51 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
-import type { HealthResponse } from "../types";
+import { NAV_GROUPS } from "../nav";
+import type { Capability, Engagement, HealthResponse } from "../types";
+import { CommandPalette } from "./CommandPalette";
 
-type NavItem = { to: string; label: string; hint: string };
-type NavGroup = { heading: string; items: NavItem[] };
-
-const groups: NavGroup[] = [
-  {
-    heading: "Start",
-    items: [
-      { to: "/", label: "Overview", hint: "Home" },
-      { to: "/guided", label: "Guided", hint: "Step by step" },
-    ],
-  },
-  {
-    heading: "Assess",
-    items: [
-      { to: "/engagements", label: "Engagements", hint: "Workspaces" },
-      { to: "/connect", label: "Connect", hint: "Target preflight" },
-      { to: "/run", label: "Run", hint: "Run a capability" },
-      { to: "/findings", label: "Findings", hint: "Results" },
-    ],
-  },
-  {
-    heading: "Reference",
-    items: [
-      { to: "/catalog", label: "Catalog", hint: "All capabilities" },
-      { to: "/glossary", label: "Glossary", hint: "Plain-English terms" },
-    ],
-  },
-  {
-    heading: "Advanced",
-    items: [
-      { to: "/vault", label: "Vault", hint: "Captured secrets" },
-      { to: "/rollback", label: "Rollback", hint: "Undo changes" },
-      { to: "/report", label: "Report", hint: "Export & closeout" },
-    ],
-  },
-];
-
-export function Shell({ health }: { health: HealthResponse | null }) {
+export function Shell({
+  health,
+  engagements = [],
+  current = null,
+  onSelectEngagement = () => {},
+  catalog = [],
+}: {
+  health: HealthResponse | null;
+  engagements?: Engagement[];
+  current?: Engagement | null;
+  onSelectEngagement?: (id: string) => void;
+  catalog?: Capability[];
+}) {
   const location = useLocation();
+  const [navOpen, setNavOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
   useEffect(() => {
-    const active = groups.flatMap((group) => group.items).find((item) => item.to === location.pathname);
+    const active = NAV_GROUPS.flatMap((group) => group.items).find((item) => item.to === location.pathname);
     document.title = active && active.to !== "/" ? `${active.label} · ADAssassin` : "ADAssassin";
+    setNavOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setPaletteOpen((open) => !open);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const engineOk = health?.engine.available;
   return (
     <div className="shell">
-      <aside className="rail">
+      <a className="skip-link" href="#main-content">Skip to content</a>
+      {navOpen && (
+        <button className="rail-overlay" type="button" aria-label="Close navigation" onClick={() => setNavOpen(false)} />
+      )}
+      <aside className={`rail${navOpen ? " open" : ""}`}>
         <div className="brand">
           <div className="mark">AD</div>
           <div>
@@ -57,8 +53,8 @@ export function Shell({ health }: { health: HealthResponse | null }) {
             <div className="brand-sub">Operator console</div>
           </div>
         </div>
-        <nav>
-          {groups.map((group) => (
+        <nav aria-label="Console sections">
+          {NAV_GROUPS.map((group) => (
             <div className="nav-group" key={group.heading}>
               <div className="nav-heading">{group.heading}</div>
               {group.items.map((item) => (
@@ -74,20 +70,64 @@ export function Shell({ health }: { health: HealthResponse | null }) {
           Local console. Authorized internal use only.
           <br />
           Phase {health?.phase ?? "6"} · engine pin {health?.engine_pin ?? "0.10.1"}
+          <br />
+          Press Ctrl+K to jump anywhere.
         </div>
       </aside>
       <section className="main">
         <header className="topbar">
-          <div className="banner">Authorized use only · written scope required for live work</div>
-          <div className="status-pills">
-            <span className="pill">ADAssassin {health?.version ?? "…"}</span>
-            <span className={`pill ${engineOk ? "ok" : "warn"}`}>engine {engineOk ? "live" : "catalog fallback"}</span>
-            <span className="pill">{health?.catalog_count ?? 0} capabilities</span>
-            <span className="pill">{health?.bind ?? "127.0.0.1"}</span>
+          <div className="topbar-left">
+            <button
+              className="btn ghost menu-btn"
+              type="button"
+              aria-label="Open navigation"
+              aria-expanded={navOpen}
+              onClick={() => setNavOpen((open) => !open)}
+            >
+              Menu
+            </button>
+            <div className="banner">Authorized use only · written scope required for live work</div>
+          </div>
+          <div className="topbar-right">
+            {engagements.length > 0 && (
+              <select
+                className="engagement-select"
+                aria-label="Current engagement"
+                value={current?.id ?? ""}
+                onChange={(event) => onSelectEngagement(event.target.value)}
+              >
+                {engagements.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name} · {item.mode}
+                  </option>
+                ))}
+              </select>
+            )}
+            <button
+              className="btn ghost palette-trigger"
+              type="button"
+              aria-label="Open command palette"
+              onClick={() => setPaletteOpen(true)}
+            >
+              Jump <span className="kbd">Ctrl K</span>
+            </button>
+            <div className="status-pills">
+              <span className="pill">ADAssassin {health?.version ?? "…"}</span>
+              <span className={`pill ${engineOk ? "ok" : "warn"}`}>engine {engineOk ? "live" : "catalog fallback"}</span>
+              <span className="pill">{health?.catalog_count ?? 0} capabilities</span>
+              <span className="pill">{health?.bind ?? "127.0.0.1"}</span>
+            </div>
           </div>
         </header>
-        <div className="content"><Outlet /></div>
+        <div className="content" id="main-content" tabIndex={-1}><Outlet /></div>
       </section>
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        catalog={catalog}
+        engagements={engagements}
+        onSelectEngagement={onSelectEngagement}
+      />
     </div>
   );
 }

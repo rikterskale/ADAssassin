@@ -2,8 +2,11 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { CapabilityPicker } from "../components/CapabilityPicker";
+import { Field, SecretField } from "../components/Field";
 import { NoEngagement } from "../components/NoEngagement";
 import { RiskBadge } from "../components/RiskBadge";
+import { useToast } from "../components/Toasts";
+import { formatWhen } from "../format";
 import type { Capability, Engagement, Job, Lane } from "../types";
 
 export function Run({
@@ -17,6 +20,7 @@ export function Run({
   onRan: (engagement: Engagement) => void;
   onSeedDemo: () => void;
 }) {
+  const notify = useToast();
   const [params, setParams] = useSearchParams();
   const initialId = params.get("capability") ?? "";
   const [capabilityId, setCapabilityId] = useState(initialId);
@@ -30,7 +34,6 @@ export function Run({
   const [detail, setDetail] = useState<Capability | null>(null);
   const [query, setQuery] = useState("");
   const [lane, setLane] = useState<Lane | "all">("all");
-  // Id of a run being polled for live progress, plus a running-elapsed counter.
   const [pollId, setPollId] = useState<string | null>(null);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
@@ -38,6 +41,10 @@ export function Run({
   const runnable = useMemo(
     () => catalog.filter((item) => item.runnable ?? true),
     [catalog],
+  );
+  const recentJobs = useMemo(
+    () => [...(engagement?.jobs ?? [])].reverse().slice(0, 8),
+    [engagement?.jobs],
   );
 
   useEffect(() => {
@@ -70,9 +77,6 @@ export function Run({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [capabilityId, engagement?.domain, engagement?.dc]);
 
-  // Poll a backgrounded run until it reaches a terminal state, streaming the
-  // job log as it grows. On completion, refresh the engagement so findings and
-  // counts update elsewhere in the console.
   useEffect(() => {
     if (!pollId || !engagement) return;
     let cancelled = false;
@@ -84,6 +88,8 @@ export function Run({
         setJob(res.job);
         if (res.job.status !== "running") {
           setPollId(null);
+          if (res.job.status === "completed") notify(`Run complete: ${res.job.capability_id}`);
+          if (res.job.status === "failed") notify(`Run failed: ${res.job.capability_id}`, "bad");
           try {
             const fresh = await api.engagement(engagementId);
             onRan(fresh.engagement);
@@ -104,7 +110,6 @@ export function Run({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pollId, engagement?.id]);
 
-  // Tick the elapsed-seconds readout while a run is in flight.
   useEffect(() => {
     if (!pollId || startedAt == null) return;
     const handle = window.setInterval(
@@ -163,12 +168,13 @@ export function Run({
       });
       setJob(result.job);
       if (result.job.status === "running") {
-        // Hand off to the polling effect; the run continues on the server.
         setStartedAt(Date.now());
         setElapsed(0);
         setPollId(result.job.id);
       } else {
         onRan(result.engagement);
+        if (result.job.status === "completed") notify(`Run complete: ${result.job.capability_id}`);
+        if (result.job.status === "failed") notify(`Run failed: ${result.job.capability_id}`, "bad");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -251,14 +257,13 @@ export function Run({
                   ? prompt.param_key
                   : prompt.option.replace(/^--/, "").replace(/-/g, "_");
                 return (
-                  <label key={prompt.option} className="form">
-                    <span className="muted">{prompt.label}</span>
+                  <Field key={prompt.option} label={prompt.label} hint={prompt.help}>
                     <input
                       value={options[key] ?? ""}
                       onChange={(e) => setOptions((current) => ({ ...current, [key]: e.target.value }))}
                       placeholder={prompt.help}
                     />
-                  </label>
+                  </Field>
                 );
               })}
               {isRed && (
@@ -268,13 +273,16 @@ export function Run({
                     <span className="mono">{detail?.rollback_expectation || detail?.rollback || "none"}</span>.
                     Type the capability id to confirm.
                   </div>
-                  <input
-                    placeholder={`Type ${capabilityId}`}
-                    value={confirm}
-                    onChange={(e) => setConfirm(e.target.value)}
-                    autoComplete="off"
-                    required
-                  />
+                  <Field label="Typed confirmation">
+                    <input
+                      placeholder={`Type ${capabilityId}`}
+                      value={confirm}
+                      onChange={(e) => setConfirm(e.target.value)}
+                      autoComplete="off"
+                      required
+                      spellCheck={false}
+                    />
+                  </Field>
                 </>
               )}
               {requiresScopedApproval && (
@@ -283,33 +291,39 @@ export function Run({
                     This engine capability requires a scoped approval token bound to the approved engagement,
                     target, capability, and parameters. The token is sent to the engine and is never persisted.
                   </div>
-                  <input
-                    type="password"
+                  <SecretField
+                    label="Scoped approval token"
                     placeholder="Scoped approval token"
                     value={approvalToken}
-                    onChange={(e) => setApprovalToken(e.target.value)}
-                    autoComplete="off"
+                    onChange={setApprovalToken}
                     required
                   />
-                  <input
-                    placeholder="Approval engagement ID"
-                    value={approvalEngagementId}
-                    onChange={(e) => setApprovalEngagementId(e.target.value)}
-                    autoComplete="off"
-                    required
-                  />
+                  <Field label="Approval engagement ID">
+                    <input
+                      placeholder="Approval engagement ID"
+                      value={approvalEngagementId}
+                      onChange={(e) => setApprovalEngagementId(e.target.value)}
+                      autoComplete="off"
+                      required
+                      spellCheck={false}
+                    />
+                  </Field>
                 </div>
               )}
               {error && <div className="banner-error">{error}</div>}
               <div className="actions">
-                <button className="btn primary" type="submit" disabled={running || !canSubmit}>
+                <button
+                  className={`btn primary${isRed ? " danger" : ""}`}
+                  type="submit"
+                  disabled={running || !canSubmit}
+                >
                   {buttonLabel}
                 </button>
               </div>
             </form>
           )}
         </div>
-        <div className="panel span-6">
+        <div className="panel span-6 sticky-side">
           <h2>Job log</h2>
           {!job ? (
             <div className="empty">No job yet. Recent jobs also appear on the engagement.</div>
@@ -356,6 +370,28 @@ export function Run({
                   ))}
                 </>
               )}
+            </>
+          )}
+          {recentJobs.length > 0 && (
+            <>
+              <h2>Recent jobs</h2>
+              {recentJobs.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`finding${job?.id === item.id ? " selected" : ""}`}
+                  onClick={() => setJob(item)}
+                >
+                  <div className="mono">{item.capability_id}</div>
+                  <div className="muted">
+                    <span className={`badge ${item.status === "completed" ? "green" : item.status === "running" ? "yellow" : "red"}`}>
+                      {item.status}
+                    </span>
+                    {" · "}
+                    {formatWhen(item.created_at)}
+                  </div>
+                </button>
+              ))}
             </>
           )}
         </div>

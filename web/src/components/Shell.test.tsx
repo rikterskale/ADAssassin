@@ -1,7 +1,7 @@
 import { screen } from "@testing-library/react";
 import { Route, Routes } from "react-router-dom";
 import { Shell } from "./Shell";
-import { makeHealth, renderWithRouter } from "../test/utils";
+import { makeEngagement, makeHealth, renderWithRouter } from "../test/utils";
 
 function renderShell(health = makeHealth(), route = "/") {
   return renderWithRouter(
@@ -63,5 +63,40 @@ describe("Shell", () => {
   it("sets a section-scoped document title on inner routes", () => {
     renderShell(makeHealth(), "/catalog");
     expect(document.title).toBe("Catalog · ADAssassin");
+  });
+
+  it("exposes a skip-to-content link", () => {
+    renderShell();
+    expect(screen.getByRole("link", { name: /skip to content/i })).toHaveAttribute("href", "#main-content");
+  });
+
+  it("opens the command palette from the jump control", async () => {
+    const { user } = renderShell();
+    await user.click(screen.getByRole("button", { name: /open command palette/i }));
+    expect(screen.getByRole("dialog", { name: /jump to/i })).toBeInTheDocument();
+  });
+
+  it("lets the operator switch the current engagement from the topbar", async () => {
+    const onSelect = vi.fn();
+    const current = makeEngagement();
+    const other = makeEngagement({ id: "eng-002", name: "Other lab" });
+    const { user } = renderWithRouter(
+      <Routes>
+        <Route
+          element={(
+            <Shell
+              health={makeHealth()}
+              engagements={[current, other]}
+              current={current}
+              onSelectEngagement={onSelect}
+            />
+          )}
+        >
+          <Route path="/" element={<div>home content</div>} />
+        </Route>
+      </Routes>,
+    );
+    await user.selectOptions(screen.getByLabelText(/current engagement/i), "eng-002");
+    expect(onSelect).toHaveBeenCalledWith("eng-002");
   });
 });

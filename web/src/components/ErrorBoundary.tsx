@@ -20,7 +20,7 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="fatal">
           <div className="fatal-card">
-            <div className="mark">AD</div>
+            <div className="splash-mark">AD</div>
             <h1>Something went wrong</h1>
             <p className="muted">
               The console hit an unexpected error while rendering. Your engagement data on disk is

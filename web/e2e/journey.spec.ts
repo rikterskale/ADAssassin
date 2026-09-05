@@ -82,7 +82,10 @@ test("reference journey: catalog inspect, glossary, and guided path", async ({ p
     const firstRow = page.locator(".picker-row").first();
     await expect(firstRow).toBeVisible();
     await firstRow.click();
-    // Inspector offers a run link for the selected capability.
+    await expect(page.getByRole("button", { name: /copy id/i })).toBeVisible();
+    // Green/offline capabilities are locally runnable without extra live-ad deps.
+    await page.getByLabel("Lane filter").selectOption("green");
+    await page.locator(".picker-row").first().click();
     await expect(page.locator('a[href^="/run?capability="]')).toBeVisible();
   });
 

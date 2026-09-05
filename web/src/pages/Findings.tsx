@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
+import { CopyButton } from "../components/CopyButton";
 import { NoEngagement } from "../components/NoEngagement";
+import { useToast } from "../components/Toasts";
 import type { Engagement, Finding, FindingStatus } from "../types";
 
 const STATUSES: FindingStatus[] = ["open", "accepted", "fixed", "retest"];
@@ -21,31 +23,53 @@ export function Findings({
   onUpdated: (engagement: Engagement) => void;
   onSeedDemo: () => void;
 }) {
+  const notify = useToast();
   const [grouped, setGrouped] = useState<{ severity: string; findings: Finding[] }[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<Finding | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(() => Boolean(engagement));
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | FindingStatus>("all");
 
   const findings = useMemo(
     () => grouped.flatMap((group) => group.findings),
     [grouped],
   );
 
+  const visibleGroups = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return grouped
+      .map((group) => ({
+        ...group,
+        findings: group.findings.filter((finding) => {
+          if (statusFilter !== "all" && (finding.status ?? "open") !== statusFilter) return false;
+          if (!q) return true;
+          return `${finding.id} ${finding.title} ${finding.summary} ${finding.source}`.toLowerCase().includes(q);
+        }),
+      }))
+      .filter((group) => group.findings.length > 0);
+  }, [grouped, query, statusFilter]);
+
   useEffect(() => {
     if (!engagement) {
       setGrouped([]);
       setSelectedId(null);
       setDetail(null);
+      setLoading(false);
       return;
     }
     let cancelled = false;
+    setLoading(true);
     void api.findings(engagement.id).then((response) => {
       if (cancelled) return;
       setGrouped(response.grouped);
       setSelectedId((current) => current ?? response.findings[0]?.id ?? null);
     }).catch((err) => {
       if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+    }).finally(() => {
+      if (!cancelled) setLoading(false);
     });
     return () => { cancelled = true; };
   }, [engagement?.id, engagement?.updated_at, engagement?.findings?.length]);
@@ -74,6 +98,7 @@ export function Findings({
       onUpdated(result.engagement);
       const listed = await api.findings(engagement.id);
       setGrouped(listed.grouped);
+      notify("Explanation and remediation loaded");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -91,6 +116,7 @@ export function Findings({
       onUpdated(result.engagement);
       const listed = await api.findings(engagement.id);
       setGrouped(listed.grouped);
+      notify(`Finding marked ${status}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -113,49 +139,71 @@ export function Findings({
           <h2>{engagement ? engagement.name : "No engagement"}</h2>
           {!engagement ? (
             <NoEngagement onSeedDemo={onSeedDemo} />
-          ) : findings.length === 0 ? (
-            <div className="empty">No findings yet. Seed the demo or run an observe capability.</div>
           ) : (
-            grouped.map((group) => (
-              <div key={group.severity}>
-                <h2>{group.severity}</h2>
-                {group.findings.map((finding) => (
+            <>
+              <div className="filters">
+                <input
+                  type="search"
+                  placeholder="Search findings"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  aria-label="Search findings"
+                />
+                {(["all", ...STATUSES] as const).map((status) => (
                   <button
-                    key={finding.id}
+                    key={status}
                     type="button"
-                    className="finding"
-                    style={{
-                      display: "block",
-                      width: "100%",
-                      textAlign: "left",
-                      background: "transparent",
-                      borderLeft: selectedId === finding.id ? "2px solid var(--gold)" : "2px solid transparent",
-                      paddingLeft: 10,
-                      cursor: "pointer",
-                    }}
-                    onClick={() => setSelectedId(finding.id)}
+                    className={`filter-chip${statusFilter === status ? " active" : ""}`}
+                    aria-label={`Filter ${status}`}
+                    onClick={() => setStatusFilter(status)}
                   >
-                    <div>
-                      <span className={`badge ${severityClass(finding.severity)}`}>{finding.severity}</span>{" "}
-                      <span className={`badge ${finding.status === "fixed" ? "green" : finding.status === "accepted" ? "yellow" : ""}`}>
-                        {finding.status ?? "open"}
-                      </span>{" "}
-                      {finding.title}
-                    </div>
-                    <div className="muted mono">{finding.id} · {finding.source}</div>
+                    {status}
                   </button>
                 ))}
               </div>
-            ))
+              {loading ? (
+                <div className="empty">Loading findings…</div>
+              ) : findings.length === 0 ? (
+                <div className="empty">No findings yet. Seed the demo or run an observe capability.</div>
+              ) : visibleGroups.length === 0 ? (
+                <div className="empty">No findings match that search.</div>
+              ) : (
+                visibleGroups.map((group) => (
+                  <div key={group.severity}>
+                    <h2>{group.severity}</h2>
+                    {group.findings.map((finding) => (
+                      <button
+                        key={finding.id}
+                        type="button"
+                        className={`finding${selectedId === finding.id ? " selected" : ""}`}
+                        onClick={() => setSelectedId(finding.id)}
+                      >
+                        <div>
+                          <span className={`badge ${severityClass(finding.severity)}`}>{finding.severity}</span>{" "}
+                          <span className={`badge ${finding.status === "fixed" ? "green" : finding.status === "accepted" ? "yellow" : ""}`}>
+                            {finding.status ?? "open"}
+                          </span>{" "}
+                          {finding.title}
+                        </div>
+                        <div className="muted mono">{finding.id} · {finding.source}</div>
+                      </button>
+                    ))}
+                  </div>
+                ))
+              )}
+            </>
           )}
         </div>
-        <div className="panel span-6">
+        <div className="panel span-6 sticky-side">
           <h2>Detail</h2>
           {!detail ? (
             <div className="empty">Select a finding.</div>
           ) : (
             <>
-              <div className="mono">{detail.id}</div>
+              <div className="id-row">
+                <div className="mono">{detail.id}</div>
+                <CopyButton value={detail.id} label="Copy id" />
+              </div>
               <p>{detail.title}</p>
               <p className="muted">
                 {detail.severity} · {detail.source}

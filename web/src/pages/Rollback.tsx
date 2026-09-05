@@ -1,6 +1,8 @@
 import { FormEvent, useEffect, useState } from "react";
 import { api } from "../api";
+import { Field } from "../components/Field";
 import { NoEngagement } from "../components/NoEngagement";
+import { useToast } from "../components/Toasts";
 import type { Engagement, RollbackResponse } from "../types";
 
 export function Rollback({
@@ -12,6 +14,7 @@ export function Rollback({
   onUpdated: (engagement: Engagement) => void;
   onSeedDemo: () => void;
 }) {
+  const notify = useToast();
   const [rollback, setRollback] = useState<RollbackResponse | null>(null);
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
@@ -46,6 +49,7 @@ export function Rollback({
       const response = await api.previewRollback(engagement.id);
       setRollback(response);
       setMessage(response.message ?? "Preview ready.");
+      notify("Rollback preview ready. No directory was contacted.");
       if (response.engagement) onUpdated(response.engagement);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -69,6 +73,7 @@ export function Rollback({
       setRollback(response);
       setMessage("Rollback apply requested.");
       setConfirm("");
+      notify("Rollback apply requested", "warn");
       if (response.engagement) onUpdated(response.engagement);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -110,7 +115,7 @@ export function Rollback({
             ))
           )}
         </div>
-        <div className="panel span-5">
+        <div className="panel span-5 sticky-side">
           <h2>Actions</h2>
           <p className="muted">
             Pending {rollback?.pending ?? engagement?.rollback.pending ?? 0}
@@ -133,14 +138,17 @@ export function Rollback({
                 Demo rollback is preview-only. It can never be applied to a directory.
               </div>
             )}
-            <input
-              placeholder="Type YES"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              autoComplete="off"
-            />
+            <Field label="Typed confirmation">
+              <input
+                placeholder="Type YES"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </Field>
             <button
-              className="btn primary"
+              className="btn primary danger"
               type="submit"
               disabled={busy || !engagement || engagement.mode === "demo" || confirm.trim() !== "YES"}
             >

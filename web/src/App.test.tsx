@@ -60,6 +60,10 @@ function primeRefresh(engagements = [makeEngagement()]) {
 }
 
 describe("App bootstrap", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
   it("shows the splash first, then the console once data loads", async () => {
     primeRefresh();
     renderWithRouter(<App />);
@@ -87,5 +91,14 @@ describe("App bootstrap", () => {
     primeRefresh([]);
     renderWithRouter(<App />);
     await waitFor(() => expect(vi.mocked(api.demoEngagement)).toHaveBeenCalledTimes(1));
+  });
+
+  it("restores the stored current engagement", async () => {
+    window.localStorage.setItem("adassassin.currentEngagement", "eng-002");
+    const first = makeEngagement({ id: "eng-001", name: "First" });
+    const second = makeEngagement({ id: "eng-002", name: "Second" });
+    primeRefresh([first, second]);
+    renderWithRouter(<App />);
+    expect(await screen.findByLabelText(/current engagement/i)).toHaveValue("eng-002");
   });
 });

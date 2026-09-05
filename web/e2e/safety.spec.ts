@@ -31,7 +31,7 @@ test("RED capabilities require typing the id to confirm before running", async (
   await page.getByPlaceholder("Name").fill("E2E confirmation gate");
   await page.getByPlaceholder("Scope notes").fill("Offline UI safety-gate verification only.");
   await page.getByRole("button", { name: /^create$/i }).click();
-  await expect(page.getByText(/e2e confirmation gate/i)).toBeVisible();
+  await expect(page.getByRole("button", { name: /e2e confirmation gate/i })).toBeVisible();
   await page.goto(`/run?capability=${encodeURIComponent(id)}`);
 
   // The run button stays disabled until the id is typed exactly.

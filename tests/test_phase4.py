@@ -122,4 +122,4 @@ def test_health_phase_four(tmp_path: Path) -> None:
     client = _client(tmp_path)
     health = client.get("/api/health").json()
     assert int(health["phase"]) >= 4
-    assert health["version"].startswith("0.")
+    assert health["version"]

@@ -8,7 +8,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, SecretStr
+from starlette.datastructures import MutableHeaders
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
+from starlette.requests import Request
+from starlette.responses import Response
 
 from adassassin import ENGINE_COMMIT, ENGINE_PIN, __version__
 from adassassin.catalog import catalog_payload, get_capability
@@ -39,6 +43,34 @@ from adassassin.targets import TargetError, connect_engagement
 from adassassin.vault import VaultServiceError, list_vault, unmask_vault_item
 
 WEBAPP = Path(__file__).resolve().parent / "webapp"
+
+CSP = (
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data:; font-src 'self'; connect-src 'self'; "
+    "frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+)
+
+
+def apply_security_headers(path: str, headers: MutableHeaders) -> None:
+    """Browser-hardening headers for the local single-operator console."""
+    headers.setdefault("X-Content-Type-Options", "nosniff")
+    headers.setdefault("X-Frame-Options", "DENY")
+    headers.setdefault("Referrer-Policy", "no-referrer")
+    headers.setdefault(
+        "Permissions-Policy",
+        "camera=(), microphone=(), geolocation=(), usb=()",
+    )
+    headers.setdefault("X-DNS-Prefetch-Control", "off")
+    headers.setdefault("Content-Security-Policy", CSP)
+    if path.startswith("/api/"):
+        headers.setdefault("Cache-Control", "no-store")
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next) -> Response:
+        response = await call_next(request)
+        apply_security_headers(request.url.path, response.headers)
+        return response
 
 
 def _webapp_file(full_path: str) -> Path | None:
@@ -112,6 +144,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     settings.engagements_dir.mkdir(parents=True, exist_ok=True)
     reconcile_interrupted_jobs(settings)
     app = FastAPI(title="ADAssassin", version=__version__, docs_url=None, redoc_url=None)
+    app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(
         TrustedHostMiddleware,
         allowed_hosts=["127.0.0.1", "localhost", "testserver"],

@@ -51,14 +51,22 @@ export function CapabilityPicker({
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
         />
-        <select value={lane} onChange={(e) => onLaneChange(e.target.value as Lane | "all")}>
+        <select
+          value={lane}
+          aria-label="Lane filter"
+          onChange={(e) => onLaneChange(e.target.value as Lane | "all")}
+        >
           <option value="all">All lanes</option>
           <option value="green">Green (offline)</option>
           <option value="yellow">Yellow (reads target)</option>
           <option value="red">Red (changes state)</option>
         </select>
         {showCategory && (
-          <select value={category} onChange={(e) => onCategoryChange!(e.target.value)}>
+          <select
+            value={category}
+            aria-label="Category filter"
+            onChange={(e) => onCategoryChange!(e.target.value)}
+          >
             {categories.map((item) => (
               <option key={item} value={item}>
                 {item === "all" ? "All categories" : item}

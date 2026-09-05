@@ -9,6 +9,11 @@ export function Guided({
   onDemo: () => void;
   onMark: (stepId: string) => void;
 }) {
+  const steps = guide?.steps ?? [];
+  const doneCount = steps.filter((step) => step.done).length;
+  const currentStep = steps.find((step) => !step.done) ?? null;
+  const pct = steps.length === 0 ? 0 : Math.round((doneCount / steps.length) * 100);
+
   return (
     <>
       <section className="hero">
@@ -24,8 +29,30 @@ export function Guided({
           <Link className="btn" to="/catalog?lane=red">RED catalog</Link>
         </div>
       </section>
+      <div className="panel">
+        <h2>Progress</h2>
+        <p className="muted">
+          {doneCount} of {steps.length} steps complete
+          {currentStep ? ` · up next: ${currentStep.title}` : " · path complete"}
+        </p>
+        <div
+          className="progress"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={steps.length}
+          aria-valuenow={doneCount}
+          aria-label="Guided path progress"
+        >
+          <span className="progress-fill" style={{ width: `${pct}%` }} />
+        </div>
+        {currentStep && (
+          <div className="actions" style={{ marginTop: 14 }}>
+            <Link className="btn primary" to={currentStep.href}>Continue: {currentStep.title}</Link>
+          </div>
+        )}
+      </div>
       <div className="grid">
-        {(guide?.steps ?? []).map((step, index) => (
+        {steps.map((step, index) => (
           <div className="panel span-6" key={step.id}>
             <h2>{String(index + 1).padStart(2, "0")} {step.title}</h2>
             <p className="muted">{step.why}</p>

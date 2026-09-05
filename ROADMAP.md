@@ -10,7 +10,7 @@ every capability in `docs/CAPABILITY_CATALOG.md` from
 
 Repo: https://github.com/rikterskale/ADAssassin
 Current slice: **Phase 6 complete.**
-Package version at this writing: `0.8.0`.
+Package version at this writing: `1.0.0`.
 
 ---
 
@@ -420,3 +420,8 @@ committed bundle drifts from source.
   engagement-scoped jobs, interrupted-run reconciliation, capability-level
   readiness, enforced loopback-only binding, and transactional engagement
   updates. Added offline regression coverage for every boundary.
+- 2026-09-05 — Production console release `1.0.0`: vendor-grade operator chrome
+  (command palette, engagement switcher, sticky inspector, labeled forms,
+  toasts, mobile nav), security headers on every response, print-ready HTML
+  reports, and a Production/Stable classifier. No engine, API, or capability
+  behavior changed.

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { CapabilityPicker } from "../components/CapabilityPicker";
+import { CopyButton } from "../components/CopyButton";
 import type { Capability, CatalogResponse, Lane } from "../types";
 
 function runLabel(item: Capability): string {
@@ -76,19 +77,41 @@ export function Catalog({ catalog, onViewGreen }: { catalog: CatalogResponse | n
             onCategoryChange={updateCategory}
           />
         </div>
-        <div className="panel span-4">
+        <div className="panel span-4 sticky-side">
           <h2>Inspector</h2>
           {selected ? (
             <>
-              <div className="mono">{selected.id}</div>
+              <div className="id-row">
+                <div className="mono">{selected.id}</div>
+                <CopyButton value={selected.id} label="Copy id" />
+              </div>
               <p>{selected.plain ?? selected.summary}</p>
-              <p className="muted">
-                {selected.environment} · {selected.maturity}<br />
-                approval {selected.approval} · rollback {selected.rollback_expectation || selected.rollback}<br />
-                tools {(selected.tools || []).join(", ") || "none"}
-              </p>
+              {canRun && (
+                <div className="actions">
+                  <Link className="btn primary" to={`/run?capability=${encodeURIComponent(selected.id)}`}>
+                    {runLabel(selected)}
+                  </Link>
+                </div>
+              )}
+              {!canRun && (
+                <p className="muted">Install the declared dependency or restore the pinned engine before running.</p>
+              )}
+              {selectedRed && (
+                <p className="muted">
+                  RED ({selected.risk_label || selected.risk}). The Run page requires typing{" "}
+                  <span className="mono">{selected.id}</span> to confirm.
+                </p>
+              )}
+              <dl className="meta-list">
+                <div><dt>Environment</dt><dd>{selected.environment}</dd></div>
+                <div><dt>Maturity</dt><dd>{selected.maturity}</dd></div>
+                <div><dt>Approval</dt><dd>{selected.approval}</dd></div>
+                <div><dt>Rollback</dt><dd>{selected.rollback_expectation || selected.rollback}</dd></div>
+                <div><dt>Tools</dt><dd>{(selected.tools || []).join(", ") || "none"}</dd></div>
+                <div><dt>Category</dt><dd>{selected.category}</dd></div>
+              </dl>
               {selected.readiness && (
-                <div className={selected.readiness.ready ? "finding" : "banner-error"}>
+                <div className={selected.readiness.ready ? "banner-ok" : "banner-error"}>
                   Local readiness: {selected.readiness.ready ? "ready" : selected.readiness.reason}.
                   {selected.readiness.dependencies.map((dependency) => (
                     <div className="muted" key={dependency.id}>
@@ -107,22 +130,6 @@ export function Catalog({ catalog, onViewGreen }: { catalog: CatalogResponse | n
                     </div>
                   ))}
                 </>
-              )}
-              {selectedRed && (
-                <p className="muted">
-                  RED ({selected.risk_label || selected.risk}). The Run page requires typing{" "}
-                  <span className="mono">{selected.id}</span> to confirm.
-                </p>
-              )}
-              {canRun && (
-                <div className="actions">
-                  <Link className="btn primary" to={`/run?capability=${encodeURIComponent(selected.id)}`}>
-                    {runLabel(selected)}
-                  </Link>
-                </div>
-              )}
-              {!canRun && (
-                <p className="muted">Install the declared dependency or restore the pinned engine before running.</p>
               )}
             </>
           ) : (

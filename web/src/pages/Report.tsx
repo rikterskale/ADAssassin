@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
+import { CopyButton } from "../components/CopyButton";
 import { NoEngagement } from "../components/NoEngagement";
+import { useToast } from "../components/Toasts";
+import { formatWhen } from "../format";
 import type { CloseoutResponse, Engagement, ReportResponse } from "../types";
 
 export function Report({
@@ -12,6 +15,7 @@ export function Report({
   onUpdated: (engagement: Engagement) => void;
   onSeedDemo: () => void;
 }) {
+  const notify = useToast();
   const [closeout, setCloseout] = useState<CloseoutResponse | null>(null);
   const [report, setReport] = useState<ReportResponse | null>(null);
   const [busy, setBusy] = useState(false);
@@ -41,6 +45,7 @@ export function Report({
       setReport(response);
       setCloseout(response.closeout);
       if (response.engagement) onUpdated(response.engagement);
+      notify("Report generated");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -89,7 +94,7 @@ export function Report({
             </>
           )}
         </div>
-        <div className="panel span-6">
+        <div className="panel span-6 sticky-side">
           <h2>Export</h2>
           {error && <div className="banner-error">{error}</div>}
           <div className="actions">
@@ -109,7 +114,10 @@ export function Report({
           </div>
           {report && (
             <>
-              <p className="muted mono">Generated {report.generated_at}</p>
+              <p className="muted mono">Generated {formatWhen(report.generated_at)}</p>
+              <div className="actions">
+                <CopyButton value={report.markdown} label="Copy Markdown" />
+              </div>
               <h2>Markdown preview</h2>
               <pre className="log">{report.markdown.slice(0, 4000)}{report.markdown.length > 4000 ? "\n…" : ""}</pre>
             </>

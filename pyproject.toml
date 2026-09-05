@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "adassassin"
-version = "0.8.0"
+version = "1.0.0"
 description = "Vendor-grade web console for authorized Active Directory red team operations"
 readme = "README.md"
 requires-python = ">=3.11,<3.15"
@@ -12,7 +12,7 @@ license = "LicenseRef-Proprietary"
 authors = [{ name = "Rikter Skale" }]
 keywords = ["active-directory", "red-team", "web-console"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Environment :: Web Environment",
     "Intended Audience :: Information Technology",
     "Operating System :: Microsoft :: Windows",

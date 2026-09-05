@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from adassassin.app import WEBAPP, _webapp_file
+from pathlib import Path
+
+from fastapi.testclient import TestClient
+
+from adassassin.app import WEBAPP, _webapp_file, create_app
+from adassassin.config import Settings
 
 
 def test_webapp_file_serves_bundled_index() -> None:
@@ -29,3 +34,16 @@ def test_webapp_file_rejects_traversal() -> None:
 
 def test_webapp_file_rejects_empty() -> None:
     assert _webapp_file("") is None
+
+
+def test_api_sets_security_headers(tmp_path: Path) -> None:
+    client = TestClient(create_app(Settings(data_dir=tmp_path, open_browser=False)))
+    response = client.get("/api/health")
+    assert response.status_code == 200
+    assert response.headers.get("x-content-type-options") == "nosniff"
+    assert response.headers.get("x-frame-options") == "DENY"
+    assert response.headers.get("referrer-policy") == "no-referrer"
+    assert response.headers.get("cache-control") == "no-store"
+    csp = response.headers.get("content-security-policy") or ""
+    assert "default-src 'self'" in csp
+    assert "frame-ancestors 'none'" in csp
