@@ -6,6 +6,12 @@ Vendor-grade web console for Active Directory assessments. ADAssassin wraps
 pinned ADAF-ATTACK 0.10.1 and presents all 92 catalogued capabilities through
 a guided GUI.
 
+> **New operator? Start with the comprehensive
+> [START HERE guide](docs/START_HERE.md).** It covers installation, the complete
+> zero-contact demo, authorized live work, all console surfaces, every CLI and
+> runtime setting, all 27 local API operations, rollback, reporting, and
+> closeout without hiding any capability.
+
 > Written authorization is required before any live target work.
 > Availability of this repository is not authorization.
 
@@ -17,7 +23,8 @@ Build order and acceptance criteria: **[ROADMAP.md](ROADMAP.md)**.
 Install on Windows, Kali, or macOS (full steps + troubleshooting):
 **[docs/INSTALLATION.md](docs/INSTALLATION.md)**.
 
-Operator path (doctor → demo → connect → observe → RED → report):
+Complete operator path (install → demo → connect → observe → RED → closeout):
+**[docs/START_HERE.md](docs/START_HERE.md)**. The compact field checklist is
 **[docs/OPERATOR_RUNBOOK.md](docs/OPERATOR_RUNBOOK.md)**.
 
 ## Quick start
@@ -44,6 +51,7 @@ python -m pytest                                         # backend suite
 ## Console
 
 - Overview doctor checks (Python, catalog, engine, bind)
+- Built-in Start Here guide with every console surface and launch/runtime command
 - Guided checklist through connect, observe, and typed-confirm RED
 - Catalog lanes, inspector prompts, and Run for observe + RED
 - Connect preflight (engine live-ad doctor); passwords stay in memory
@@ -87,7 +95,7 @@ interpreter path.
 
 `adaf-attack==0.10.1` @ `fdb60b90b910ba3dcbd582e2c72ce48189191214`
 
-See [ROADMAP.md](ROADMAP.md), [docs/INSTALLATION.md](docs/INSTALLATION.md),
+See [docs/START_HERE.md](docs/START_HERE.md), [ROADMAP.md](ROADMAP.md), [docs/INSTALLATION.md](docs/INSTALLATION.md),
 [docs/OPERATOR_RUNBOOK.md](docs/OPERATOR_RUNBOOK.md),
 [AUTHORIZED_USE.md](AUTHORIZED_USE.md), and [SECURITY.md](SECURITY.md).
 

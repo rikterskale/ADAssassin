@@ -12,8 +12,9 @@ skipping steps. Every common failure includes:
 2. how to collect verbose logs,
 3. the fix action.
 
-After install, use [OPERATOR_RUNBOOK.md](OPERATOR_RUNBOOK.md) for doctor → demo
-→ connect → observe → RED → report.
+After install, use [START_HERE.md](START_HERE.md) for the comprehensive novice
+path from first launch through demo, live work, rollback, report, and closeout.
+[OPERATOR_RUNBOOK.md](OPERATOR_RUNBOOK.md) is the compact field checklist.
 
 | Item | Value |
 | --- | --- |

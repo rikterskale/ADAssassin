@@ -36,6 +36,7 @@ export function Overview({
           {health?.bind ?? "127.0.0.1"}. Live work always needs written authorization.
         </p>
         <div className="actions">
+          <Link className="btn primary" to="/start">Start here</Link>
           <button className="btn primary" type="button" onClick={() => void exploreDemo()}>
             Explore the offline demo
           </button>

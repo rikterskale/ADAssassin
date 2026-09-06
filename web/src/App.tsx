@@ -13,6 +13,7 @@ import { Overview } from "./pages/Overview";
 import { Report } from "./pages/Report";
 import { Rollback } from "./pages/Rollback";
 import { Run } from "./pages/Run";
+import { StartHere } from "./pages/StartHere";
 import { Vault } from "./pages/Vault";
 import { readCurrentEngagement, writeCurrentEngagement } from "./storage";
 import type { CatalogResponse, DoctorResponse, Engagement, GuideResponse, HealthResponse } from "./types";
@@ -161,6 +162,7 @@ function Console() {
           />
         )}
       >
+        <Route path="/start" element={<StartHere />} />
         <Route path="/" element={<Overview health={health} doctor={doctor} guide={guide} engagement={current} onSeedDemo={seedDemo} />} />
         <Route path="/guided" element={<Guided guide={guide} engagement={current} onDemo={() => void seedDemo()} />} />
         <Route path="/catalog" element={<Catalog catalog={catalog} onViewGreen={markGreenCatalog} />} />

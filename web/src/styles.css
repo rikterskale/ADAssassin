@@ -357,6 +357,29 @@ button.finding:first-of-type { padding-top: 10px; border-top: 1px solid var(--li
   color: var(--gold); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
 }
 
+/* Start Here ----------------------------------------------------------- */
+.guide-index {
+  display: flex; flex-wrap: wrap; gap: 8px; padding: 12px;
+  border: 1px solid var(--line); background: rgba(16, 20, 26, 0.72);
+}
+.guide-index a {
+  border: 1px solid var(--line); color: var(--muted); padding: 7px 10px;
+  font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+}
+.guide-index a:hover { color: var(--text); border-color: var(--line-strong); background: var(--bg-hover); }
+.guide-steps { gap: 14px; }
+.guide-steps.wide { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 36px; }
+.guide-actions { margin-top: 18px; }
+.lane-guide { display: grid; gap: 14px; margin-bottom: 16px; }
+.lane-guide > div { border-bottom: 1px solid var(--line); padding-bottom: 12px; }
+.lane-guide > div:last-child { border-bottom: 0; }
+.lane-guide p { color: var(--muted); line-height: 1.45; margin: 7px 0 0; }
+.guide-note { margin: 16px 0 0; line-height: 1.6; }
+.command-heading { justify-content: space-between; align-items: flex-start; }
+.command-heading h2 { margin-bottom: 0; }
+.guide-command { max-height: none; line-height: 1.6; }
+.panel td a { color: var(--gold); text-decoration: underline; text-underline-offset: 3px; }
+
 /* Picker ---------------------------------------------------------------- */
 .picker { display: grid; gap: 10px; }
 .picker-list {
@@ -514,6 +537,7 @@ button.finding:first-of-type { padding-top: 10px; border-top: 1px solid var(--li
   .scopebar a { margin-left: 0; }
   .hero { padding: 22px 18px; }
   .metric-row { grid-template-columns: 1fr; }
+  .guide-steps.wide { grid-template-columns: 1fr; }
   .meta-list > div { grid-template-columns: 1fr; gap: 2px; }
   .sticky-side { position: static; max-height: none; }
   .btn { min-height: 42px; }

@@ -8,6 +8,11 @@ This runbook is the shortest path from install to closeout for a novice
 authorized operator. Product build order and acceptance live in
 [ROADMAP.md](../ROADMAP.md).
 
+If this is your first session, use the comprehensive
+[START HERE guide](START_HERE.md) instead. It includes every console surface,
+CLI option, runtime setting, API operation, success checkpoint, and recovery
+path. Nothing in this compact runbook replaces or hides those controls.
+
 Engine pin: `adaf-attack==0.10.1` @ `fdb60b90b910ba3dcbd582e2c72ce48189191214`.
 
 ---
@@ -162,6 +167,7 @@ Default bind: `127.0.0.1:8745` only.
 
 ## Related
 
+- [START_HERE.md](START_HERE.md) — comprehensive first-session guide and full command reference
 - [INSTALLATION.md](INSTALLATION.md) — Windows / Kali / macOS install + troubleshooting
 - [AUTHORIZED_USE.md](../AUTHORIZED_USE.md)
 - [SECURITY.md](../SECURITY.md)

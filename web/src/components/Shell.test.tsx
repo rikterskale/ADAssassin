@@ -27,6 +27,7 @@ describe("Shell", () => {
     for (const heading of ["Start", "Assess", "Reference", "Advanced"]) {
       expect(screen.getByText(heading)).toBeInTheDocument();
     }
+    expect(screen.getByRole("link", { name: /start here/i })).toHaveAttribute("href", "/start");
     expect(screen.getByRole("link", { name: /overview/i })).toHaveAttribute("href", "/");
     expect(screen.getByRole("link", { name: /run/i })).toHaveAttribute("href", "/run");
     expect(screen.getByRole("link", { name: /report/i })).toHaveAttribute("href", "/report");

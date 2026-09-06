@@ -5,6 +5,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     heading: "Start",
     items: [
+      { to: "/start", label: "Start Here", hint: "Complete guide" },
       { to: "/", label: "Overview", hint: "Home" },
       { to: "/guided", label: "Guided", hint: "Step by step" },
     ],

@@ -40,6 +40,14 @@ test.describe("backend readiness", () => {
     expect(await deep.text()).toContain('<div id="root">');
   });
 
+  test("the packaged Start Here guide exposes the full operator surface", async ({ page }) => {
+    await page.goto("/start");
+    await expect(page.getByRole("heading", { name: /first click to defensible closeout/i })).toBeVisible();
+    await expect(page.getByText(/nothing is removed in this view/i)).toBeVisible();
+    await expect(page.getByRole("link", { name: "Open Catalog" })).toBeVisible();
+    await expect(page.getByText(/all 27 operations/i)).toBeVisible();
+  });
+
   test("static serving rejects path traversal", async ({ request }) => {
     const res = await request.get("/../pyproject.toml");
     // Either blocked, or safely rewritten to the SPA shell — never the file.
