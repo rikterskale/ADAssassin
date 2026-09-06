@@ -50,7 +50,15 @@ describe("Overview", () => {
 
   it("links to the next guided step when one is pending", () => {
     const guide = makeGuide({
-      next: { id: "demo", title: "Seed the offline demo", why: "", href: "/guided", complete_when: "", done: false },
+      next: {
+        id: "demo",
+        title: "Seed the offline demo",
+        why: "",
+        href: "/guided",
+        complete_when: "",
+        done: false,
+        completion_mode: "automatic",
+      },
     });
     renderWithRouter(
       <Overview health={makeHealth()} doctor={makeDoctor()} guide={guide} engagement={null} onSeedDemo={vi.fn()} />,

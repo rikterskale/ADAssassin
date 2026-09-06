@@ -123,6 +123,7 @@ export function makeGuideStep(overrides: Partial<GuideStep> = {}): GuideStep {
     href: "/",
     complete_when: "doctor_ok",
     done: false,
+    completion_mode: "automatic",
     ...overrides,
   };
 }

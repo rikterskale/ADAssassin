@@ -5,12 +5,12 @@ from __future__ import annotations
 from pathlib import Path
 
 from adassassin.config import Settings
+from adassassin.storage import ensure_private_dir
 
 
 def engagement_workspace(settings: Settings, engagement_id: str) -> Path:
     path = settings.data_dir / "workspaces" / engagement_id
-    path.mkdir(parents=True, exist_ok=True)
-    return path
+    return ensure_private_dir(path)
 
 
 def session_dirs(settings: Settings, engagement_id: str) -> list[Path]:

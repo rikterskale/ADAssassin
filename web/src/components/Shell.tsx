@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { NAV_GROUPS } from "../nav";
 import type { Capability, Engagement, HealthResponse } from "../types";
 import { CommandPalette } from "./CommandPalette";
@@ -10,12 +10,18 @@ export function Shell({
   current = null,
   onSelectEngagement = () => {},
   catalog = [],
+  notice = null,
+  refreshing = false,
+  onRefresh = () => {},
 }: {
   health: HealthResponse | null;
   engagements?: Engagement[];
   current?: Engagement | null;
   onSelectEngagement?: (id: string) => void;
   catalog?: Capability[];
+  notice?: string | null;
+  refreshing?: boolean;
+  onRefresh?: () => void;
 }) {
   const location = useLocation();
   const [navOpen, setNavOpen] = useState(false);
@@ -111,6 +117,15 @@ export function Shell({
             >
               Jump <span className="kbd">Ctrl K</span>
             </button>
+            <button
+              className="btn ghost refresh-trigger"
+              type="button"
+              aria-label="Refresh console data"
+              disabled={refreshing}
+              onClick={onRefresh}
+            >
+              {refreshing ? "Refreshing…" : "Refresh"}
+            </button>
             <div className="status-pills">
               <span className="pill">ADAssassin {health?.version ?? "…"}</span>
               <span className={`pill ${engineOk ? "ok" : "warn"}`}>engine {engineOk ? "live" : "catalog fallback"}</span>
@@ -119,6 +134,39 @@ export function Shell({
             </div>
           </div>
         </header>
+        {notice && (
+          <div className="system-notice" role="alert">
+            <span><strong>Console data may be stale.</strong> {notice}</span>
+            <button className="btn ghost" type="button" disabled={refreshing} onClick={onRefresh}>
+              Retry
+            </button>
+          </div>
+        )}
+        <div className="scopebar" aria-label="Current engagement context">
+          {current ? (
+            <>
+              <span className="scope-label">Current engagement</span>
+              <strong>{current.name}</strong>
+              <span className={`badge ${current.mode === "demo" ? "yellow" : ""}`}>{current.mode}</span>
+              {current.connect?.preflight_ok && <span className="badge green">preflight ready</span>}
+              <span className="scope-detail">
+                {current.mode === "demo"
+                  ? "offline fixture · no target contact"
+                  : `${current.domain || "domain unset"} · ${current.dc || "DC unset"}`}
+              </span>
+              <span className="scope-detail">{current.findings?.length ?? 0} findings</span>
+              {(current.rollback?.pending ?? 0) > 0 && (
+                <span className="scope-detail warning">{current.rollback.pending} rollback pending</span>
+              )}
+              <Link to="/engagements">Manage</Link>
+            </>
+          ) : (
+            <>
+              <span className="scope-label">Current engagement</span>
+              <span className="scope-detail">Preparing the offline demo…</span>
+            </>
+          )}
+        </div>
         <div className="content" id="main-content" tabIndex={-1}><Outlet /></div>
       </section>
       <CommandPalette

@@ -21,17 +21,21 @@ export function Engagements({
   const [dc, setDc] = useState("");
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!name.trim()) return;
     setBusy(true);
+    setError(null);
     try {
       await onCreate({ name: name.trim(), domain, dc, notes });
       setName("");
       setDomain("");
       setDc("");
       setNotes("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(false);
     }
@@ -52,17 +56,18 @@ export function Engagements({
           <h2>New engagement</h2>
           <form className="form" onSubmit={submit}>
             <Field label="Name">
-              <input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} required />
+              <input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} required />
             </Field>
             <Field label="Domain" hint="Optional. You can fill this in later on Connect.">
-              <input placeholder="Domain (optional)" value={domain} onChange={(e) => setDomain(e.target.value)} spellCheck={false} />
+              <input placeholder="Domain (optional)" value={domain} onChange={(e) => setDomain(e.target.value)} maxLength={255} spellCheck={false} />
             </Field>
             <Field label="Domain controller">
-              <input placeholder="DC host or IP (optional)" value={dc} onChange={(e) => setDc(e.target.value)} spellCheck={false} />
+              <input placeholder="DC host or IP (optional)" value={dc} onChange={(e) => setDc(e.target.value)} maxLength={255} spellCheck={false} />
             </Field>
             <Field label="Scope notes" hint="Written authorization, in-scope OUs, and out-of-scope systems.">
-              <textarea placeholder="Scope notes" rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} />
+              <textarea placeholder="Scope notes" rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={10000} />
             </Field>
+            {error && <div className="banner-error">{error}</div>}
             <div className="actions">
               <button className="btn primary" type="submit" disabled={busy}>
                 {busy ? "Creating…" : "Create"}

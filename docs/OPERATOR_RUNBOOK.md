@@ -32,7 +32,8 @@ adassassin --version
 Optional UI rebuild (only if you change React source):
 
 ```bash
-cd web && npm install && npm run build
+npm --prefix web ci
+npm --prefix web run build
 ```
 
 ---
@@ -51,7 +52,8 @@ Open `http://127.0.0.1:8745/`.
 4. A missing engine import is a **warn**, not a hard fail (catalog fallback /
    bundled catalog still works).
 
-Mark guided step **Check the console** when ready.
+The guided **Check the console** step completes automatically when Doctor is
+ready. Operational steps are state-backed and cannot be manually marked done.
 
 ---
 
@@ -76,6 +78,7 @@ Mark guided step **Check the console** when ready.
 5. Run **preflight** (engine live-ad doctor: DNS + DC ports). Preflight does
    **not** run a capability.
 6. Yellow and RED work require a successful preflight on that engagement.
+   The Run button stays disabled until that preflight is ready.
 
 ---
 
@@ -97,13 +100,16 @@ Destructive and side-effect capabilities are not one-click.
 1. Open **Catalog** → lane **red**, or pick a RED id on **Run**.
 2. Button labels include the capability id and **destructive** or **side effect**.
 3. Review rollback expectation before submit.
-4. Type the **capability id** exactly (for example `dcsync`).
-5. Submit. The console sends `ack` + `force` + that confirm string.
+4. Review the execution summary (target, lane, authentication, noise, approval,
+   and rollback). Sensitive capability inputs are masked and cleared when you
+   switch capabilities.
+5. Type the **capability id** exactly (for example `dcsync`).
+6. Submit. The console sends `ack` + `force` + that confirm string.
    Capabilities marked `scoped_token` also require the approved scoped token
    and its approval engagement ID; the token is sent to the engine but never
    persisted by the console.
-6. Refusal text from the engine is shown verbatim on failure.
-7. Successful RED acks are recorded on the engagement (`red_ack_audit`) with
+7. Refusal text from the engine is shown verbatim on failure.
+8. Successful RED acks are recorded on the engagement (`red_ack_audit`) with
    secrets redacted.
 
 There is no global “enable red” toggle.
@@ -130,6 +136,10 @@ There is no global “enable red” toggle.
    before you leave the engagement.
 
 Demo export works with zero network.
+
+On POSIX, app-owned engagement directories are restricted to the current user
+(`0700`) and metadata/report files are `0600`. Use an approved encrypted disk;
+the file modes are not a substitute for encryption at rest.
 
 ---
 

@@ -26,7 +26,7 @@ describe("CommandPalette", () => {
         onSelectEngagement={vi.fn()}
       />,
     );
-    expect(screen.getByRole("dialog", { name: /jump to/i })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: /quick jump/i })).toBeInTheDocument();
     expect(screen.getByText("Overview")).toBeInTheDocument();
     expect(screen.getByText("Catalog")).toBeInTheDocument();
   });
@@ -63,5 +63,21 @@ describe("CommandPalette", () => {
     await user.click(screen.getByRole("button", { name: /beacon lab/i }));
     expect(onSelect).toHaveBeenCalledWith("eng-9");
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("closes from Escape even when focus is outside the search input", async () => {
+    const onClose = vi.fn();
+    const { user } = renderWithRouter(
+      <CommandPalette
+        open
+        onClose={onClose}
+        catalog={[]}
+        engagements={[]}
+        onSelectEngagement={vi.fn()}
+      />,
+    );
+    screen.getByRole("button", { name: /close quick jump/i }).focus();
+    await user.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

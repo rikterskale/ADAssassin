@@ -12,6 +12,7 @@ from adassassin.config import Settings
 from adassassin.engagements import get_engagement, update_engagement
 from adassassin.findings import normalize_finding
 from adassassin.rollback import list_rollback
+from adassassin.storage import ensure_private_dir, write_private_text
 from adassassin.vault import list_vault
 from adassassin.workspace import engagement_workspace, session_dirs
 
@@ -403,18 +404,18 @@ def build_report(settings: Settings, engagement_id: str) -> dict[str, Any]:
     )
 
     out_dir = engagement_workspace(settings, engagement_id) / "reports"
-    out_dir.mkdir(parents=True, exist_ok=True)
+    ensure_private_dir(out_dir)
     stamp = uuid4().hex[:8]
     md_path = out_dir / f"engagement-report-{stamp}.md"
     html_path = out_dir / f"engagement-report-{stamp}.html"
-    md_path.write_text(markdown, encoding="utf-8")
-    html_path.write_text(html_doc, encoding="utf-8")
+    write_private_text(md_path, markdown)
+    write_private_text(html_path, html_doc)
 
     # Stable latest aliases for UI download links.
     latest_md = out_dir / "engagement-report.md"
     latest_html = out_dir / "engagement-report.html"
-    latest_md.write_text(markdown, encoding="utf-8")
-    latest_html.write_text(html_doc, encoding="utf-8")
+    write_private_text(latest_md, markdown)
+    write_private_text(latest_html, html_doc)
 
     report_meta = {
         "generated_at": _now(),

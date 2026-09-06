@@ -19,6 +19,7 @@ from adassassin.engagements import _IO_LOCK, get_engagement, save_engagement
 from adassassin.engine import capability_detail, lane_for
 from adassassin.findings import normalize_finding
 from adassassin.secrets import resolve_bind_secret
+from adassassin.storage import ensure_private_dir
 from adassassin.targets import has_successful_connect
 
 # In-memory live-job registry: job_id -> job dict (mutated by the worker thread).
@@ -533,8 +534,7 @@ def execute_run(
         item["jobs"] = jobs[:50]
         saved = save_engagement(settings, item)
 
-    workspace = settings.data_dir / "workspaces" / engagement_id
-    workspace.mkdir(parents=True, exist_ok=True)
+    workspace = ensure_private_dir(settings.data_dir / "workspaces" / engagement_id)
 
     worker_kwargs = {
         "capability_id": capability_id,

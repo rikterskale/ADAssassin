@@ -73,7 +73,7 @@ describe("Shell", () => {
   it("opens the command palette from the jump control", async () => {
     const { user } = renderShell();
     await user.click(screen.getByRole("button", { name: /open command palette/i }));
-    expect(screen.getByRole("dialog", { name: /jump to/i })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: /quick jump/i })).toBeInTheDocument();
   });
 
   it("lets the operator switch the current engagement from the topbar", async () => {
@@ -96,7 +96,46 @@ describe("Shell", () => {
         </Route>
       </Routes>,
     );
-    await user.selectOptions(screen.getByLabelText(/current engagement/i), "eng-002");
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Current engagement" }),
+      "eng-002",
+    );
     expect(onSelect).toHaveBeenCalledWith("eng-002");
+  });
+
+  it("keeps the current target context visible", () => {
+    const current = makeEngagement({
+      name: "Production forest",
+      domain: "prod.example",
+      dc: "dc01.prod.example",
+      rollback: { pending: 2 },
+    });
+    renderWithRouter(
+      <Routes>
+        <Route element={<Shell health={makeHealth()} engagements={[current]} current={current} />}>
+          <Route path="/" element={<div>home content</div>} />
+        </Route>
+      </Routes>,
+    );
+    const context = screen.getByLabelText(/current engagement context/i);
+    expect(context).toHaveTextContent("Production forest");
+    expect(context).toHaveTextContent("prod.example · dc01.prod.example");
+    expect(context).toHaveTextContent("2 rollback pending");
+  });
+
+  it("shows stale-data recovery and calls refresh", async () => {
+    const onRefresh = vi.fn();
+    const { user } = renderWithRouter(
+      <Routes>
+        <Route
+          element={<Shell health={makeHealth()} notice="Backend stopped" onRefresh={onRefresh} />}
+        >
+          <Route path="/" element={<div>home content</div>} />
+        </Route>
+      </Routes>,
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent(/data may be stale.*backend stopped/i);
+    await user.click(screen.getByRole("button", { name: /^retry$/i }));
+    expect(onRefresh).toHaveBeenCalledTimes(1);
   });
 });

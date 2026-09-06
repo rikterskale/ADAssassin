@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { NAV_GROUPS } from "../nav";
 import type { Capability, Engagement } from "../types";
@@ -28,6 +28,8 @@ export function CommandPalette({
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
 
   const items = useMemo(() => {
     const pages: PaletteItem[] = NAV_GROUPS.flatMap((group) =>
@@ -63,11 +65,42 @@ export function CommandPalette({
 
   useEffect(() => {
     if (!open) return;
+    returnFocusRef.current = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
     setQuery("");
     setActive(0);
     const handle = window.setTimeout(() => inputRef.current?.focus(), 0);
-    return () => window.clearTimeout(handle);
-  }, [open]);
+    function onDocumentKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = Array.from(
+        dialogRef.current?.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), input:not(:disabled), [href], [tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+    document.addEventListener("keydown", onDocumentKeyDown);
+    return () => {
+      window.clearTimeout(handle);
+      document.removeEventListener("keydown", onDocumentKeyDown);
+      returnFocusRef.current?.focus();
+    };
+  }, [onClose, open]);
 
   useEffect(() => {
     setActive(0);
@@ -80,12 +113,7 @@ export function CommandPalette({
     onClose();
   }
 
-  function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      onClose();
-      return;
-    }
+  function onKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
     if (event.key === "ArrowDown") {
       event.preventDefault();
       setActive((index) => Math.min(items.length - 1, index + 1));
@@ -108,12 +136,19 @@ export function CommandPalette({
   return (
     <div className="palette-backdrop" onClick={onClose} role="presentation">
       <div
+        ref={dialogRef}
         className="palette"
         role="dialog"
-        aria-label="Jump to"
+        aria-labelledby="palette-title"
         aria-modal="true"
         onClick={(event) => event.stopPropagation()}
       >
+        <div className="palette-head">
+          <span id="palette-title">Quick jump</span>
+          <button className="palette-close" type="button" onClick={onClose} aria-label="Close quick jump">
+            Close <span className="kbd">Esc</span>
+          </button>
+        </div>
         <input
           ref={inputRef}
           className="palette-input"

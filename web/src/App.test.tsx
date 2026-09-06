@@ -99,6 +99,27 @@ describe("App bootstrap", () => {
     const second = makeEngagement({ id: "eng-002", name: "Second" });
     primeRefresh([first, second]);
     renderWithRouter(<App />);
-    expect(await screen.findByLabelText(/current engagement/i)).toHaveValue("eng-002");
+    expect(await screen.findByRole("combobox", { name: "Current engagement" })).toHaveValue("eng-002");
+  });
+
+  it("keeps the console visible and offers retry after a later refresh fails", async () => {
+    primeRefresh();
+    vi.mocked(api.demoEngagement).mockResolvedValue({ ok: true, engagement: makeEngagement() });
+    const { user } = renderWithRouter(<App />);
+    expect(await screen.findByRole("heading", { name: /active directory assessments/i })).toBeInTheDocument();
+
+    vi.mocked(api.health).mockRejectedValueOnce(new TypeError("Backend stopped"));
+    await user.click(await screen.findByRole("button", { name: /refresh console data/i }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/data may be stale/i);
+    expect(screen.getByRole("heading", { name: /active directory assessments/i })).toBeInTheDocument();
+  });
+
+  it("records a page-visit milestone once without entering a refresh loop", async () => {
+    primeRefresh();
+    vi.mocked(api.markGuided).mockResolvedValue({ ok: true, engagement: makeEngagement() });
+    renderWithRouter(<App />, { route: "/catalog?lane=green" });
+    await waitFor(() => expect(vi.mocked(api.markGuided)).toHaveBeenCalledTimes(1));
+    await new Promise((resolve) => window.setTimeout(resolve, 25));
+    expect(vi.mocked(api.markGuided)).toHaveBeenCalledTimes(1);
   });
 });

@@ -26,6 +26,7 @@ export function SecretField({
   placeholder,
   autoComplete = "off",
   required = false,
+  maxLength,
 }: {
   label: string;
   hint?: string;
@@ -34,6 +35,7 @@ export function SecretField({
   placeholder?: string;
   autoComplete?: string;
   required?: boolean;
+  maxLength?: number;
 }) {
   const [show, setShow] = useState(false);
   return (
@@ -47,6 +49,7 @@ export function SecretField({
           placeholder={placeholder}
           autoComplete={autoComplete}
           required={required}
+          maxLength={maxLength}
           spellCheck={false}
         />
         <button className="btn ghost" type="button" onClick={() => setShow((current) => !current)}>

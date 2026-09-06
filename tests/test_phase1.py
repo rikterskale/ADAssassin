@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 
 from adassassin.app import create_app
 from adassassin.config import Settings
+from adassassin.engagements import update_engagement
 
 
 def test_doctor_and_guide(tmp_path: Path) -> None:
@@ -36,6 +37,24 @@ def test_doctor_and_guide(tmp_path: Path) -> None:
         json={"step_id": "glossary"},
     ).json()
     assert "glossary" in marked["engagement"]["guided_marked"]
+
+    refused = client.post(
+        f"/api/engagements/{demo['id']}/guided",
+        json={"step_id": "red-run"},
+    )
+    assert refused.status_code == 400
+    assert "automatically" in refused.json()["detail"]
+    assert "red-run" not in client.get("/api/guide").json()["completed"]
+
+    # Legacy or manually edited markers cannot impersonate a completed run.
+    update_engagement(
+        settings,
+        demo["id"],
+        lambda item: item["guided_marked"].extend(["observe-run", "red-run"]),
+    )
+    completed = client.get("/api/guide").json()["completed"]
+    assert "observe-run" not in completed
+    assert "red-run" not in completed
 
 
 def test_missing_engine_is_warn_not_fail(tmp_path: Path) -> None:

@@ -5,6 +5,7 @@ from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from adassassin import DEFAULT_HOST, DEFAULT_PORT
+from adassassin.storage import ensure_private_dir
 
 LOOPBACK_HOSTS = {"127.0.0.1", "localhost"}
 
@@ -30,9 +31,13 @@ class Settings(BaseSettings):
     def engagements_dir(self) -> Path:
         return self.data_dir / "engagements"
 
+    def ensure_data_dirs(self) -> None:
+        """Create app-owned storage with private POSIX permissions."""
+        ensure_private_dir(self.data_dir)
+        ensure_private_dir(self.engagements_dir)
+
 
 def get_settings() -> Settings:
     settings = Settings()
-    settings.data_dir.mkdir(parents=True, exist_ok=True)
-    settings.engagements_dir.mkdir(parents=True, exist_ok=True)
+    settings.ensure_data_dirs()
     return settings

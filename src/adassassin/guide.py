@@ -26,16 +26,76 @@ GLOSSARY = {
     "engagement": "One authorized assessment workspace: findings, vault, rollback, and notes.",
 }
 
+# These are the only steps that represent a page visit rather than a real
+# outcome. Connect and run steps must always be derived from engagement state;
+# letting a client mark them would make the safety-oriented progress tracker
+# misleading.
+VISIT_TRACKED_STEPS = frozenset({"green-catalog", "glossary"})
+
 STEPS = [
-    {"id": "doctor", "title": "Check the console", "why": "Confirms Python, catalog, and local storage without touching a domain controller.", "href": "/", "complete_when": "doctor_ok"},
-    {"id": "demo", "title": "Seed the offline demo", "why": "Gives you findings to click without a live directory.", "href": "/guided", "complete_when": "has_demo"},
-    {"id": "green-catalog", "title": "Browse GREEN capabilities", "why": "These work from saved evidence and do not contact a target.", "href": "/catalog?lane=green", "complete_when": "viewed_green"},
-    {"id": "findings", "title": "Read demo findings", "why": "Learn the evidence pane before any live work.", "href": "/findings", "complete_when": "has_findings"},
-    {"id": "glossary", "title": "Open the glossary", "why": "Plain language for Kerberos, AD CS, and replication terms.", "href": "/glossary", "complete_when": "viewed_glossary"},
-    {"id": "engagement", "title": "Name a live-ready engagement", "why": "A workspace to hold scope notes. Still no directory contact.", "href": "/engagements", "complete_when": "has_live_ready"},
-    {"id": "connect", "title": "Connect an authorized target", "why": "Run engine preflight for domain and DC before any yellow observe work.", "href": "/connect", "complete_when": "has_connect"},
-    {"id": "observe-run", "title": "Run a GREEN or YELLOW observe capability", "why": "Execute an observe-only capability and attach findings to the engagement.", "href": "/run", "complete_when": "has_observe_run"},
-    {"id": "red-run", "title": "Run a RED capability with typed confirm", "why": "Destructive and side-effect runs require ack, force, and typing the capability id.", "href": "/catalog?lane=red", "complete_when": "has_red_run"},
+    {
+        "id": "doctor",
+        "title": "Check the console",
+        "why": "Confirms Python, catalog, and local storage without touching a domain controller.",
+        "href": "/",
+        "complete_when": "doctor_ok",
+    },
+    {
+        "id": "demo",
+        "title": "Seed the offline demo",
+        "why": "Gives you findings to click without a live directory.",
+        "href": "/guided",
+        "complete_when": "has_demo",
+    },
+    {
+        "id": "green-catalog",
+        "title": "Browse GREEN capabilities",
+        "why": "These work from saved evidence and do not contact a target.",
+        "href": "/catalog?lane=green",
+        "complete_when": "viewed_green",
+    },
+    {
+        "id": "findings",
+        "title": "Read demo findings",
+        "why": "Learn the evidence pane before any live work.",
+        "href": "/findings",
+        "complete_when": "has_findings",
+    },
+    {
+        "id": "glossary",
+        "title": "Open the glossary",
+        "why": "Plain language for Kerberos, AD CS, and replication terms.",
+        "href": "/glossary",
+        "complete_when": "viewed_glossary",
+    },
+    {
+        "id": "engagement",
+        "title": "Name a live-ready engagement",
+        "why": "A workspace to hold scope notes. Still no directory contact.",
+        "href": "/engagements",
+        "complete_when": "has_live_ready",
+    },
+    {
+        "id": "connect",
+        "title": "Connect an authorized target",
+        "why": "Run engine preflight for domain and DC before any yellow observe work.",
+        "href": "/connect",
+        "complete_when": "has_connect",
+    },
+    {
+        "id": "observe-run",
+        "title": "Run a GREEN or YELLOW observe capability",
+        "why": "Execute an observe-only capability and attach findings to the engagement.",
+        "href": "/run",
+        "complete_when": "has_observe_run",
+    },
+    {
+        "id": "red-run",
+        "title": "Run a RED capability with typed confirm",
+        "why": "Destructive and side-effect runs require ack, force, and typing the capability id.",
+        "href": "/catalog?lane=red",
+        "complete_when": "has_red_run",
+    },
 ]
 
 
@@ -58,7 +118,7 @@ def _progress_from_state(
     has_red_run: bool,
     marked: list[str],
 ) -> list[str]:
-    done = set(marked)
+    done = set(marked).intersection(VISIT_TRACKED_STEPS)
     if doctor_ok:
         done.add("doctor")
     if has_demo:
@@ -84,16 +144,16 @@ def guide_payload(settings: Settings, marked: list[str] | None = None) -> dict[s
     has_live_ready = any(item.get("mode") == "live-ready" for item in engagements)
     has_connect = any((item.get("connect") or {}).get("preflight_ok") for item in engagements)
     has_observe_run = any(
-        "observe-run" in (item.get("guided_marked") or [])
-        or any(
+        any(
             job.get("status") == "completed" and _is_observe_job(job)
             for job in (item.get("jobs") or [])
         )
         for item in engagements
     )
     has_red_run = any(
-        "red-run" in (item.get("guided_marked") or [])
-        or any(job.get("status") == "completed" and job.get("red") for job in (item.get("jobs") or []))
+        any(
+            job.get("status") == "completed" and job.get("red") for job in (item.get("jobs") or [])
+        )
         for item in engagements
     )
     completed = _progress_from_state(
@@ -117,7 +177,14 @@ def guide_payload(settings: Settings, marked: list[str] | None = None) -> dict[s
         "ok": True,
         "completed": completed,
         "next": next_step,
-        "steps": [{**step, "done": step["id"] in completed} for step in STEPS],
+        "steps": [
+            {
+                **step,
+                "done": step["id"] in completed,
+                "completion_mode": ("visit" if step["id"] in VISIT_TRACKED_STEPS else "automatic"),
+            }
+            for step in STEPS
+        ],
         "lanes": lanes,
         "doctor_summary": doctor["summary"],
     }
@@ -137,5 +204,7 @@ def glossary_payload() -> dict[str, Any]:
     return {
         "ok": True,
         "source": source,
-        "items": [{"term": term, "definition": definition} for term, definition in sorted(merged.items())],
+        "items": [
+            {"term": term, "definition": definition} for term, definition in sorted(merged.items())
+        ],
     }

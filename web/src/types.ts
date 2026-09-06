@@ -88,6 +88,7 @@ export type GuideStep = {
   href: string;
   complete_when: string;
   done: boolean;
+  completion_mode: "visit" | "automatic";
 };
 
 export type GuideResponse = {

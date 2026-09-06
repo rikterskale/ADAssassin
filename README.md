@@ -35,10 +35,10 @@ If anything fails, use the platform sections and verbose fix actions in
 [docs/INSTALLATION.md](docs/INSTALLATION.md).
 
 ```bash
-cd web && npm install && npm run build   # optional React rebuild
-cd web && npm test                       # frontend suite (Vitest + RTL)
-cd web && npx playwright install chromium && npm run e2e   # user-journey E2E
-python -m pytest                         # backend suite (or rely on CI)
+npm --prefix web ci && npm --prefix web run build          # optional React rebuild
+npm --prefix web test                                    # frontend suite (Vitest + RTL)
+npm --prefix web exec -- playwright install chromium && npm --prefix web run e2e
+python -m pytest                                         # backend suite
 ```
 
 ## Console
@@ -60,6 +60,28 @@ python -m pytest                         # backend suite (or rely on CI)
   capability readiness, and interrupted-job recovery
 - Operator chrome: Ctrl+K command palette, sticky engagement switcher, labeled
   forms, toasts, copy controls, finding/glossary search, and mobile navigation
+- Always-visible engagement/target context, explicit refresh and stale-data
+  recovery, preflight-aware run controls, and a final execution review
+- Owner-only POSIX permissions for app-owned engagement metadata, reports, and
+  synthetic demo keys (`0700` directories / `0600` files)
+
+## Production verification
+
+From an activated development environment:
+
+```bash
+python -m pytest -q
+python -m ruff check src tests
+npm --prefix web test
+npm --prefix web run typecheck:test
+npm --prefix web run build
+npm --prefix web run e2e
+python -m pip wheel . --no-deps --wheel-dir /tmp/adassassin-wheel
+```
+
+The E2E configuration uses the repository `.venv` when present, falls back to
+the platform Python command, and accepts `ADASSASSIN_E2E_PYTHON` for an explicit
+interpreter path.
 
 ## Engine pin
 

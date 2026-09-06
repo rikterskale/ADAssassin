@@ -1,3 +1,5 @@
+import os
+import stat
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -51,6 +53,10 @@ def test_demo_report_export_zero_network(tmp_path: Path) -> None:
     detail = client.get(f"/api/engagements/{demo['id']}").json()["engagement"]
     assert detail.get("report", {}).get("markdown_path")
     assert detail["report"]["finding_count"] >= 3
+
+    if os.name != "nt":
+        for report_path in report["paths"].values():
+            assert stat.S_IMODE(Path(report_path).stat().st_mode) == 0o600
 
 
 def test_health_phase_six(tmp_path: Path) -> None:

@@ -8,6 +8,7 @@ from typing import Any
 from uuid import uuid4
 
 from adassassin.config import Settings
+from adassassin.storage import ensure_private_dir, protect_private_file, write_private_text
 
 # All engagement JSON reads/writes are serialized through this reentrant lock.
 # Runs now execute on a background thread (see runner.py), so concurrent access
@@ -66,7 +67,7 @@ def _path(settings: Settings, engagement_id: str):
 
 
 def list_engagements(settings: Settings) -> list[dict[str, Any]]:
-    settings.engagements_dir.mkdir(parents=True, exist_ok=True)
+    ensure_private_dir(settings.engagements_dir)
     items: list[dict[str, Any]] = []
     with _IO_LOCK:
         for path in sorted(settings.engagements_dir.glob("*.json")):
@@ -88,14 +89,15 @@ def get_engagement(settings: Settings, engagement_id: str) -> dict[str, Any] | N
 
 def save_engagement(settings: Settings, payload: dict[str, Any]) -> dict[str, Any]:
     payload["updated_at"] = _now()
-    settings.engagements_dir.mkdir(parents=True, exist_ok=True)
+    ensure_private_dir(settings.engagements_dir)
     path = _path(settings, payload["id"])
     with _IO_LOCK:
         # Write to a temp file and replace so a concurrent reader never sees a
         # half-written file even outside the lock window.
         tmp = path.with_suffix(".json.tmp")
-        tmp.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        write_private_text(tmp, json.dumps(payload, indent=2) + "\n")
         tmp.replace(path)
+        protect_private_file(path)
     return payload
 
 

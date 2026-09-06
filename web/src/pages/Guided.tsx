@@ -2,12 +2,11 @@ import { Link } from "react-router-dom";
 import type { Engagement, GuideResponse } from "../types";
 
 export function Guided({
-  guide, engagement, onDemo, onMark,
+  guide, engagement, onDemo,
 }: {
   guide: GuideResponse | null;
   engagement: Engagement | null;
   onDemo: () => void;
-  onMark: (stepId: string) => void;
 }) {
   const steps = guide?.steps ?? [];
   const doneCount = steps.filter((step) => step.done).length;
@@ -58,7 +57,13 @@ export function Guided({
             <p className="muted">{step.why}</p>
             <div className="actions">
               <Link className="btn ghost" to={step.href}>Open</Link>
-              {step.done ? <span className="badge green">done</span> : <button className="btn" type="button" onClick={() => onMark(step.id)}>Mark seen</button>}
+              {step.done ? (
+                <span className="badge green">done</span>
+              ) : (
+                <span className="badge">
+                  {step.completion_mode === "visit" ? "open to complete" : "complete in workflow"}
+                </span>
+              )}
             </div>
           </div>
         ))}

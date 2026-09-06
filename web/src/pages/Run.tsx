@@ -9,6 +9,17 @@ import { useToast } from "../components/Toasts";
 import { formatWhen } from "../format";
 import type { Capability, Engagement, Job, Lane } from "../types";
 
+function promptKey(prompt: NonNullable<Capability["required_prompts"]>[number]): string {
+  return prompt.is_param && prompt.param_key
+    ? prompt.param_key
+    : prompt.option.replace(/^--/, "").replace(/-/g, "_");
+}
+
+function isSensitivePrompt(key: string): boolean {
+  return ["password", "new_password", "spray_password", "hashes", "nthash", "secret", "token"]
+    .some((term) => key.toLowerCase() === term || key.toLowerCase().endsWith(`_${term}`));
+}
+
 export function Run({
   engagement,
   catalog,
@@ -58,14 +69,12 @@ export function Run({
         setDetail(response.capability);
         const next: Record<string, string> = {};
         for (const prompt of response.capability.required_prompts ?? []) {
-          const key = prompt.is_param && prompt.param_key
-            ? prompt.param_key
-            : prompt.option.replace(/^--/, "").replace(/-/g, "_");
+          const key = promptKey(prompt);
           if (key === "domain" && engagement?.domain) next[key] = engagement.domain;
           else if ((key === "dc" || key === "dc_ip") && engagement?.dc) next[key] = engagement.dc;
-          else next[key] = options[key] ?? "";
+          else next[key] = "";
         }
-        setOptions((current) => ({ ...next, ...current }));
+        setOptions(next);
         setConfirm("");
         setApprovalToken("");
         setApprovalEngagementId("");
@@ -74,8 +83,7 @@ export function Run({
       if (!cancelled) setError(err instanceof Error ? err.message : String(err));
     });
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [capabilityId, engagement?.domain, engagement?.dc]);
+  }, [capabilityId, engagement?.id, engagement?.domain, engagement?.dc]);
 
   useEffect(() => {
     if (!pollId || !engagement) return;
@@ -121,6 +129,8 @@ export function Run({
 
   function selectCapability(id: string) {
     setCapabilityId(id);
+    setDetail(null);
+    setOptions({});
     setJob(null);
     setError(null);
     setConfirm("");
@@ -186,6 +196,7 @@ export function Run({
 
   const prompts = detail?.required_prompts ?? [];
   const connected = Boolean(engagement?.connect?.preflight_ok);
+  const requiresConnection = Boolean(detail && detail.lane !== "green");
   const running = busy || Boolean(pollId);
   const submitLabel = isRed
     ? `Run ${capabilityId || "capability"} ${riskLabel}`
@@ -194,9 +205,13 @@ export function Run({
     ? "Starting…"
     : pollId
       ? `Running… ${elapsed}s`
-      : submitLabel;
+      : capabilityId && !detail
+        ? "Loading capability…"
+        : submitLabel;
   const canSubmit = Boolean(capabilityId)
+    && Boolean(detail)
     && !demoBlocked
+    && (!requiresConnection || connected)
     && Boolean(detail?.readiness?.ready ?? detail?.runnable ?? true)
     && (!isRed || confirm.trim() === capabilityId)
     && (!requiresScopedApproval || Boolean(approvalToken && approvalEngagementId.trim()));
@@ -252,10 +267,28 @@ export function Run({
                   Offline demo engagements can run GREEN capabilities only. Create a live-ready engagement first.
                 </div>
               )}
+              {requiresConnection && !connected && engagement.mode !== "demo" && (
+                <div className="banner-warning">
+                  This capability can contact or change a target. Complete a successful target preflight before
+                  running it. <Link to="/connect">Open Connect</Link>.
+                </div>
+              )}
               {prompts.map((prompt) => {
-                const key = prompt.is_param && prompt.param_key
-                  ? prompt.param_key
-                  : prompt.option.replace(/^--/, "").replace(/-/g, "_");
+                const key = promptKey(prompt);
+                if (isSensitivePrompt(key)) {
+                  return (
+                    <SecretField
+                      key={prompt.option}
+                      label={prompt.label}
+                      hint={`${prompt.help} Held in browser memory for this run only.`}
+                      value={options[key] ?? ""}
+                      onChange={(value) => setOptions((current) => ({ ...current, [key]: value }))}
+                      placeholder={prompt.help}
+                      required
+                      maxLength={4096}
+                    />
+                  );
+                }
                 return (
                   <Field key={prompt.option} label={prompt.label} hint={prompt.help}>
                     <input
@@ -266,6 +299,20 @@ export function Run({
                   </Field>
                 );
               })}
+              {detail && (
+                <section className="review-card" aria-label="Execution review">
+                  <h3>Execution review</h3>
+                  <dl className="meta-list">
+                    <div><dt>Capability</dt><dd className="mono">{detail.id}</dd></div>
+                    <div><dt>Target</dt><dd>{detail.lane === "green" ? "Local evidence only" : `${engagement.domain || "domain unset"} · ${engagement.dc || "DC unset"}`}</dd></div>
+                    <div><dt>Lane</dt><dd><RiskBadge lane={detail.lane} risk={detail.risk} /></dd></div>
+                    <div><dt>Authentication</dt><dd>{detail.auth_modes.join(", ") || "none"}</dd></div>
+                    <div><dt>Noise</dt><dd>{detail.noise || "not declared"}</dd></div>
+                    <div><dt>Approval</dt><dd>{detail.approval || "none"}</dd></div>
+                    <div><dt>Rollback</dt><dd>{detail.rollback_expectation || detail.rollback || "none"}</dd></div>
+                  </dl>
+                </section>
+              )}
               {isRed && (
                 <>
                   <div className="banner-error">

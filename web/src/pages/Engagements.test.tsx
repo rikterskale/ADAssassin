@@ -23,6 +23,18 @@ describe("Engagements", () => {
     expect(onCreate).not.toHaveBeenCalled();
   });
 
+  it("keeps form values and shows an actionable create error", async () => {
+    const onCreate = vi.fn().mockRejectedValue(new Error("Storage is not writable"));
+    const { user } = renderWithRouter(
+      <Engagements items={[]} currentId={null} onCreate={onCreate} onDemo={vi.fn()} onSelect={vi.fn()} />,
+    );
+    const name = screen.getByPlaceholderText("Name");
+    await user.type(name, "Acme");
+    await user.click(screen.getByRole("button", { name: /^create$/i }));
+    expect(await screen.findByText(/storage is not writable/i)).toBeInTheDocument();
+    expect(name).toHaveValue("Acme");
+  });
+
   it("seeds the demo", async () => {
     const onDemo = vi.fn();
     const { user } = renderWithRouter(

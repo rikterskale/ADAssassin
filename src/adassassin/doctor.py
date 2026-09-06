@@ -10,6 +10,7 @@ from adassassin import ENGINE_COMMIT, ENGINE_PIN, __version__
 from adassassin.catalog import catalog_payload
 from adassassin.config import Settings, is_loopback_host
 from adassassin.engine import probe
+from adassassin.storage import ensure_private_dir, write_private_text
 
 WEBAPP = Path(__file__).resolve().parent / "webapp"
 
@@ -24,9 +25,9 @@ def run_doctor(settings: Settings) -> dict[str, Any]:
     catalog = catalog_payload()
     data_ok = False
     try:
-        settings.data_dir.mkdir(parents=True, exist_ok=True)
+        ensure_private_dir(settings.data_dir)
         probe_file = settings.data_dir / ".write-probe"
-        probe_file.write_text("ok", encoding="utf-8")
+        write_private_text(probe_file, "ok")
         probe_file.unlink(missing_ok=True)
         data_ok = True
     except OSError as exc:

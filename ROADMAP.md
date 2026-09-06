@@ -86,6 +86,21 @@ Lanes (console risk bands):
 
 ---
 
+## Production hardening (2026-09-05)
+
+- Guided operational milestones are derived only from actual connect/job state;
+  clients may mark only the GREEN-catalog and glossary visit milestones.
+- The Run page clears capability-scoped values on selection changes, masks
+  sensitive prompts, requires preflight before target-interacting submission,
+  and presents a final target/risk/approval/rollback review.
+- The shell keeps the current target context visible and exposes explicit
+  refresh plus stale-data recovery without discarding loaded UI state.
+- App-owned evidence uses owner-only POSIX modes, CLI environment settings are
+  honored consistently, release CI builds the wheel, and dependency update
+  automation covers Python, npm, and GitHub Actions.
+
+---
+
 ## Phase 0 — Launcher (done)
 
 Intent: a pip-installable console that boots locally and shows the catalog.
@@ -125,7 +140,8 @@ Shipped:
 
 - `src/adassassin/doctor.py` — offline checks
 - `src/adassassin/guide.py` — guided path + glossary (Phase 1 six steps; Phase 2 appends two)
-- Guided marks on engagements (`guided_marked`)
+- Visit-only guided marks on engagements (`guided_marked`); operational steps
+  remain state-backed
 - Overview doctor panel
 - Catalog inspector (approval, rollback, tools, environment)
 - Glossary page
@@ -339,23 +355,24 @@ adassassin
 Optional vendor UI rebuild:
 
 ```bash
-cd web && npm install && npm run build
+npm --prefix web ci && npm --prefix web run build
 ```
 
 Frontend tests (Vitest + React Testing Library) cover the API client, every
 component, every page, and app bootstrap/routing:
 
 ```bash
-cd web && npm install && npm test        # or: npm run test:coverage
+npm --prefix web ci && npm --prefix web test   # or: npm run test:coverage
 ```
 
 End-to-end user-readiness journey (Playwright) boots the real server against the
 shipped bundle and walks the operator path (demo → findings/explain → vault
 unmask → rollback preview → report export → catalog/glossary/guided) plus the
-RED typed-confirm safety gate, entirely offline:
+RED preflight + typed-confirm safety gates, entirely offline:
 
 ```bash
-cd web && npx playwright install chromium && npm run e2e
+npm --prefix web exec -- playwright install chromium
+npm --prefix web run e2e
 ```
 
 Vite build output must land in `src/adassassin/webapp/` (see `web/vite.config.ts`).

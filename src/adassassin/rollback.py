@@ -9,6 +9,7 @@ from uuid import uuid4
 from adassassin.config import Settings
 from adassassin.engagements import get_engagement, update_engagement
 from adassassin.secrets import resolve_bind_secret
+from adassassin.storage import ensure_private_dir, write_private_text
 from adassassin.workspace import engagement_workspace, session_dirs
 
 CONFIRM_TOKEN = "YES"
@@ -229,10 +230,10 @@ def seed_demo_pending_cleanup(settings: Settings, engagement_id: str) -> Path:
     """Create a fixture pending cleanup entry for offline rollback UI demos/tests."""
     workspace = engagement_workspace(settings, engagement_id)
     session = workspace / "demo-cleanup-session"
-    session.mkdir(parents=True, exist_ok=True)
-    (session / "session.json").write_text(
+    ensure_private_dir(session)
+    write_private_text(
+        session / "session.json",
         '{"session_id":"demo-cleanup-session","tool":"adassassin-demo"}\n',
-        encoding="utf-8",
     )
     import json
 
@@ -247,5 +248,5 @@ def seed_demo_pending_cleanup(settings: Settings, engagement_id: str) -> Path:
             "registered_at": _now(),
         }
     ]
-    (session / "cleanup.json").write_text(json.dumps(cleanup, indent=2) + "\n", encoding="utf-8")
+    write_private_text(session / "cleanup.json", json.dumps(cleanup, indent=2) + "\n")
     return session

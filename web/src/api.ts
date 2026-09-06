@@ -21,16 +21,54 @@ import type {
   VaultUnmaskResponse,
 } from "./types";
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, {
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
-    ...init,
+const REQUEST_TIMEOUT_MS = 45_000;
+
+type ValidationIssue = { loc?: unknown[]; msg?: unknown };
+
+function humanizeErrorDetail(detail: unknown): string | null {
+  if (typeof detail === "string" && detail.trim()) return detail;
+  if (!Array.isArray(detail)) return null;
+  const messages = detail.flatMap((issue: ValidationIssue) => {
+    if (!issue || typeof issue.msg !== "string") return [];
+    const parts = Array.isArray(issue.loc) ? issue.loc.slice(1).map(String) : [];
+    const field = parts.join(" → ").replace(/_/g, " ");
+    const message = issue.msg.replace(/^Value error,\s*/i, "");
+    return [field ? `${field}: ${message}` : message];
   });
+  return messages.length ? messages.slice(0, 3).join(" · ") : null;
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let response: Response;
+  try {
+    response = await fetch(path, {
+      ...init,
+      credentials: "same-origin",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        ...(init?.headers ?? {}),
+      },
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("The local console took too long to respond. Check the server terminal, then retry.");
+    }
+    if (error instanceof TypeError) {
+      throw new Error("Cannot reach the local ADAssassin API. Confirm the server is still running, then retry.");
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+  }
   if (!response.ok) {
     let detail = `${response.status} ${response.statusText}`;
     try {
       const body = (await response.json()) as { detail?: unknown };
-      if (typeof body.detail === "string") detail = body.detail;
+      detail = humanizeErrorDetail(body.detail) ?? detail;
     } catch {
       /* keep status text */
     }

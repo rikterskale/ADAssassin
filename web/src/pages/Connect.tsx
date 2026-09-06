@@ -98,6 +98,7 @@ export function Connect({
                   placeholder="Domain (e.g. corp.local)"
                   value={domain}
                   onChange={(e) => setDomain(e.target.value)}
+                  maxLength={255}
                   required
                   spellCheck={false}
                 />
@@ -107,6 +108,7 @@ export function Connect({
                   placeholder="DC host or IP"
                   value={dc}
                   onChange={(e) => setDc(e.target.value)}
+                  maxLength={255}
                   required
                   spellCheck={false}
                 />
@@ -116,6 +118,7 @@ export function Connect({
                   placeholder="Username (optional)"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
+                  maxLength={320}
                   spellCheck={false}
                 />
               </Field>
@@ -125,6 +128,7 @@ export function Connect({
                 placeholder="Password (optional, not saved to disk)"
                 value={password}
                 onChange={setPassword}
+                maxLength={4096}
               />
               <SecretField
                 label="NTLM hashes"
@@ -132,6 +136,7 @@ export function Connect({
                 placeholder="NTLM hashes LM:NT or NT (optional, not saved to disk)"
                 value={hashes}
                 onChange={setHashes}
+                maxLength={4096}
               />
               {error && <div className="banner-error">{error}</div>}
               <div className="actions">

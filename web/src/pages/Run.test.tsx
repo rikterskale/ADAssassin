@@ -10,6 +10,27 @@ vi.mock("../api", () => ({
 const observeCap = makeCapability({ id: "ldap-signing-check", plain: "Reads LDAP signing policy.", required_prompts: [] });
 const redCap = makeRedCapability({ id: "dcsync", plain: "Pulls password material.", risk_label: "destructive" });
 
+function connectedEngagement() {
+  return makeEngagement({
+    connect: {
+      domain: "corp.local",
+      dc: "10.0.0.1",
+      username: "operator",
+      secret_ref: null,
+      has_secret: false,
+      preflight_ok: true,
+      preflight: {
+        ok: true,
+        ready: true,
+        blocking_checks: [],
+        advisory_checks: [],
+        checks: [],
+        target_contacted: true,
+      },
+    },
+  });
+}
+
 function completedJob(overrides: Record<string, unknown> = {}) {
   return {
     id: "job1",
@@ -32,7 +53,7 @@ describe("Run", () => {
   it("loads the capability preselected via the URL", async () => {
     vi.mocked(api.capability).mockResolvedValue({ ok: true, capability: observeCap });
     renderWithRouter(
-      <Run engagement={makeEngagement()} catalog={[observeCap]} onRan={vi.fn()} onSeedDemo={vi.fn()} />,
+      <Run engagement={connectedEngagement()} catalog={[observeCap]} onRan={vi.fn()} onSeedDemo={vi.fn()} />,
       { route: "/run?capability=ldap-signing-check" },
     );
     expect(await screen.findByText(/reads ldap signing policy/i)).toBeInTheDocument();
@@ -42,7 +63,7 @@ describe("Run", () => {
   it("submits an observe run without ack/force/confirm", async () => {
     vi.mocked(api.capability).mockResolvedValue({ ok: true, capability: observeCap });
     const onRan = vi.fn();
-    const engagement = makeEngagement();
+    const engagement = connectedEngagement();
     vi.mocked(api.run).mockResolvedValue({
       ok: true,
       job_id: "job1",
@@ -75,10 +96,10 @@ describe("Run", () => {
       status: "completed",
       findings: [],
       job: completedJob({ id: "job9", capability_id: "dcsync", red: true }),
-      engagement: makeEngagement(),
+      engagement: connectedEngagement(),
     });
     const { user } = renderWithRouter(
-      <Run engagement={makeEngagement()} catalog={[redCap]} onRan={vi.fn()} onSeedDemo={vi.fn()} />,
+      <Run engagement={connectedEngagement()} catalog={[redCap]} onRan={vi.fn()} onSeedDemo={vi.fn()} />,
       { route: "/run?capability=dcsync" },
     );
     // RED warning appears once the capability loads.
@@ -108,10 +129,10 @@ describe("Run", () => {
       status: "completed",
       findings: [],
       job: completedJob({ id: "job-scoped", capability_id: "password-spray", red: true }),
-      engagement: makeEngagement(),
+      engagement: connectedEngagement(),
     });
     const { user } = renderWithRouter(
-      <Run engagement={makeEngagement()} catalog={[scoped]} onRan={vi.fn()} onSeedDemo={vi.fn()} />,
+      <Run engagement={connectedEngagement()} catalog={[scoped]} onRan={vi.fn()} onSeedDemo={vi.fn()} />,
       { route: "/run?capability=password-spray" },
     );
     await screen.findByText(/requires a scoped approval token/i);
@@ -141,6 +162,52 @@ describe("Run", () => {
     expect(screen.getByRole("button", { name: /run dcsync destructive/i })).toBeDisabled();
   });
 
+  it("requires preflight before enabling a target-interacting run", async () => {
+    vi.mocked(api.capability).mockResolvedValue({ ok: true, capability: observeCap });
+    renderWithRouter(
+      <Run engagement={makeEngagement()} catalog={[observeCap]} onRan={vi.fn()} onSeedDemo={vi.fn()} />,
+      { route: "/run?capability=ldap-signing-check" },
+    );
+    expect(await screen.findByText(/complete a successful target preflight/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /run observe/i })).toBeDisabled();
+    expect(screen.getByRole("link", { name: /open connect/i })).toHaveAttribute("href", "/connect");
+  });
+
+  it("masks sensitive prompts and clears their values when switching capabilities", async () => {
+    const spray = makeRedCapability({
+      id: "password-spray",
+      approval: "explicit",
+      required_prompts: [{
+        option: "-P spray_password=<candidate>",
+        label: "Candidate password",
+        help: "Password to test.",
+        is_param: "spray_password",
+        param_key: "spray_password",
+      }],
+    });
+    vi.mocked(api.capability).mockImplementation(async (id) => ({
+      ok: true,
+      capability: id === spray.id ? spray : observeCap,
+    }));
+    const { user } = renderWithRouter(
+      <Run
+        engagement={connectedEngagement()}
+        catalog={[spray, observeCap]}
+        onRan={vi.fn()}
+        onSeedDemo={vi.fn()}
+      />,
+      { route: "/run?capability=password-spray" },
+    );
+    const secret = await screen.findByPlaceholderText(/password to test/i);
+    expect(secret).toHaveAttribute("type", "password");
+    await user.type(secret, "NeverCarryThisAcrossRuns");
+    await user.click(screen.getByRole("button", { name: /ldap-signing-check/i }));
+    await waitFor(() => expect(vi.mocked(api.capability)).toHaveBeenCalledWith("ldap-signing-check"));
+    await waitFor(() => {
+      expect(screen.queryByDisplayValue("NeverCarryThisAcrossRuns")).not.toBeInTheDocument();
+    });
+  });
+
   it("polls a backgrounded run until it reaches a terminal state", async () => {
     vi.mocked(api.capability).mockResolvedValue({ ok: true, capability: observeCap });
     const onRan = vi.fn();
@@ -157,7 +224,7 @@ describe("Run", () => {
     vi.mocked(api.engagement).mockResolvedValue({ ok: true, engagement: freshEngagement });
 
     const { user } = renderWithRouter(
-      <Run engagement={makeEngagement()} catalog={[observeCap]} onRan={onRan} onSeedDemo={vi.fn()} />,
+      <Run engagement={connectedEngagement()} catalog={[observeCap]} onRan={onRan} onSeedDemo={vi.fn()} />,
       { route: "/run?capability=ldap-signing-check" },
     );
     await screen.findByText(/reads ldap signing policy/i);

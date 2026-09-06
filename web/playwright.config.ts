@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig, devices } from "@playwright/test";
 
 // End-to-end "user readiness" suite. It boots the real adassassin server (which
@@ -9,6 +10,18 @@ import { defineConfig, devices } from "@playwright/test";
 // is contacted: the whole journey runs against the offline demo.
 const PORT = Number(process.env.E2E_PORT ?? 8799);
 const BASE_URL = `http://127.0.0.1:${PORT}`;
+const WEB_DIR = path.dirname(fileURLToPath(import.meta.url));
+const REPO_DIR = path.resolve(WEB_DIR, "..");
+const VENV_PYTHON = path.join(
+  REPO_DIR,
+  ".venv",
+  process.platform === "win32" ? "Scripts/python.exe" : "bin/python",
+);
+const PYTHON = process.env.ADASSASSIN_E2E_PYTHON
+  ? `"${process.env.ADASSASSIN_E2E_PYTHON}"`
+  : fs.existsSync(VENV_PYTHON)
+    ? `"${VENV_PYTHON}"`
+    : process.platform === "win32" ? "python" : "python3";
 
 // Isolate engagement data in a throwaway temp dir so the E2E run never touches
 // a real ~/.adassassin, and start from a clean slate every run.
@@ -37,7 +50,7 @@ export default defineConfig({
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
-    command: `python -m adassassin --no-browser --port ${PORT}`,
+    command: `${PYTHON} -m adassassin --no-browser --port ${PORT}`,
     cwd: "..",
     env: { ADASSASSIN_DATA_DIR: DATA_DIR, ADASSASSIN_OPEN_BROWSER: "false" },
     url: `${BASE_URL}/api/health`,

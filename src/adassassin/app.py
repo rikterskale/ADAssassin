@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field, SecretStr
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 from starlette.datastructures import MutableHeaders
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -35,7 +35,7 @@ from adassassin.findings import (
     list_findings,
     set_finding_status,
 )
-from adassassin.guide import glossary_payload, guide_payload
+from adassassin.guide import VISIT_TRACKED_STEPS, glossary_payload, guide_payload
 from adassassin.report import build_report, closeout_checklist, report_file
 from adassassin.rollback import RollbackError, apply_rollback, list_rollback, preview_rollback
 from adassassin.runner import RunRefused, execute_run, get_live_job
@@ -90,23 +90,40 @@ def _webapp_file(full_path: str) -> Path | None:
 
 
 class EngagementIn(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     name: str = Field(min_length=1, max_length=120)
-    domain: str = ""
-    dc: str = ""
-    notes: str = ""
+    domain: str = Field(default="", max_length=255)
+    dc: str = Field(default="", max_length=255)
+    notes: str = Field(default="", max_length=10_000)
 
 
 class GuidedMarkIn(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     step_id: str = Field(min_length=1, max_length=40)
 
 
 class ConnectIn(BaseModel):
     domain: str = Field(min_length=1, max_length=255)
     dc: str = Field(min_length=1, max_length=255)
-    username: str = ""
-    password: str | None = None
-    hashes: str | None = None
+    username: str = Field(default="", max_length=320)
+    password: str | None = Field(default=None, max_length=4096)
+    hashes: str | None = Field(default=None, max_length=4096)
     timeout: float = Field(default=3.0, ge=0.2, le=30.0)
+
+    @field_validator("domain", "dc")
+    @classmethod
+    def target_value_must_not_be_blank(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("must not be blank")
+        return cleaned
+
+    @field_validator("username")
+    @classmethod
+    def trim_username(cls, value: str) -> str:
+        return value.strip()
 
 
 class RunIn(BaseModel):
@@ -114,10 +131,15 @@ class RunIn(BaseModel):
     options: dict[str, Any] = Field(default_factory=dict)
     ack: bool = False
     force: bool = False
-    confirm: str = ""
-    actor: str = "operator"
+    confirm: str = Field(default="", max_length=120)
+    actor: str = Field(default="operator", max_length=120)
     approval_token: SecretStr | None = None
     approval_engagement_id: str = Field(default="", max_length=120)
+
+    @field_validator("capability_id", "confirm", "actor", "approval_engagement_id")
+    @classmethod
+    def trim_run_metadata(cls, value: str) -> str:
+        return value.strip()
 
 
 class FindingStatusIn(BaseModel):
@@ -132,16 +154,15 @@ class VaultUnmaskIn(BaseModel):
 class RollbackApplyIn(BaseModel):
     force: bool = False
     ack: bool = False
-    confirm: str = ""
-    session_id: str | None = None
+    confirm: str = Field(default="", max_length=10)
+    session_id: str | None = Field(default=None, max_length=255)
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
     if not is_loopback_host(settings.host):
         raise ValueError("ADAssassin refuses non-loopback bind settings")
-    settings.data_dir.mkdir(parents=True, exist_ok=True)
-    settings.engagements_dir.mkdir(parents=True, exist_ok=True)
+    settings.ensure_data_dirs()
     reconcile_interrupted_jobs(settings)
     app = FastAPI(title="ADAssassin", version=__version__, docs_url=None, redoc_url=None)
     app.add_middleware(SecurityHeadersMiddleware)
@@ -220,6 +241,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.post("/api/engagements/{engagement_id}/guided")
     def guided_mark(engagement_id: str, body: GuidedMarkIn) -> dict[str, Any]:
+        if body.step_id not in VISIT_TRACKED_STEPS:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "This step completes automatically from real engagement activity; "
+                    "it cannot be marked manually."
+                ),
+            )
         item = mark_guided(settings, engagement_id, body.step_id)
         if item is None:
             raise HTTPException(status_code=404, detail="Engagement not found")
@@ -324,9 +353,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         engagement_id: str, finding_id: str, body: FindingStatusIn
     ) -> dict[str, Any]:
         try:
-            return set_finding_status(
-                settings, engagement_id, finding_id, status=body.status
-            )
+            return set_finding_status(settings, engagement_id, finding_id, status=body.status)
         except LookupError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except FindingError as exc:
@@ -371,9 +398,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @app.post("/api/engagements/{engagement_id}/rollback/apply")
-    def engagement_rollback_apply(
-        engagement_id: str, body: RollbackApplyIn
-    ) -> dict[str, Any]:
+    def engagement_rollback_apply(engagement_id: str, body: RollbackApplyIn) -> dict[str, Any]:
         try:
             return apply_rollback(
                 settings,

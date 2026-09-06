@@ -1,3 +1,5 @@
+import os
+import stat
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -32,3 +34,9 @@ def test_health_catalog_and_demo(tmp_path: Path) -> None:
 
     detail = client.get(f"/api/engagements/{demo['id']}").json()["engagement"]
     assert detail["id"] == demo["id"]
+
+    if os.name != "nt":
+        assert stat.S_IMODE(tmp_path.stat().st_mode) == 0o700
+        assert stat.S_IMODE((tmp_path / "engagements").stat().st_mode) == 0o700
+        saved = tmp_path / "engagements" / f"{demo['id']}.json"
+        assert stat.S_IMODE(saved.stat().st_mode) == 0o600

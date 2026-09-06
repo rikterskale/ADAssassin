@@ -34,10 +34,12 @@ function Console() {
   const [engagements, setEngagements] = useState<Engagement[]>([]);
   const [currentId, setCurrentId] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const autoSeededRef = useRef(false);
 
   const refresh = useCallback(async () => {
+    setRefreshing(true);
     try {
       const [nextHealth, nextDoctor, nextGuide, nextCatalog, nextEngagements] = await Promise.all([
         api.health(), api.doctor(), api.guide(), api.catalog(), api.engagements(),
@@ -57,6 +59,8 @@ function Console() {
       // Leave `loaded` false on the first failure so the retry screen shows;
       // a later transient failure keeps the already-rendered console up.
       setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setRefreshing(false);
     }
   }, []);
 
@@ -112,9 +116,17 @@ function Console() {
   }
 
   const mark = useCallback(async (stepId: string) => {
-    if (current) await api.markGuided(current.id, stepId);
+    if (currentId) await api.markGuided(currentId, stepId);
     await refresh();
-  }, [current, refresh]);
+  }, [currentId, refresh]);
+
+  const markGreenCatalog = useCallback(() => {
+    void mark("green-catalog");
+  }, [mark]);
+
+  const markGlossary = useCallback(() => {
+    void mark("glossary");
+  }, [mark]);
 
   async function handleConnected(engagement: Engagement) {
     upsertEngagement(engagement);
@@ -143,13 +155,16 @@ function Console() {
             current={current}
             onSelectEngagement={setCurrentId}
             catalog={catalog?.capabilities ?? []}
+            notice={error}
+            refreshing={refreshing}
+            onRefresh={() => void refresh()}
           />
         )}
       >
         <Route path="/" element={<Overview health={health} doctor={doctor} guide={guide} engagement={current} onSeedDemo={seedDemo} />} />
-        <Route path="/guided" element={<Guided guide={guide} engagement={current} onDemo={() => void seedDemo()} onMark={(id) => void mark(id)} />} />
-        <Route path="/catalog" element={<Catalog catalog={catalog} onViewGreen={() => void mark("green-catalog")} />} />
-        <Route path="/glossary" element={<Glossary onSeen={() => void mark("glossary")} />} />
+        <Route path="/guided" element={<Guided guide={guide} engagement={current} onDemo={() => void seedDemo()} />} />
+        <Route path="/catalog" element={<Catalog catalog={catalog} onViewGreen={markGreenCatalog} />} />
+        <Route path="/glossary" element={<Glossary onSeen={markGlossary} />} />
         <Route path="/engagements" element={<Engagements items={engagements} currentId={current?.id ?? null} onCreate={createEngagement} onDemo={() => void seedDemo()} onSelect={setCurrentId} />} />
         <Route path="/connect" element={<Connect engagement={current} onConnected={(item) => void handleConnected(item)} onSeedDemo={() => void seedDemo()} />} />
         <Route path="/run" element={<Run engagement={current} catalog={catalog?.capabilities ?? []} onRan={(item) => void handleRan(item)} onSeedDemo={() => void seedDemo()} />} />

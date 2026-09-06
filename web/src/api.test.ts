@@ -27,6 +27,8 @@ describe("api client", () => {
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe("/api/health");
     expect(init.headers["Content-Type"]).toBe("application/json");
+    expect(init.headers.Accept).toBe("application/json");
+    expect(init.credentials).toBe("same-origin");
     expect(result).toEqual({ ok: true, product: "adassassin" });
   });
 
@@ -61,6 +63,23 @@ describe("api client", () => {
       },
     } as unknown as Response);
     await expect(api.doctor()).rejects.toThrow("500 Internal Server Error");
+  });
+
+  it("turns validation details into a novice-readable field error", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(
+        { detail: [{ loc: ["body", "domain"], msg: "String should have at least 1 character" }] },
+        { ok: false, status: 422, statusText: "Unprocessable Entity" },
+      ),
+    );
+    await expect(api.connect("e1", { domain: "", dc: "dc01" })).rejects.toThrow(
+      "domain: String should have at least 1 character",
+    );
+  });
+
+  it("explains when the local API cannot be reached", async () => {
+    fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
+    await expect(api.health()).rejects.toThrow(/cannot reach the local adassassin api/i);
   });
 
   it("URL-encodes path parameters", async () => {

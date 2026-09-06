@@ -257,6 +257,27 @@ def test_non_loopback_bind_is_refused(tmp_path: Path) -> None:
     assert client.get("/api/health", headers={"host": "attacker.example"}).status_code == 400
 
 
+def test_cli_honors_environment_port_and_browser_settings(tmp_path: Path) -> None:
+    env = {
+        "ADASSASSIN_DATA_DIR": str(tmp_path),
+        "ADASSASSIN_PORT": "9123",
+        "ADASSASSIN_OPEN_BROWSER": "false",
+    }
+    with (
+        patch.dict(os.environ, env),
+        patch("adassassin.cli.Timer") as timer,
+        patch("adassassin.cli.uvicorn.run") as run,
+    ):
+        assert main([]) == 0
+    timer.assert_not_called()
+    assert run.call_args.kwargs["port"] == 9123
+
+
+def test_cli_rejects_invalid_port() -> None:
+    with pytest.raises(SystemExit):
+        main(["--port", "70000", "--no-browser"])
+
+
 def test_transactional_updates_do_not_lose_concurrent_changes(tmp_path: Path) -> None:
     settings = Settings(data_dir=tmp_path)
     engagement = create_engagement(settings, name="concurrency lab")

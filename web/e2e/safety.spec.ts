@@ -4,7 +4,7 @@ import { expect, test } from "@playwright/test";
 // are never one-click. They require typing the capability id to confirm. This is
 // verified through the real GUI, against a real RED capability from the pinned
 // engine, without actually executing anything (no directory is contacted).
-test("RED capabilities require typing the id to confirm before running", async ({ page, request }) => {
+test("RED capabilities require preflight and an exact typed confirmation", async ({ page, request }) => {
   const catalog = await (await request.get("/api/catalog")).json();
   const red = catalog.capabilities.find(
     (c: { lane: string; runnable?: boolean; readiness?: { ready: boolean }; approval?: string }) =>
@@ -25,7 +25,7 @@ test("RED capabilities require typing the id to confirm before running", async (
   await page.getByPlaceholder(`Type ${id}`).fill(id);
   await expect(page.locator('form button[type="submit"]')).toBeDisabled();
 
-  // Create an offline, live-ready workspace solely to exercise the UI gate.
+  // Create an offline, live-ready workspace solely to exercise both UI gates.
   // No connect or run request is submitted, so no directory can be contacted.
   await page.goto("/engagements");
   await page.getByPlaceholder("Name").fill("E2E confirmation gate");
@@ -34,15 +34,17 @@ test("RED capabilities require typing the id to confirm before running", async (
   await expect(page.getByRole("button", { name: /e2e confirmation gate/i })).toBeVisible();
   await page.goto(`/run?capability=${encodeURIComponent(id)}`);
 
-  // The run button stays disabled until the id is typed exactly.
+  // Exact confirmation is necessary but not sufficient: preflight is also
+  // mandatory. This E2E remains zero-contact, so the button must stay disabled.
   const confirm = page.getByPlaceholder(`Type ${id}`);
   await expect(confirm).toBeVisible();
   const submit = page.locator('form button[type="submit"]');
   await expect(submit).toBeDisabled();
   await confirm.fill(id);
-  await expect(submit).toBeEnabled();
+  await expect(page.getByText(/complete a successful target preflight/i)).toBeVisible();
+  await expect(submit).toBeDisabled();
 
-  // A wrong confirmation re-disables it.
+  // A wrong confirmation is independently invalid and remains disabled.
   await confirm.fill(`${id}-wrong`);
   await expect(submit).toBeDisabled();
 });

@@ -11,6 +11,7 @@ from uuid import uuid4
 
 from adassassin.config import Settings
 from adassassin.engagements import get_engagement, update_engagement
+from adassassin.storage import ensure_private_dir, write_private_text
 from adassassin.workspace import engagement_workspace, session_dirs
 
 _LOCK = Lock()
@@ -34,11 +35,7 @@ def _demo_key(settings: Settings, engagement_id: str) -> str:
     from cryptography.fernet import Fernet
 
     root = settings.data_dir / "demo-vault-keys"
-    root.mkdir(parents=True, exist_ok=True)
-    try:
-        root.chmod(0o700)
-    except OSError:
-        pass
+    ensure_private_dir(root)
     path = root / f"{engagement_id}.key"
     with _LOCK:
         if path.is_file():
@@ -51,11 +48,7 @@ def _demo_key(settings: Settings, engagement_id: str) -> str:
                 # normal demo migration path can safely recreate its fixtures.
                 pass
         key = Fernet.generate_key().decode("ascii")
-        path.write_text(key + "\n", encoding="ascii")
-        try:
-            path.chmod(0o600)
-        except OSError:
-            pass
+        write_private_text(path, key + "\n", encoding="ascii")
         return key
 
 
