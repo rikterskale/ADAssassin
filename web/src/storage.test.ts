@@ -1,4 +1,11 @@
-import { CURRENT_ENGAGEMENT_KEY, readCurrentEngagement, writeCurrentEngagement } from "./storage";
+import {
+  CURRENT_ENGAGEMENT_KEY,
+  ONBOARDING_SEEN_KEY,
+  readCurrentEngagement,
+  readOnboardingSeen,
+  writeCurrentEngagement,
+  writeOnboardingSeen,
+} from "./storage";
 
 describe("engagement storage", () => {
   beforeEach(() => {
@@ -16,5 +23,12 @@ describe("engagement storage", () => {
     writeCurrentEngagement("eng-42");
     writeCurrentEngagement(null);
     expect(readCurrentEngagement()).toBeNull();
+  });
+
+  it("records first-run onboarding after the operator reaches Start Here", () => {
+    expect(readOnboardingSeen()).toBe(false);
+    writeOnboardingSeen();
+    expect(readOnboardingSeen()).toBe(true);
+    expect(window.localStorage.getItem(ONBOARDING_SEEN_KEY)).toBe("1");
   });
 });

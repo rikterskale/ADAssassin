@@ -17,6 +17,8 @@ test("RED capabilities require preflight and an exact typed confirmation", async
 
   // Demo workspaces remain permanently offline, even when RED confirmation is exact.
   await page.goto("/");
+  await expect(page).toHaveURL(/\/start$/);
+  await page.locator("aside.rail").getByRole("link", { name: /overview/i }).click();
   await page.getByRole("button", { name: /explore the offline demo/i }).click();
   await expect(page).toHaveURL(/\/findings$/);
   await page.goto(`/run?capability=${encodeURIComponent(id)}`);

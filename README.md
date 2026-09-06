@@ -9,7 +9,7 @@ a guided GUI.
 > **New operator? Start with the comprehensive
 > [START HERE guide](docs/START_HERE.md).** It covers installation, the complete
 > zero-contact demo, authorized live work, all console surfaces, every CLI and
-> runtime setting, all 27 local API operations, rollback, reporting, and
+> runtime setting, all 30 local API operations, rollback, reporting, and
 > closeout without hiding any capability.
 
 > Written authorization is required before any live target work.
@@ -33,7 +33,7 @@ Complete operator path (install → demo → connect → observe → RED → clo
 python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\Activate.ps1
 python -m pip install -U pip
-python -m pip install -e .
+python -m pip install .
 adassassin
 ```
 

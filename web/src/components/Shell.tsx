@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { NAV_GROUPS } from "../nav";
+import { connectStatusMessage, isConnectReady } from "../connection";
 import type { Capability, Engagement, HealthResponse } from "../types";
 import { CommandPalette } from "./CommandPalette";
 
@@ -45,6 +46,8 @@ export function Shell({
   }, []);
 
   const engineOk = health?.engine.available;
+  const connectionReady = isConnectReady(current);
+  const activeJob = (current?.jobs ?? []).find((job) => job.status === "running");
   return (
     <div className="shell">
       <a className="skip-link" href="#main-content">Skip to content</a>
@@ -148,7 +151,16 @@ export function Shell({
               <span className="scope-label">Current engagement</span>
               <strong>{current.name}</strong>
               <span className={`badge ${current.mode === "demo" ? "yellow" : ""}`}>{current.mode}</span>
-              {current.connect?.preflight_ok && <span className="badge green">preflight ready</span>}
+              {connectionReady && <span className="badge green">preflight ready</span>}
+              {current.mode !== "demo" && current.connect && !connectionReady && (
+                <Link className="scope-detail warning" to="/connect">{connectStatusMessage(current)}</Link>
+              )}
+              {current.archived && <span className="badge">archived · execution locked</span>}
+              {activeJob && (
+                <Link className="scope-detail warning" to={`/run?job=${encodeURIComponent(activeJob.id)}`}>
+                  {activeJob.capability_id} is running · open live status
+                </Link>
+              )}
               <span className="scope-detail">
                 {current.mode === "demo"
                   ? "offline fixture · no target contact"

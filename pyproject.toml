@@ -25,7 +25,9 @@ dependencies = [
     "uvicorn[standard]==0.35.0",
     "pydantic==2.13.4",
     "pydantic-settings==2.15.0",
-    "adaf-attack @ git+https://github.com/rikterskale/ADAF-ATTACK.git@fdb60b90b910ba3dcbd582e2c72ce48189191214",
+    # Install the engine's capability dependencies with the console so every
+    # catalog entry can report its true readiness immediately after install.
+    "adaf-attack[kerberos,certipy] @ git+https://github.com/rikterskale/ADAF-ATTACK.git@fdb60b90b910ba3dcbd582e2c72ce48189191214",
 ]
 
 [project.optional-dependencies]

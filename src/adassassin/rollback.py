@@ -10,6 +10,7 @@ from adassassin.config import Settings
 from adassassin.engagements import get_engagement, update_engagement
 from adassassin.secrets import resolve_bind_secret
 from adassassin.storage import ensure_private_dir, write_private_text
+from adassassin.targets import has_successful_connect
 from adassassin.workspace import engagement_workspace, session_dirs
 
 CONFIRM_TOKEN = "YES"
@@ -112,8 +113,21 @@ def list_rollback(settings: Settings, engagement_id: str) -> dict[str, Any]:
 def preview_rollback(settings: Settings, engagement_id: str) -> dict[str, Any]:
     """Preview pending cleanup without contacting a directory."""
     payload = list_rollback(settings, engagement_id)
+    saved = update_engagement(
+        settings,
+        engagement_id,
+        lambda current: current.update(
+            {
+                "rollback_audit": (
+                    list(current.get("rollback_audit") or [])
+                    + [{"id": uuid4().hex[:10], "action": "preview", "at": _now()}]
+                )[-100:]
+            }
+        ),
+    )
     return {
         **payload,
+        "engagement": saved,
         "preview": True,
         "mutation": False,
         "message": (
@@ -155,6 +169,8 @@ def apply_rollback(
             "Offline demo rollback is preview-only and can never contact a directory. "
             "Use a live-ready engagement for authorized cleanup."
         )
+    if item.get("archived"):
+        raise RollbackError("Archived engagements are execution-locked. Restore this engagement first.")
 
     connect = item.get("connect") or {}
     domain = str(connect.get("domain") or item.get("domain") or "").strip()
@@ -163,8 +179,11 @@ def apply_rollback(
         raise RollbackError(
             "Connect an authorized target before applying rollback (domain and DC required)."
         )
-    if not connect.get("preflight_ok"):
-        raise RollbackError("Successful connect/preflight is required before applying rollback.")
+    if not has_successful_connect(item):
+        raise RollbackError(
+            "A current Connect preflight is required before applying rollback. "
+            "Preflight expires and must be repeated after a console restart."
+        )
 
     sessions = _sessions_for_engagement(settings, item)
     if session_id:

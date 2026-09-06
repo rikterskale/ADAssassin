@@ -18,10 +18,12 @@ export function Findings({
   engagement,
   onUpdated,
   onSeedDemo,
+  onSeen = () => {},
 }: {
   engagement: Engagement | null;
   onUpdated: (engagement: Engagement) => void;
   onSeedDemo: () => void;
+  onSeen?: () => void;
 }) {
   const notify = useToast();
   const [grouped, setGrouped] = useState<{ severity: string; findings: Finding[] }[]>([]);
@@ -32,6 +34,12 @@ export function Findings({
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | FindingStatus>("all");
+
+  useEffect(() => {
+    if (engagement && !engagement.guided_marked?.includes("findings")) onSeen();
+    // A page visit is recorded once for each selected engagement.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engagement?.id]);
 
   const findings = useMemo(
     () => grouped.flatMap((group) => group.findings),

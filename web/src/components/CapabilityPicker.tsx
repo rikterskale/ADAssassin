@@ -89,6 +89,9 @@ export function CapabilityPicker({
               <div className="picker-row-head">
                 <RiskBadge lane={item.lane} risk={item.risk} />
                 <span className="mono">{item.id}</span>
+                {!(item.readiness?.ready ?? item.runnable ?? true) && (
+                  <span className="badge">blocked locally</span>
+                )}
               </div>
               <div className="muted">{item.plain ?? item.summary}</div>
             </button>

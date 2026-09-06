@@ -64,13 +64,14 @@ describe("App bootstrap", () => {
     window.localStorage.clear();
   });
 
-  it("shows the splash first, then the console once data loads", async () => {
+  it("shows the splash first, then redirects a first-time operator to Start Here", async () => {
     primeRefresh();
     renderWithRouter(<App />);
     expect(screen.getByText(/starting console/i)).toBeInTheDocument();
     expect(
-      await screen.findByRole("heading", { name: /active directory assessments/i }),
+      await screen.findByRole("heading", { name: /from first click to defensible closeout/i }),
     ).toBeInTheDocument();
+    expect(window.localStorage.getItem("adassassin.onboardingSeen")).toBe("1");
   });
 
   it("shows a fatal screen when the backend is unreachable and recovers on retry", async () => {
@@ -83,7 +84,7 @@ describe("App bootstrap", () => {
 
     await user.click(screen.getByRole("button", { name: /retry/i }));
     expect(
-      await screen.findByRole("heading", { name: /active directory assessments/i }),
+      await screen.findByRole("heading", { name: /from first click to defensible closeout/i }),
     ).toBeInTheDocument();
   });
 
@@ -103,6 +104,7 @@ describe("App bootstrap", () => {
   });
 
   it("keeps the console visible and offers retry after a later refresh fails", async () => {
+    window.localStorage.setItem("adassassin.onboardingSeen", "1");
     primeRefresh();
     vi.mocked(api.demoEngagement).mockResolvedValue({ ok: true, engagement: makeEngagement() });
     const { user } = renderWithRouter(<App />);

@@ -13,6 +13,7 @@ export ADASSASSIN_DATA_DIR="$HOME/adassassin-data"
 export ADASSASSIN_HOST="127.0.0.1"
 export ADASSASSIN_PORT="8750"
 export ADASSASSIN_OPEN_BROWSER="false"
+export ADASSASSIN_PREFLIGHT_TTL_SECONDS="900"
 export ADASSASSIN_RUN_SYNCHRONOUS="false"
 export ADAF_SESSION_VAULT_KEY="<approved Fernet key>"
 adassassin
@@ -22,6 +23,7 @@ $env:ADASSASSIN_DATA_DIR = "$env:USERPROFILE\\adassassin-data"
 $env:ADASSASSIN_HOST = "127.0.0.1"
 $env:ADASSASSIN_PORT = "8750"
 $env:ADASSASSIN_OPEN_BROWSER = "false"
+$env:ADASSASSIN_PREFLIGHT_TTL_SECONDS = "900"
 $env:ADASSASSIN_RUN_SYNCHRONOUS = "false"
 $env:ADAF_SESSION_VAULT_KEY = "<approved Fernet key>"
 adassassin`;
@@ -32,13 +34,22 @@ curl http://127.0.0.1:8745/api/catalog
 curl http://127.0.0.1:8745/api/glossary
 curl http://127.0.0.1:8745/api/engagements`;
 
+const ENGINE_COMMANDS = `adaf-attack --help
+adaf-attack guide
+adaf-attack list-capabilities
+adaf-attack capability-help <capability-id>
+adaf-attack doctor --help
+adaf-attack run --help
+adaf-attack cleanup --help
+adaf-attack support-bundle --help`;
+
 const PAGES = [
   ["Start Here", "/start", "Integrated workflow, risk lanes, commands, settings, and closeout."],
   ["Overview", "/", "Health, Doctor, current workspace, and recent jobs."],
   ["Guided", "/guided", "State-backed novice path from demo through closeout."],
   ["Engagements", "/engagements", "Create, select, and review assessment workspaces."],
   ["Connect", "/connect", "Authorized target details and live preflight."],
-  ["Run", "/run", "Every runnable capability, its prompts, gates, and live job log."],
+  ["Run", "/run", "All capabilities, including blocked entries, typed prompts, gates, and live job recovery."],
   ["Findings", "/findings", "Evidence, explanations, remediation, and status."],
   ["Catalog", "/catalog", "All engine capabilities, including blocked and RED entries."],
   ["Glossary", "/glossary", "Plain-language Active Directory terminology."],
@@ -62,6 +73,7 @@ export function StartHere() {
           <Link className="btn primary" to="/guided">Begin the zero-contact walkthrough</Link>
           <Link className="btn" to="/catalog">Browse all capabilities</Link>
           <Link className="btn ghost" to="/engagements">Create a live engagement</Link>
+          <a className="btn ghost" href="/operator-guide.md">Download the complete offline guide</a>
         </div>
       </section>
 
@@ -109,14 +121,14 @@ export function StartHere() {
           <ol className="steps guide-steps wide">
             <li><strong>Verify written scope.</strong> Record in-scope domains, DCs, identities, time window, approvals, exclusions, stop conditions, and rollback owner.</li>
             <li><strong>Create a live-ready engagement.</strong> Use a unique name and paste the scope into Scope notes.</li>
-            <li><strong>Run Connect preflight.</strong> Enter the authorized domain and DC. Optional credentials are held in memory; passwords and hashes are not written to engagement JSON.</li>
+            <li><strong>Run Connect preflight.</strong> Enter the authorized domain and DC. The result is bound to that exact target, expires after 15 minutes by default, and is invalidated by a restart or target edit.</li>
             <li><strong>Resolve every blocking check.</strong> Do not continue with YELLOW or RED until the scope bar says preflight ready.</li>
             <li><strong>Select work from Catalog or Run.</strong> Search all capabilities, inspect required prompts and local dependencies, then review the target and safety metadata.</li>
             <li><strong>Run GREEN/YELLOW observe work first.</strong> Watch the live job log and review the resulting evidence.</li>
             <li><strong>Use RED only when the specific action is approved.</strong> Re-check target, options, noise, approval, and rollback; then type the capability ID exactly.</li>
             <li><strong>Triage findings and preserve evidence.</strong> Explain, remediate, and set each finding to open, accepted, fixed, or retest.</li>
             <li><strong>Preview and complete rollback.</strong> Preview is offline. Apply contacts the target and requires typed YES.</li>
-            <li><strong>Generate the report and satisfy closeout.</strong> Resolve pending rollback, active unmasks, and open findings according to the engagement disposition.</li>
+            <li><strong>Generate the report and satisfy closeout.</strong> Resolve pending rollback, active unmasks, and open findings, then download the checksummed evidence bundle.</li>
           </ol>
           <div className="actions guide-actions">
             <Link className="btn primary" to="/engagements">Create engagement</Link>
@@ -174,8 +186,22 @@ export function StartHere() {
           </div>
           <pre className="log guide-command">{API_COMMANDS}</pre>
           <p className="muted">
-            The complete request bodies and all 27 operations are documented in <span className="mono">docs/START_HERE.md</span>
-            in the repository checkout. The API is intentionally local-only and has no remote control-plane mode.
+            <a href="/operator-guide.md">Download the complete packaged guide</a> for all 30 local API operations and every request body, or inspect the{' '}
+            <a href="/openapi.json">live OpenAPI document</a>. Both work from an installed wheel without a repository
+            checkout. The API is intentionally local-only and has no remote control-plane mode.
+          </p>
+        </section>
+
+        <section className="panel span-12">
+          <div className="id-row command-heading">
+            <h2>Underlying engine CLI</h2>
+            <CopyButton value={ENGINE_COMMANDS} label="Copy engine discovery commands" />
+          </div>
+          <pre className="log guide-command">{ENGINE_COMMANDS}</pre>
+          <p className="muted">
+            ADAssassin does not conceal the installed ADAF-ATTACK command surface. Use its built-in help to inspect
+            workflows, profiles, sessions, rollback, reporting, support, and every capability option. GUI safety gates
+            still apply to GUI runs; direct engine use remains subject to the same written authorization.
           </p>
         </section>
 
@@ -185,7 +211,7 @@ export function StartHere() {
             <li>Check Vault for exposed material and wait for any active unmask TTL to expire.</li>
             <li>Preview Rollback, apply approved cleanup, and investigate every failed or pending entry.</li>
             <li>Give every finding an explicit disposition: open, accepted, fixed, or retest.</li>
-            <li>Generate and retain the Markdown and HTML reports in the approved evidence location.</li>
+            <li>Generate and retain the Markdown, HTML, and checksummed evidence bundle in the approved evidence location.</li>
             <li>Stop the local server with <span className="kbd">Ctrl C</span> in its terminal.</li>
           </ol>
         </section>

@@ -1,4 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
+import { isConnectReady } from "../connection";
 import { formatWhen } from "../format";
 import type { DoctorResponse, Engagement, GuideResponse, HealthResponse } from "../types";
 
@@ -17,7 +18,7 @@ export function Overview({
 }) {
   const navigate = useNavigate();
   const hasEngagement = Boolean(engagement);
-  const connected = Boolean(engagement?.connect?.preflight_ok);
+  const connected = isConnectReady(engagement);
   const recentJobs = (engagement?.jobs ?? []).slice(-3).reverse();
 
   async function exploreDemo() {

@@ -9,6 +9,7 @@ synchronously before the thread starts, so refusals still map to 403/409.
 
 from __future__ import annotations
 
+import re
 from threading import Lock, Thread
 from typing import Any
 from uuid import uuid4
@@ -20,7 +21,7 @@ from adassassin.engine import capability_detail, lane_for
 from adassassin.findings import normalize_finding
 from adassassin.secrets import resolve_bind_secret
 from adassassin.storage import ensure_private_dir
-from adassassin.targets import has_successful_connect
+from adassassin.targets import has_successful_connect, normalize_target
 
 # In-memory live-job registry: job_id -> job dict (mutated by the worker thread).
 _LIVE_LOCK = Lock()
@@ -110,16 +111,24 @@ def assert_run_allowed(
     ack: bool = False,
     force: bool = False,
     confirm: str = "",
+    options: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Gate observe and typed-confirm RED runs."""
     entry = _catalog_entry(capability_id)
     if entry is None:
         raise RunRefused(f"Unknown capability: {capability_id}", status_code=404)
 
+    if engagement.get("archived"):
+        raise RunRefused(
+            "Archived engagements are execution-locked. Restore this engagement before running a capability.",
+            status_code=409,
+        )
+
     risk = str(entry.get("risk") or "observe")
     environment = str(entry.get("environment") or "unknown")
     lane = str(entry.get("lane") or lane_for(risk, environment))
     entry = {**entry, "lane": lane, "risk": risk}
+    options = options or {}
 
     if engagement.get("mode") == "demo" and lane != "green":
         raise RunRefused(
@@ -127,6 +136,22 @@ def assert_run_allowed(
             "Create a live-ready engagement for target-interacting work.",
             status_code=403,
         )
+
+    if lane != "green":
+        connect = engagement.get("connect") or {}
+        approved = normalize_target(
+            str(connect.get("domain") or ""), str(connect.get("dc") or "")
+        )
+        requested = normalize_target(
+            str(options.get("domain") or approved[0]),
+            str(options.get("dc") or options.get("dc_ip") or approved[1]),
+        )
+        if requested != approved:
+            raise RunRefused(
+                "The requested domain/DC does not match this engagement's current preflight. "
+                "Return to Connect and preflight the exact target before running.",
+                status_code=409,
+            )
 
     if _is_red(entry):
         label = _risk_label(risk)
@@ -236,15 +261,110 @@ def _build_log(messages: list[str], engine_result: dict[str, Any] | None, error:
     return lines
 
 
+def _as_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "on"}
+    return bool(value)
+
+
+def _prompt_key(prompt: dict[str, Any]) -> str:
+    if prompt.get("key"):
+        return str(prompt["key"])
+    if prompt.get("is_param") and prompt.get("param_key"):
+        return str(prompt["param_key"])
+    return str(prompt.get("option") or "").removeprefix("--").replace("-", "_")
+
+
+def _validate_and_coerce_options(
+    entry: dict[str, Any], options: dict[str, Any]
+) -> dict[str, Any]:
+    cleaned = dict(options)
+    for prompt in entry.get("required_prompts") or []:
+        if not isinstance(prompt, dict) or prompt.get("source") in {
+            "engagement_target",
+            "safety_gate",
+        }:
+            continue
+        key = _prompt_key(prompt)
+        value = cleaned.get(key)
+        missing_string = isinstance(value, str) and (
+            value == "" if prompt.get("trim") is False else not value.strip()
+        )
+        if prompt.get("required", True) and (value is None or missing_string):
+            raise RunRefused(
+                f"Required input missing: {prompt.get('label') or key} ({key}).",
+                status_code=422,
+            )
+        if value is None:
+            continue
+        if isinstance(value, str) and prompt.get("trim") is not False:
+            cleaned[key] = value.strip()
+        input_type = str(prompt.get("input_type") or "text")
+        if input_type == "boolean":
+            if isinstance(value, bool):
+                cleaned[key] = value
+            elif isinstance(value, str) and value.strip().lower() in {
+                "1",
+                "true",
+                "yes",
+                "on",
+            }:
+                cleaned[key] = True
+            elif isinstance(value, str) and value.strip().lower() in {
+                "0",
+                "false",
+                "no",
+                "off",
+            }:
+                cleaned[key] = False
+            else:
+                raise RunRefused(
+                    f"{prompt.get('label') or key} must be true or false.",
+                    status_code=422,
+                )
+        elif input_type == "integer":
+            try:
+                cleaned[key] = int(value)
+            except (TypeError, ValueError) as exc:
+                raise RunRefused(f"{prompt.get('label') or key} must be an integer.", status_code=422) from exc
+        choices = list(prompt.get("choices") or [])
+        if choices and cleaned.get(key) not in choices:
+            raise RunRefused(
+                f"{prompt.get('label') or key} must be one of: {', '.join(map(str, choices))}.",
+                status_code=422,
+            )
+        pattern = str(prompt.get("pattern") or "")
+        if pattern and isinstance(cleaned.get(key), str):
+            try:
+                matches = re.fullmatch(pattern, str(cleaned[key])) is not None
+            except re.error as exc:
+                raise RunRefused(
+                    f"The validation rule for {prompt.get('label') or key} is invalid.",
+                    status_code=500,
+                ) from exc
+            if not matches:
+                guidance = prompt.get("pattern_help") or "The value has an invalid format."
+                raise RunRefused(
+                    f"{prompt.get('label') or key}: {guidance}",
+                    status_code=422,
+                )
+    return cleaned
+
+
 def _target_for_run(engagement: dict[str, Any], options: dict[str, Any], entry: dict[str, Any]):
     from adaf_attack.core.target import Target
 
     connect = engagement.get("connect") or {}
-    domain = str(options.get("domain") or connect.get("domain") or engagement.get("domain") or "").strip()
+    live_target = entry.get("lane") != "green"
+    domain = str(
+        (connect.get("domain") if live_target else options.get("domain"))
+        or engagement.get("domain")
+        or ""
+    ).strip()
     dc = str(
-        options.get("dc")
-        or options.get("dc_ip")
-        or connect.get("dc")
+        (connect.get("dc") if live_target else options.get("dc") or options.get("dc_ip"))
         or engagement.get("dc")
         or ""
     ).strip()
@@ -273,9 +393,9 @@ def _target_for_run(engagement: dict[str, Any], options: dict[str, Any], entry: 
         username=username,
         password=password if password else None,
         hashes=hashes if hashes else None,
-        use_kerberos=bool(options.get("kerberos") or options.get("use_kerberos")),
-        ldaps=bool(options.get("ldaps")),
-        starttls=bool(options.get("starttls")),
+        use_kerberos=_as_bool(options.get("kerberos") or options.get("use_kerberos")),
+        ldaps=_as_bool(options.get("ldaps")),
+        starttls=_as_bool(options.get("starttls")),
         ccache=options.get("ccache"),
         aes_key=options.get("aes_key"),
     )
@@ -311,16 +431,22 @@ def _runner_kwargs(options: dict[str, Any]) -> dict[str, Any]:
 
 def _redact_options(options: dict[str, Any]) -> dict[str, Any]:
     redacted: dict[str, Any] = {}
+    sensitive_names = {
+        "password",
+        "hash",
+        "hashes",
+        "nthash",
+        "aes_key",
+        "secret",
+        "ticket",
+        "token",
+        "vault_key",
+    }
     for key, value in options.items():
-        if key.lower() in {
-            "password",
-            "hashes",
-            "aes_key",
-            "secret",
-            "ticket",
-            "approval_token",
-            "vault_key",
-        }:
+        normalized = key.lower()
+        if normalized in sensitive_names or any(
+            normalized.endswith(f"_{name}") for name in sensitive_names
+        ):
             redacted[key] = "***"
         else:
             redacted[key] = value
@@ -464,6 +590,7 @@ def execute_run(
         ack=ack,
         force=force,
         confirm=confirm,
+        options=options,
     )
     red = _is_red(entry)
     readiness = entry.get("readiness") or {}
@@ -473,6 +600,7 @@ def execute_run(
             f"{readiness.get('reason') or 'engine runner or declared dependency unavailable'}.",
             status_code=409,
         )
+    options = _validate_and_coerce_options(entry, options)
     scoped_approval = str(entry.get("approval") or "") == "scoped_token"
     if scoped_approval and (not approval_token or not approval_engagement_id):
         raise RunRefused(
@@ -500,15 +628,25 @@ def execute_run(
         "outcome": None,
         "next_actions": [],
         "red": red,
+        "target": {"domain": target.domain, "dc": target.dc_ip},
     }
-    _publish_live(job)
-
     # Record the RED authorization and the queued job synchronously so the audit
     # trail and job list reflect the run even before the engine finishes.
     with _IO_LOCK:
         item = get_engagement(settings, engagement_id)
         if item is None:
             raise LookupError("Engagement not found")
+        # Recheck mutable safety state under the same lock used to persist the
+        # queued job. An archive, target edit, expiry, or reconnect between the
+        # initial request check and this point must stop execution.
+        assert_run_allowed(
+            capability_id,
+            item,
+            ack=ack,
+            force=force,
+            confirm=confirm,
+            options=options,
+        )
         if red:
             audit = list(item.get("red_ack_audit") or [])
             audit.append(
@@ -533,6 +671,7 @@ def execute_run(
         jobs.insert(0, _job_snapshot(job))
         item["jobs"] = jobs[:50]
         saved = save_engagement(settings, item)
+    _publish_live(job)
 
     workspace = ensure_private_dir(settings.data_dir / "workspaces" / engagement_id)
 

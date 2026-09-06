@@ -2,17 +2,20 @@
 
 from __future__ import annotations
 
+import hashlib
 import html
+import json
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
+from zipfile import ZIP_DEFLATED, ZipFile
 
 from adassassin import ENGINE_COMMIT, ENGINE_PIN, __version__
 from adassassin.config import Settings
 from adassassin.engagements import get_engagement, update_engagement
 from adassassin.findings import normalize_finding
 from adassassin.rollback import list_rollback
-from adassassin.storage import ensure_private_dir, write_private_text
+from adassassin.storage import ensure_private_dir, protect_private_file, write_private_text
 from adassassin.vault import list_vault
 from adassassin.workspace import engagement_workspace, session_dirs
 
@@ -463,4 +466,118 @@ def report_file(settings: Settings, engagement_id: str, *, fmt: str) -> Path:
         build_report(settings, engagement_id)
     if not target.is_file():
         raise LookupError("Report file not found")
+    return target
+
+
+def _portable_engagement(item: dict[str, Any]) -> dict[str, Any]:
+    """Remove process-local references while retaining the evidence/audit record."""
+    payload = json.loads(json.dumps(item))
+    connect = payload.get("connect")
+    if isinstance(connect, dict):
+        connect["secret_ref"] = None
+        connect["has_secret"] = False
+        connect["preflight_ok"] = False
+        connect["status"] = "reconnect_required"
+        connect["invalidated_reason"] = (
+            "Imported bundles never carry credentials or reusable preflight state."
+        )
+    sensitive_names = {
+        "password",
+        "hash",
+        "hashes",
+        "nthash",
+        "aes_key",
+        "secret",
+        "ticket",
+        "token",
+        "vault_key",
+    }
+    for event in payload.get("red_ack_audit") or []:
+        options = event.get("options") if isinstance(event, dict) else None
+        if not isinstance(options, dict):
+            continue
+        event["options"] = {
+            key: (
+                "***"
+                if key.lower() in sensitive_names
+                or any(key.lower().endswith(f"_{name}") for name in sensitive_names)
+                else value
+            )
+            for key, value in options.items()
+        }
+    return payload
+
+
+def build_engagement_bundle(settings: Settings, engagement_id: str) -> Path:
+    """Create a portable, checksummed evidence ZIP without plaintext bind secrets."""
+    build_report(settings, engagement_id)
+    item = get_engagement(settings, engagement_id)
+    if item is None:
+        raise LookupError("Engagement not found")
+
+    workspace = engagement_workspace(settings, engagement_id)
+    reports = ensure_private_dir(workspace / "reports")
+    target = reports / "engagement-evidence-bundle.zip"
+    temporary = reports / "engagement-evidence-bundle.zip.tmp"
+    files: list[tuple[str, bytes]] = []
+    portable = json.dumps(_portable_engagement(item), indent=2, sort_keys=True).encode("utf-8") + b"\n"
+    files.append(("engagement/engagement.json", portable))
+
+    for path in sorted(workspace.rglob("*")):
+        if not path.is_file() or path in {target, temporary}:
+            continue
+        if path.is_symlink() or not path.resolve().is_relative_to(workspace.resolve()):
+            continue
+        relative = path.relative_to(workspace)
+        # Stable report aliases are sufficient; timestamped report copies add
+        # bulk without adding evidence.
+        if (
+            relative.parts
+            and relative.parts[0] == "reports"
+            and relative.name not in {"engagement-report.md", "engagement-report.html"}
+        ):
+            continue
+        files.append((f"workspace/{relative.as_posix()}", path.read_bytes()))
+
+    manifest_entries = [
+        {
+            "path": name,
+            "bytes": len(content),
+            "sha256": hashlib.sha256(content).hexdigest(),
+        }
+        for name, content in files
+    ]
+    readme = (
+        b"ADAssassin portable evidence bundle\n"
+        b"\n"
+        b"This archive contains engagement metadata, reports, and workspace evidence.\n"
+        b"Bind passwords, hashes, in-memory references, and reusable preflight approval are excluded.\n"
+        b"Verify each entry against manifest.json before relying on transferred evidence.\n"
+    )
+    files.append(("README.txt", readme))
+    manifest_entries.append(
+        {
+            "path": "README.txt",
+            "bytes": len(readme),
+            "sha256": hashlib.sha256(readme).hexdigest(),
+        }
+    )
+    manifest = json.dumps(
+        {
+            "format": "adassassin-evidence-bundle-v1",
+            "engagement_id": engagement_id,
+            "created_at": _now(),
+            "secret_policy": "No plaintext bind credentials or reusable preflight state.",
+            "entries": manifest_entries,
+        },
+        indent=2,
+        sort_keys=True,
+    ).encode("utf-8") + b"\n"
+
+    with ZipFile(temporary, "w", compression=ZIP_DEFLATED) as archive:
+        for name, content in files:
+            archive.writestr(name, content)
+        archive.writestr("manifest.json", manifest)
+    temporary.replace(target)
+    protect_private_file(target)
     return target

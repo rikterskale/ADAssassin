@@ -3,10 +3,75 @@
 from __future__ import annotations
 
 import shutil
+import sys
 from importlib import metadata, util
+from pathlib import Path
 from typing import Any
 
 from adassassin import ENGINE_COMMIT, ENGINE_PIN
+
+_SECRET_KEYS = {"password", "new_password", "spray_password", "hashes", "nthash", "aes_key"}
+_PATH_KEYS = {"ca_pfx", "pfx", "sysvol", "users"}
+_CHOICES = {
+    "operation": [
+        "import-ccache",
+        "export-ccache",
+        "import-pfx",
+        "export-pfx",
+        "pem-to-pfx",
+        "pfx-to-pem",
+    ],
+    "method": ["wmiexec", "smbexec", "dcomexec", "atexec"],
+    "variant": ["golden", "silver", "sapphire"],
+}
+
+
+def _prompt_key(prompt: dict[str, Any]) -> str:
+    if prompt.get("is_param") and prompt.get("param_key"):
+        return str(prompt["param_key"])
+    return str(prompt.get("option") or "").removeprefix("--").replace("-", "_")
+
+
+def _typed_prompt(prompt: dict[str, Any]) -> dict[str, Any]:
+    """Enrich the engine's prompt copy with UI and API validation metadata."""
+    key = _prompt_key(prompt)
+    result: dict[str, Any] = {
+        **prompt,
+        "key": key,
+        "required": True,
+        "input_type": "text",
+        "trim": True,
+        "source": "operator",
+        "choices": [],
+    }
+    if key in {"domain", "dc", "dc_ip"}:
+        result.update(
+            {
+                "source": "engagement_target",
+                "read_only": True,
+                "help": "Locked to the exact target approved by Connect preflight.",
+            }
+        )
+    elif key == "force":
+        result.update(
+            {
+                "source": "safety_gate",
+                "read_only": True,
+                "input_type": "confirmation",
+                "help": "Supplied by the visible RED acknowledgement and typed-confirm gate.",
+            }
+        )
+    elif key in _SECRET_KEYS or any(key.endswith(f"_{suffix}") for suffix in _SECRET_KEYS):
+        result.update({"input_type": "secret", "trim": False})
+    elif key in _PATH_KEYS:
+        result.update({"input_type": "path", "spellcheck": False})
+    elif key in _CHOICES:
+        result.update({"input_type": "select", "choices": _CHOICES[key]})
+    elif key in {"payload", "command", "descriptor_hex"}:
+        result.update({"input_type": "textarea", "trim": key == "descriptor_hex"})
+    elif key in {"sid", "domain_sid"}:
+        result.update({"pattern": r"^S-\d(?:-\d+)+$", "pattern_help": "Use a SID such as S-1-5-21-…"})
+    return result
 
 
 def lane_for(risk: str, environment: str) -> str:
@@ -33,7 +98,16 @@ def _tool_readiness(tool: str) -> dict[str, Any]:
             installed = True
         except metadata.PackageNotFoundError:
             pass
-        available = installed and shutil.which("certipy") is not None
+        # ``adassassin`` is often launched via an absolute interpreter path
+        # (for example ``.venv/bin/python -m adassassin``) without activating
+        # that environment.  In that case the venv's bin directory is not on
+        # PATH even though its console script is installed and runnable.
+        certipy_cli = shutil.which("certipy")
+        if certipy_cli is None:
+            sibling = Path(sys.executable).resolve().parent / "certipy"
+            if sibling.is_file() and sibling.stat().st_mode & 0o111:
+                certipy_cli = str(sibling)
+        available = installed and certipy_cli is not None
         return {
             "id": tool,
             "available": available,
@@ -101,7 +175,7 @@ def _cap_payload(cap: Any) -> dict[str, Any]:
         "sensitivity": cap.data_sensitivity,
         "lane": lane,
         "safety": safety_summary(cap),
-        "required_prompts": required_prompts(cap),
+        "required_prompts": [_typed_prompt(prompt) for prompt in required_prompts(cap)],
         "runnable": ready,
         "readiness": {
             "ready": ready,

@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     port: int = DEFAULT_PORT
     data_dir: Path = Path.home() / ".adassassin"
     open_browser: bool = True
+    # A live target check is a short-lived safety assertion, not a durable
+    # authorization token. Operators can override this through
+    # ADASSASSIN_PREFLIGHT_TTL_SECONDS when their runbook requires a shorter
+    # window.
+    preflight_ttl_seconds: int = 900
     # When true, capability runs execute inline instead of on a background
     # thread. Production leaves this false (non-blocking runs + live progress);
     # tests enable it so a run completes within the POST for deterministic

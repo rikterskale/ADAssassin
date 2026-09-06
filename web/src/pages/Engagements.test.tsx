@@ -60,4 +60,34 @@ describe("Engagements", () => {
     await user.click(screen.getByRole("button", { name: /beacon lab/i }));
     expect(onSelect).toHaveBeenCalledWith("eng-42");
   });
+
+  it("edits and archives the selected engagement without deleting evidence", async () => {
+    const item = makeEngagement({ id: "eng-42", name: "Beacon lab" });
+    const onUpdate = vi.fn().mockResolvedValue(undefined);
+    const onArchive = vi.fn().mockResolvedValue(undefined);
+    const { user } = renderWithRouter(
+      <Engagements
+        items={[item]}
+        currentId="eng-42"
+        onCreate={vi.fn()}
+        onUpdate={onUpdate}
+        onArchive={onArchive}
+        onDemo={vi.fn()}
+        onSelect={vi.fn()}
+      />,
+    );
+
+    const name = screen.getByLabelText(/^name$/i, { selector: "input:not([placeholder])" });
+    await user.clear(name);
+    await user.type(name, "  Beacon final  ");
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+    expect(onUpdate).toHaveBeenCalledWith(
+      "eng-42",
+      expect.objectContaining({ name: "Beacon final" }),
+    );
+
+    await user.click(screen.getByRole("button", { name: /archive engagement/i }));
+    expect(onArchive).toHaveBeenCalledWith("eng-42", true);
+    expect(screen.getByText(/never deletes evidence/i)).toBeInTheDocument();
+  });
 });

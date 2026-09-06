@@ -6,13 +6,14 @@ import { Field, SecretField } from "../components/Field";
 import { NoEngagement } from "../components/NoEngagement";
 import { RiskBadge } from "../components/RiskBadge";
 import { useToast } from "../components/Toasts";
+import { connectStatusMessage, isConnectReady } from "../connection";
 import { formatWhen } from "../format";
 import type { Capability, Engagement, Job, Lane } from "../types";
 
 function promptKey(prompt: NonNullable<Capability["required_prompts"]>[number]): string {
-  return prompt.is_param && prompt.param_key
+  return prompt.key ?? (prompt.is_param && prompt.param_key
     ? prompt.param_key
-    : prompt.option.replace(/^--/, "").replace(/-/g, "_");
+    : prompt.option.replace(/^--/, "").replace(/-/g, "_"));
 }
 
 function isSensitivePrompt(key: string): boolean {
@@ -48,13 +49,9 @@ export function Run({
   const [pollId, setPollId] = useState<string | null>(null);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
-
-  const runnable = useMemo(
-    () => catalog.filter((item) => item.runnable ?? true),
-    [catalog],
-  );
+  const [jobStatusError, setJobStatusError] = useState<string | null>(null);
   const recentJobs = useMemo(
-    () => [...(engagement?.jobs ?? [])].reverse().slice(0, 8),
+    () => [...(engagement?.jobs ?? [])].slice(0, 8),
     [engagement?.jobs],
   );
 
@@ -70,8 +67,9 @@ export function Run({
         const next: Record<string, string> = {};
         for (const prompt of response.capability.required_prompts ?? []) {
           const key = promptKey(prompt);
-          if (key === "domain" && engagement?.domain) next[key] = engagement.domain;
-          else if ((key === "dc" || key === "dc_ip") && engagement?.dc) next[key] = engagement.dc;
+          if (prompt.source === "engagement_target" || prompt.source === "safety_gate") continue;
+          if (key === "domain" && engagement?.connect?.domain) next[key] = engagement.connect.domain;
+          else if ((key === "dc" || key === "dc_ip") && engagement?.connect?.dc) next[key] = engagement.connect.dc;
           else next[key] = "";
         }
         setOptions(next);
@@ -86,6 +84,23 @@ export function Run({
   }, [capabilityId, engagement?.id, engagement?.domain, engagement?.dc]);
 
   useEffect(() => {
+    if (!engagement) return;
+    const requested = params.get("job");
+    const recover = (engagement.jobs ?? []).find((item) => item.id === requested)
+      ?? (engagement.jobs ?? []).find((item) => item.status === "running");
+    if (!recover) return;
+    setJob(recover);
+    setCapabilityId(recover.capability_id);
+    if (recover.status === "running") {
+      setStartedAt(Date.parse(recover.created_at) || Date.now());
+      setPollId(recover.id);
+    }
+    // Reattach whenever the selected engagement changes; do not disturb an
+    // operator who is already inspecting a different terminal job.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engagement?.id]);
+
+  useEffect(() => {
     if (!pollId || !engagement) return;
     let cancelled = false;
     const engagementId = engagement.id;
@@ -93,6 +108,7 @@ export function Run({
       try {
         const res = await api.job(engagementId, pollId!);
         if (cancelled) return;
+        setJobStatusError(null);
         setJob(res.job);
         if (res.job.status !== "running") {
           setPollId(null);
@@ -105,8 +121,12 @@ export function Run({
             /* engagement refresh is best-effort */
           }
         }
-      } catch {
-        /* transient error; keep polling */
+      } catch (err) {
+        if (!cancelled) {
+          setJobStatusError(
+            `Status unknown: ${err instanceof Error ? err.message : String(err)} The run may still be active; automatic status checks will continue.`,
+          );
+        }
       }
     }
     const handle = window.setInterval(() => void tick(), 900);
@@ -137,8 +157,10 @@ export function Run({
     setApprovalToken("");
     setApprovalEngagementId("");
     setPollId(null);
+    setJobStatusError(null);
     setStartedAt(null);
     const copy = new URLSearchParams(params);
+    copy.delete("job");
     if (id) copy.set("capability", id); else copy.delete("capability");
     setParams(copy, { replace: true });
   }
@@ -163,8 +185,12 @@ export function Run({
     setPollId(null);
     try {
       const cleaned: Record<string, unknown> = {};
+      const promptByKey = new Map(prompts.map((prompt) => [promptKey(prompt), prompt]));
       for (const [key, value] of Object.entries(options)) {
-        if (value.trim()) cleaned[key] = value.trim();
+        const prompt = promptByKey.get(key);
+        const shouldTrim = prompt?.trim ?? !isSensitivePrompt(key);
+        const normalized = shouldTrim ? value.trim() : value;
+        if (normalized !== "") cleaned[key] = normalized;
       }
       const result = await api.run(engagement.id, {
         capability_id: capabilityId,
@@ -178,6 +204,7 @@ export function Run({
       });
       setJob(result.job);
       if (result.job.status === "running") {
+        onRan(result.engagement);
         setStartedAt(Date.now());
         setElapsed(0);
         setPollId(result.job.id);
@@ -195,9 +222,17 @@ export function Run({
   }
 
   const prompts = detail?.required_prompts ?? [];
-  const connected = Boolean(engagement?.connect?.preflight_ok);
+  const connected = isConnectReady(engagement);
   const requiresConnection = Boolean(detail && detail.lane !== "green");
   const running = busy || Boolean(pollId);
+  const operatorPrompts = prompts.filter(
+    (prompt) => !prompt.source || prompt.source === "operator",
+  );
+  const missingPrompts = operatorPrompts.filter((prompt) => {
+    if (prompt.required === false) return false;
+    const value = options[promptKey(prompt)];
+    return value == null || (prompt.trim === false ? value === "" : value.trim() === "");
+  });
   const submitLabel = isRed
     ? `Run ${capabilityId || "capability"} ${riskLabel}`
     : "Run observe";
@@ -213,6 +248,8 @@ export function Run({
     && !demoBlocked
     && (!requiresConnection || connected)
     && Boolean(detail?.readiness?.ready ?? detail?.runnable ?? true)
+    && !engagement?.archived
+    && missingPrompts.length === 0
     && (!isRed || confirm.trim() === capabilityId)
     && (!requiresScopedApproval || Boolean(approvalToken && approvalEngagementId.trim()));
 
@@ -241,7 +278,7 @@ export function Run({
                 <Link to="/connect">Connect</Link>
               </div>
               <CapabilityPicker
-                capabilities={runnable}
+                capabilities={catalog}
                 selectedId={capabilityId}
                 onSelect={selectCapability}
                 query={query}
@@ -256,7 +293,7 @@ export function Run({
               )}
               {detail?.readiness && !detail.readiness.ready && (
                 <div className="banner-error">
-                  Not locally ready: {detail.readiness.reason}. {detail.readiness.dependencies
+                  Visible but not locally runnable: {detail.readiness.reason}. {detail.readiness.dependencies
                     .filter((dependency) => !dependency.available)
                     .map((dependency) => dependency.detail)
                     .join(" · ")}
@@ -269,13 +306,31 @@ export function Run({
               )}
               {requiresConnection && !connected && engagement.mode !== "demo" && (
                 <div className="banner-warning">
-                  This capability can contact or change a target. Complete a successful target preflight before
-                  running it. <Link to="/connect">Open Connect</Link>.
+                  {connectStatusMessage(engagement)} Complete a successful target preflight for this exact
+                  domain/DC before running a capability that can contact or change it.{' '}
+                  <Link to="/connect">Open Connect</Link>.
                 </div>
               )}
-              {prompts.map((prompt) => {
+              {engagement.archived && (
+                <div className="banner-warning">
+                  This engagement is archived and execution-locked. Restore it from Engagements before running.
+                </div>
+              )}
+              {detail && detail.lane !== "green" && (
+                <div className="target-lock" role="status">
+                  <strong>Preflight-bound target</strong>
+                  <span className="mono">
+                    {engagement.connect?.target?.domain ?? engagement.connect?.domain ?? "domain unset"}
+                    {" · "}
+                    {engagement.connect?.target?.dc ?? engagement.connect?.dc ?? "DC unset"}
+                  </span>
+                  <span className="muted">Target fields are locked here. Change them in Connect, which runs a new preflight.</span>
+                </div>
+              )}
+              {operatorPrompts.map((prompt) => {
                 const key = promptKey(prompt);
-                if (isSensitivePrompt(key)) {
+                const inputType = prompt.input_type ?? (isSensitivePrompt(key) ? "secret" : "text");
+                if (inputType === "secret") {
                   return (
                     <SecretField
                       key={prompt.option}
@@ -284,17 +339,66 @@ export function Run({
                       value={options[key] ?? ""}
                       onChange={(value) => setOptions((current) => ({ ...current, [key]: value }))}
                       placeholder={prompt.help}
-                      required
+                      required={prompt.required !== false}
                       maxLength={4096}
                     />
                   );
                 }
+                if (inputType === "select") {
+                  return (
+                    <Field key={prompt.option} label={prompt.label} hint={prompt.help}>
+                      <select
+                        value={options[key] ?? ""}
+                        onChange={(event) => setOptions((current) => ({ ...current, [key]: event.target.value }))}
+                        required={prompt.required !== false}
+                      >
+                        <option value="">Select one…</option>
+                        {(prompt.choices ?? []).map((choice) => (
+                          <option key={choice} value={choice}>{choice}</option>
+                        ))}
+                      </select>
+                    </Field>
+                  );
+                }
+                if (inputType === "boolean") {
+                  return (
+                    <Field key={prompt.option} label={prompt.label} hint={prompt.help}>
+                      <select
+                        value={options[key] ?? ""}
+                        onChange={(event) => setOptions((current) => ({ ...current, [key]: event.target.value }))}
+                        required={prompt.required !== false}
+                      >
+                        <option value="">Select one…</option>
+                        <option value="true">Yes</option>
+                        <option value="false">No</option>
+                      </select>
+                    </Field>
+                  );
+                }
+                if (inputType === "textarea") {
+                  return (
+                    <Field key={prompt.option} label={prompt.label} hint={prompt.help}>
+                      <textarea
+                        value={options[key] ?? ""}
+                        onChange={(event) => setOptions((current) => ({ ...current, [key]: event.target.value }))}
+                        placeholder={prompt.help}
+                        rows={4}
+                        required={prompt.required !== false}
+                        spellCheck={prompt.spellcheck ?? false}
+                      />
+                    </Field>
+                  );
+                }
                 return (
-                  <Field key={prompt.option} label={prompt.label} hint={prompt.help}>
+                  <Field key={prompt.option} label={prompt.label} hint={prompt.pattern_help ?? prompt.help}>
                     <input
+                      type={inputType === "integer" ? "number" : "text"}
                       value={options[key] ?? ""}
                       onChange={(e) => setOptions((current) => ({ ...current, [key]: e.target.value }))}
                       placeholder={prompt.help}
+                      required={prompt.required !== false}
+                      pattern={prompt.pattern}
+                      spellCheck={prompt.spellcheck ?? false}
                     />
                   </Field>
                 );
@@ -304,7 +408,7 @@ export function Run({
                   <h3>Execution review</h3>
                   <dl className="meta-list">
                     <div><dt>Capability</dt><dd className="mono">{detail.id}</dd></div>
-                    <div><dt>Target</dt><dd>{detail.lane === "green" ? "Local evidence only" : `${engagement.domain || "domain unset"} · ${engagement.dc || "DC unset"}`}</dd></div>
+                    <div><dt>Target</dt><dd>{detail.lane === "green" ? "Local evidence only" : `${engagement.connect?.target?.domain ?? engagement.connect?.domain ?? "domain unset"} · ${engagement.connect?.target?.dc ?? engagement.connect?.dc ?? "DC unset"}`}</dd></div>
                     <div><dt>Lane</dt><dd><RiskBadge lane={detail.lane} risk={detail.risk} /></dd></div>
                     <div><dt>Authentication</dt><dd>{detail.auth_modes.join(", ") || "none"}</dd></div>
                     <div><dt>Noise</dt><dd>{detail.noise || "not declared"}</dd></div>
@@ -358,6 +462,12 @@ export function Run({
                 </div>
               )}
               {error && <div className="banner-error">{error}</div>}
+              {missingPrompts.length > 0 && detail?.readiness?.ready && (
+                <div className="banner-warning">
+                  Complete {missingPrompts.length} required input{missingPrompts.length === 1 ? "" : "s"}:{' '}
+                  {missingPrompts.map((prompt) => prompt.label).join(", ")}.
+                </div>
+              )}
               <div className="actions">
                 <button
                   className={`btn primary${isRed ? " danger" : ""}`}
@@ -393,6 +503,20 @@ export function Run({
                   keeps going.
                 </p>
               )}
+              {jobStatusError && (
+                <div className="banner-warning" role="alert">
+                  {jobStatusError}
+                  <div className="actions">
+                    <button className="btn ghost" type="button" onClick={() => {
+                      setJobStatusError(null);
+                      setPollId(null);
+                      window.setTimeout(() => setPollId(job.id), 0);
+                    }}>
+                      Retry status now
+                    </button>
+                  </div>
+                </div>
+              )}
               <pre className="log">{(job.log || []).join("\n") || "(empty)"}</pre>
               {job.error && <div className="banner-error">{job.error}</div>}
               {(job.findings || []).length > 0 && (
@@ -427,7 +551,17 @@ export function Run({
                   key={item.id}
                   type="button"
                   className={`finding${job?.id === item.id ? " selected" : ""}`}
-                  onClick={() => setJob(item)}
+                  onClick={() => {
+                    setJob(item);
+                    setJobStatusError(null);
+                    if (item.status === "running") {
+                      setStartedAt(Date.parse(item.created_at) || Date.now());
+                      setPollId(item.id);
+                    }
+                    const copy = new URLSearchParams(params);
+                    copy.set("job", item.id);
+                    setParams(copy, { replace: true });
+                  }}
                 >
                   <div className="mono">{item.capability_id}</div>
                   <div className="muted">
@@ -439,6 +573,13 @@ export function Run({
                   </div>
                 </button>
               ))}
+              {job && ["failed", "interrupted"].includes(job.status) && (
+                <div className="actions">
+                  <button className="btn ghost" type="button" onClick={() => selectCapability(job.capability_id)}>
+                    Prepare a reviewed retry
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>

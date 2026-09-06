@@ -2,20 +2,34 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from adassassin.config import Settings
 from adassassin.engagements import get_engagement, update_engagement
-from adassassin.secrets import clear_bind_secret, put_bind_secret
+from adassassin.secrets import clear_bind_secret, has_bind_secret, put_bind_secret
 
 
 class TargetError(ValueError):
     """Invalid or incomplete target fields."""
 
 
+def _now() -> datetime:
+    return datetime.now(UTC).replace(microsecond=0)
+
+
+def _stamp(value: datetime) -> str:
+    return value.isoformat().replace("+00:00", "Z")
+
+
+def normalize_target(domain: str, dc: str) -> tuple[str, str]:
+    """Normalize a target tuple for exact preflight/run comparisons."""
+    return (domain or "").strip().rstrip(".").lower(), (dc or "").strip().rstrip(".").lower()
+
+
 def validate_target_fields(*, domain: str, dc: str) -> tuple[str, str]:
-    domain = (domain or "").strip()
-    dc = (dc or "").strip()
+    domain = (domain or "").strip().rstrip(".")
+    dc = (dc or "").strip().rstrip(".")
     missing = [name for name, value in (("domain", domain), ("dc", dc)) if not value]
     if missing:
         raise TargetError("Target is missing: " + ", ".join(missing))
@@ -76,24 +90,60 @@ def connect_engagement(
         raise TargetError(
             "Offline demo engagements cannot contact a directory. Create a live-ready engagement first."
         )
+    if item.get("archived"):
+        raise TargetError("Archived engagements are execution-locked. Restore this engagement first.")
+    if any(job.get("status") == "running" for job in item.get("jobs") or []):
+        raise TargetError(
+            "This engagement has a running capability. Review it before starting a new preflight."
+        )
 
     domain, dc = validate_target_fields(domain=domain, dc=dc)
     username = (username or "").strip()
 
-    if password or hashes:
-        secret_ref = put_bind_secret(engagement_id, password=password, hashes=hashes)
-    else:
-        # Clear stale memory secret when reconnecting without credentials.
-        clear_bind_secret(engagement_id)
-        secret_ref = None
+    if password and hashes:
+        raise TargetError("Choose one bind method: password or NTLM hashes, not both.")
 
-    preflight = run_preflight(domain=domain, dc=dc, timeout=timeout)
+    # Revoke the old assertion before starting a new check. If the preflight
+    # process itself errors, a previous target approval must not remain usable.
+    def _begin(current: dict[str, Any]) -> None:
+        if current.get("mode") == "demo":
+            raise TargetError(
+                "Offline demo engagements cannot contact a directory. Create a live-ready engagement first."
+            )
+        if current.get("archived"):
+            raise TargetError("Archived engagements are execution-locked. Restore this engagement first.")
+        if any(job.get("status") == "running" for job in current.get("jobs") or []):
+            raise TargetError(
+                "This engagement has a running capability. Review it before starting a new preflight."
+            )
+        invalidate_connection(current, "A new Connect preflight started. Wait for its result.")
+
+    update_engagement(settings, engagement_id, _begin)
+    clear_bind_secret(engagement_id)
+
+    try:
+        preflight = run_preflight(domain=domain, dc=dc, timeout=timeout)
+    except Exception as exc:
+        raise TargetError(
+            f"Preflight could not complete: {exc}. Any previous target approval was revoked; "
+            "correct the error and run Connect again."
+        ) from exc
+    checked_at = _now()
+    expires_at = checked_at + timedelta(seconds=max(30, settings.preflight_ttl_seconds))
+    ready = bool(preflight["ready"])
+    secret_ref = (
+        put_bind_secret(engagement_id, password=password, hashes=hashes)
+        if ready and (password or hashes)
+        else None
+    )
 
     def _apply(current: dict[str, Any]) -> None:
         if current.get("mode") == "demo":
             raise TargetError(
                 "Offline demo engagements cannot contact a directory. Create a live-ready engagement first."
             )
+        if current.get("archived"):
+            raise TargetError("Archived engagements are execution-locked. Restore this engagement first.")
         current["domain"] = domain
         current["dc"] = dc
         current["username"] = username
@@ -105,7 +155,12 @@ def connect_engagement(
             "username": username,
             "secret_ref": secret_ref,
             "has_secret": bool(secret_ref),
-            "preflight_ok": bool(preflight["ok"]),
+            "preflight_ok": ready,
+            "status": "ready" if ready else "blocked",
+            "checked_at": _stamp(checked_at),
+            "expires_at": _stamp(expires_at),
+            "invalidated_reason": None,
+            "target": {"domain": domain, "dc": dc},
             "preflight": {
                 "ok": preflight["ok"],
                 "ready": preflight["ready"],
@@ -116,16 +171,94 @@ def connect_engagement(
                 "target_contacted": preflight["target_contacted"],
             },
         }
-        if preflight["ok"]:
+        if ready:
             marked = list(current.get("guided_marked") or [])
             if "connect" not in marked:
                 marked.append("connect")
             current["guided_marked"] = marked
 
-    saved = update_engagement(settings, engagement_id, _apply)
+    try:
+        saved = update_engagement(settings, engagement_id, _apply)
+    except Exception:
+        # An archive/metadata race must not leave staged credentials behind.
+        clear_bind_secret(engagement_id)
+        raise
     return {"engagement": saved, "preflight": preflight}
 
 
 def has_successful_connect(engagement: dict[str, Any]) -> bool:
     connect = engagement.get("connect") or {}
-    return bool(connect.get("preflight_ok"))
+    if not connect.get("preflight_ok") or connect.get("status") not in {None, "ready"}:
+        return False
+    if not bool((connect.get("preflight") or {}).get("ready", connect.get("preflight_ok"))):
+        return False
+    expected = normalize_target(str(connect.get("domain") or ""), str(connect.get("dc") or ""))
+    bound = connect.get("target") or {}
+    approved = normalize_target(
+        str(bound.get("domain") or connect.get("domain") or ""),
+        str(bound.get("dc") or connect.get("dc") or ""),
+    )
+    if not all(expected) or expected != approved:
+        return False
+    expires_at = str(connect.get("expires_at") or "")
+    if not expires_at:
+        # Legacy connection state is deliberately not trusted indefinitely.
+        return False
+    try:
+        expiry = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    if expiry <= _now():
+        return False
+    return not connect.get("has_secret") or has_bind_secret(
+        str(engagement.get("id") or ""), connect.get("secret_ref")
+    )
+
+
+def invalidate_connections_on_startup(settings: Settings) -> int:
+    """Make persisted live checks honest after process-memory state is lost."""
+    from adassassin.engagements import list_engagements
+
+    changed = 0
+    for item in list_engagements(settings):
+        if item.get("mode") == "demo" or not item.get("connect"):
+            continue
+
+        def _invalidate(current: dict[str, Any]) -> None:
+            connect = dict(current.get("connect") or {})
+            connect.update(
+                {
+                    "preflight_ok": False,
+                    "status": "reconnect_required",
+                    "secret_ref": None,
+                    "has_secret": False,
+                    "invalidated_reason": (
+                        "The console restarted. Run Connect again to refresh target checks "
+                        "and re-enter any in-memory credentials."
+                    ),
+                }
+            )
+            current["connect"] = connect
+
+        update_engagement(settings, item["id"], _invalidate)
+        clear_bind_secret(item["id"])
+        changed += 1
+    return changed
+
+
+def invalidate_connection(
+    current: dict[str, Any], reason: str = "Target details changed. Run Connect again."
+) -> None:
+    """Invalidate one engagement's preflight after its scope target changes."""
+    connect = current.get("connect")
+    if not isinstance(connect, dict):
+        return
+    connect.update(
+        {
+            "preflight_ok": False,
+            "status": "reconnect_required",
+            "secret_ref": None,
+            "has_secret": False,
+            "invalidated_reason": reason,
+        }
+    )

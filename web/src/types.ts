@@ -6,6 +6,16 @@ export type RequiredPrompt = {
   help: string;
   is_param?: string;
   param_key?: string;
+  key?: string;
+  required?: boolean;
+  input_type?: "text" | "secret" | "path" | "select" | "textarea" | "boolean" | "integer" | "confirmation";
+  trim?: boolean;
+  source?: "operator" | "engagement_target" | "safety_gate";
+  read_only?: boolean;
+  choices?: string[];
+  pattern?: string;
+  pattern_help?: string;
+  spellcheck?: boolean;
 };
 
 export type Capability = {
@@ -89,6 +99,9 @@ export type GuideStep = {
   complete_when: string;
   done: boolean;
   completion_mode: "visit" | "automatic";
+  optional?: boolean;
+  applicable?: boolean;
+  skipped_reason?: string | null;
 };
 
 export type GuideResponse = {
@@ -98,6 +111,9 @@ export type GuideResponse = {
   steps: GuideStep[];
   lanes: { green: number; yellow: number; red: number };
   doctor_summary: string;
+  core_complete?: boolean;
+  engagement_id?: string | null;
+  engagement_name?: string | null;
 };
 
 export type GlossaryResponse = { ok: boolean; source: string; items: { term: string; definition: string }[] };
@@ -171,6 +187,11 @@ export type ConnectState = {
   secret_ref: string | null;
   has_secret: boolean;
   preflight_ok: boolean;
+  status?: "ready" | "blocked" | "expired" | "reconnect_required";
+  checked_at?: string;
+  expires_at?: string;
+  invalidated_reason?: string | null;
+  target?: { domain: string; dc: string };
   preflight: {
     ok: boolean;
     ready?: boolean;
@@ -195,6 +216,7 @@ export type Job = {
   error: string | null;
   next_actions?: { id: string; message: string }[];
   red?: boolean;
+  target?: { domain: string; dc: string };
 };
 
 export type Engagement = {
@@ -231,6 +253,9 @@ export type Engagement = {
   }[];
   target_contacted: boolean;
   guided_marked?: string[];
+  archived?: boolean;
+  archived_at?: string | null;
+  engagement_audit?: { id: string; action: string; at: string; target_changed?: boolean }[];
 };
 
 export type ConnectResponse = {

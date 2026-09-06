@@ -138,6 +138,11 @@ export function Rollback({
                 Demo rollback is preview-only. It can never be applied to a directory.
               </div>
             )}
+            {engagement?.archived && (
+              <div className="banner-warning">
+                Archived engagements are execution-locked. Restore this engagement before applying cleanup.
+              </div>
+            )}
             <Field label="Typed confirmation">
               <input
                 placeholder="Type YES"
@@ -150,7 +155,7 @@ export function Rollback({
             <button
               className="btn primary danger"
               type="submit"
-              disabled={busy || !engagement || engagement.mode === "demo" || confirm.trim() !== "YES"}
+              disabled={busy || !engagement || engagement.mode === "demo" || engagement.archived || confirm.trim() !== "YES"}
             >
               {busy ? "Working…" : "Apply rollback"}
             </button>

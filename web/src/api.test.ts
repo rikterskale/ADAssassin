@@ -135,4 +135,16 @@ describe("api client", () => {
     expect(url).toBe("/api/engagements/demo");
     expect(init.method).toBe("POST");
   });
+
+  it("updates and archives an engagement through explicit lifecycle operations", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ ok: true, engagement: { id: "e1" } }));
+    await api.updateEngagement("e1", { name: "Renamed", domain: "corp.local" });
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/engagements/e1");
+    expect(fetchMock.mock.calls[0][1].method).toBe("PATCH");
+
+    await api.archiveEngagement("e1", true);
+    expect(fetchMock.mock.calls[1][0]).toBe("/api/engagements/e1/archive");
+    expect(fetchMock.mock.calls[1][1].method).toBe("POST");
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ archived: true });
+  });
 });

@@ -26,6 +26,8 @@ from adassassin.engagements import (
     list_engagements,
     mark_guided,
     reconcile_interrupted_jobs,
+    set_engagement_archived,
+    update_engagement_metadata,
 )
 from adassassin.engine import probe
 from adassassin.findings import (
@@ -36,10 +38,10 @@ from adassassin.findings import (
     set_finding_status,
 )
 from adassassin.guide import VISIT_TRACKED_STEPS, glossary_payload, guide_payload
-from adassassin.report import build_report, closeout_checklist, report_file
+from adassassin.report import build_engagement_bundle, build_report, closeout_checklist, report_file
 from adassassin.rollback import RollbackError, apply_rollback, list_rollback, preview_rollback
 from adassassin.runner import RunRefused, execute_run, get_live_job
-from adassassin.targets import TargetError, connect_engagement
+from adassassin.targets import TargetError, connect_engagement, invalidate_connections_on_startup
 from adassassin.vault import VaultServiceError, list_vault, unmask_vault_item
 
 WEBAPP = Path(__file__).resolve().parent / "webapp"
@@ -96,6 +98,10 @@ class EngagementIn(BaseModel):
     domain: str = Field(default="", max_length=255)
     dc: str = Field(default="", max_length=255)
     notes: str = Field(default="", max_length=10_000)
+
+
+class ArchiveIn(BaseModel):
+    archived: bool = True
 
 
 class GuidedMarkIn(BaseModel):
@@ -164,6 +170,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         raise ValueError("ADAssassin refuses non-loopback bind settings")
     settings.ensure_data_dirs()
     reconcile_interrupted_jobs(settings)
+    invalidate_connections_on_startup(settings)
     app = FastAPI(title="ADAssassin", version=__version__, docs_url=None, redoc_url=None)
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(
@@ -199,11 +206,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return run_doctor(settings)
 
     @app.get("/api/guide")
-    def guide() -> dict[str, Any]:
-        marked: list[str] = []
-        for item in list_engagements(settings):
-            marked.extend(item.get("guided_marked") or [])
-        return guide_payload(settings, marked)
+    def guide(engagement_id: str | None = None) -> dict[str, Any]:
+        return guide_payload(settings, engagement_id=engagement_id)
 
     @app.get("/api/glossary")
     def glossary() -> dict[str, Any]:
@@ -233,6 +237,33 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             dc=body.dc,
             notes=body.notes,
         )
+        return {"ok": True, "engagement": item}
+
+    @app.patch("/api/engagements/{engagement_id}")
+    def edit_engagement(engagement_id: str, body: EngagementIn) -> dict[str, Any]:
+        try:
+            item = update_engagement_metadata(
+                settings,
+                engagement_id,
+                name=body.name,
+                domain=body.domain,
+                dc=body.dc,
+                notes=body.notes,
+            )
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return {"ok": True, "engagement": item}
+
+    @app.post("/api/engagements/{engagement_id}/archive")
+    def archive_engagement(engagement_id: str, body: ArchiveIn) -> dict[str, Any]:
+        try:
+            item = set_engagement_archived(settings, engagement_id, archived=body.archived)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
         return {"ok": True, "engagement": item}
 
     @app.post("/api/engagements/demo")
@@ -450,6 +481,33 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             media_type="text/html; charset=utf-8",
             filename=f"{engagement_id}-report.html",
         )
+
+    @app.get("/api/engagements/{engagement_id}/bundle.zip")
+    def engagement_bundle(engagement_id: str) -> FileResponse:
+        try:
+            path = build_engagement_bundle(settings, engagement_id)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        return FileResponse(
+            path,
+            media_type="application/zip",
+            filename=f"{engagement_id}-evidence-bundle.zip",
+        )
+
+    @app.get("/operator-guide.md")
+    def operator_guide() -> FileResponse:
+        candidates = [
+            WEBAPP / "START_HERE.md",
+            Path(__file__).resolve().parents[2] / "docs" / "START_HERE.md",
+        ]
+        for candidate in candidates:
+            if candidate.is_file():
+                return FileResponse(
+                    candidate,
+                    media_type="text/markdown; charset=utf-8",
+                    filename="ADAssassin-START-HERE.md",
+                )
+        raise HTTPException(status_code=404, detail="Packaged operator guide not found")
 
     if WEBAPP.joinpath("index.html").exists():
         assets = WEBAPP / "assets"

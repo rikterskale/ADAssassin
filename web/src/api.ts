@@ -80,7 +80,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   health: () => request<HealthResponse>("/api/health"),
   doctor: () => request<DoctorResponse>("/api/doctor"),
-  guide: () => request<GuideResponse>("/api/guide"),
+  guide: (engagementId?: string | null) => request<GuideResponse>(
+    engagementId ? `/api/guide?engagement_id=${encodeURIComponent(engagementId)}` : "/api/guide",
+  ),
   glossary: () => request<GlossaryResponse>("/api/glossary"),
   catalog: () => request<CatalogResponse>("/api/catalog"),
   capability: (id: string) =>
@@ -93,6 +95,18 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body),
     }),
+  updateEngagement: (
+    id: string,
+    body: { name: string; domain?: string; dc?: string; notes?: string },
+  ) => request<{ ok: boolean; engagement: Engagement }>(
+    `/api/engagements/${encodeURIComponent(id)}`,
+    { method: "PATCH", body: JSON.stringify(body) },
+  ),
+  archiveEngagement: (id: string, archived: boolean) =>
+    request<{ ok: boolean; engagement: Engagement }>(
+      `/api/engagements/${encodeURIComponent(id)}/archive`,
+      { method: "POST", body: JSON.stringify({ archived }) },
+    ),
   demoEngagement: () =>
     request<{ ok: boolean; engagement: Engagement }>("/api/engagements/demo", { method: "POST" }),
   markGuided: (engagementId: string, stepId: string) =>

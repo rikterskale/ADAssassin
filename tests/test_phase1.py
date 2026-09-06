@@ -17,15 +17,15 @@ def test_doctor_and_guide(tmp_path: Path) -> None:
     demo = client.post("/api/engagements/demo").json()["engagement"]
     assert demo["mode"] == "demo"
     assert len(demo["findings"]) == 3
-    guide = client.get("/api/guide").json()
-    assert "demo" in guide["completed"]
+    guide = client.get(f"/api/guide?engagement_id={demo['id']}").json()
+    assert "workspace" in guide["completed"]
     assert [step["id"] for step in guide["steps"][:6]] == [
         "doctor",
-        "demo",
+        "workspace",
         "green-catalog",
         "findings",
         "glossary",
-        "engagement",
+        "connect",
     ]
     assert "connect" in [step["id"] for step in guide["steps"]]
     assert "observe-run" in [step["id"] for step in guide["steps"]]
@@ -44,7 +44,9 @@ def test_doctor_and_guide(tmp_path: Path) -> None:
     )
     assert refused.status_code == 400
     assert "automatically" in refused.json()["detail"]
-    assert "red-run" not in client.get("/api/guide").json()["completed"]
+    assert "red-run" not in client.get(
+        f"/api/guide?engagement_id={demo['id']}"
+    ).json()["completed"]
 
     # Legacy or manually edited markers cannot impersonate a completed run.
     update_engagement(
@@ -52,7 +54,7 @@ def test_doctor_and_guide(tmp_path: Path) -> None:
         demo["id"],
         lambda item: item["guided_marked"].extend(["observe-run", "red-run"]),
     )
-    completed = client.get("/api/guide").json()["completed"]
+    completed = client.get(f"/api/guide?engagement_id={demo['id']}").json()["completed"]
     assert "observe-run" not in completed
     assert "red-run" not in completed
 

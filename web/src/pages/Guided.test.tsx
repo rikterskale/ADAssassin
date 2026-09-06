@@ -52,4 +52,28 @@ describe("Guided", () => {
     // that do not depend on the middle-dot separator character.
     expect(screen.getByText(/acme internal.*0 findings/i)).toBeInTheDocument();
   });
+
+  it("keeps optional RED work outside core progress", () => {
+    const journey = makeGuide({
+      next: null,
+      core_complete: true,
+      steps: [
+        makeGuideStep({ id: "doctor", title: "Check the console", href: "/", done: true }),
+        makeGuideStep({
+          id: "red-run",
+          title: "Run a RED capability with typed confirm",
+          href: "/catalog?lane=red",
+          done: false,
+          optional: true,
+        }),
+      ],
+    });
+    renderWithRouter(
+      <Guided guide={journey} engagement={makeEngagement()} onDemo={vi.fn()} />,
+    );
+    expect(screen.getByText(/1 of 1 core steps complete/i)).toBeInTheDocument();
+    expect(screen.getByText(/core journey complete/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /optional advanced work/i })).toBeInTheDocument();
+    expect(screen.getByText(/run a red capability with typed confirm/i)).toBeInTheDocument();
+  });
 });

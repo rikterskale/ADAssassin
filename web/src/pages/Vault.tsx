@@ -10,10 +10,12 @@ export function Vault({
   engagement,
   onUpdated,
   onSeedDemo,
+  onSeen = () => {},
 }: {
   engagement: Engagement | null;
   onUpdated: (engagement: Engagement) => void;
   onSeedDemo: () => void;
+  onSeen?: () => void;
 }) {
   const notify = useToast();
   const [vault, setVault] = useState<VaultResponse | null>(null);
@@ -22,6 +24,12 @@ export function Vault({
   const [remaining, setRemaining] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (engagement && !engagement.guided_marked?.includes("vault-review")) onSeen();
+    // A page visit is recorded once for each selected engagement.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engagement?.id]);
 
   useEffect(() => {
     if (!engagement) {

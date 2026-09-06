@@ -8,11 +8,16 @@ function nav(page: Page) {
 
 test.describe.configure({ mode: "serial" });
 
-test("operator journey: overview -> demo -> findings -> vault -> rollback -> report", async ({ page }) => {
-  await test.step("Overview loads with the authorized banner and a live engine", async () => {
+test("operator journey: start here -> overview -> demo -> findings -> vault -> rollback -> report", async ({ page }) => {
+  await test.step("First launch opens Start Here before the operational console", async () => {
     await page.goto("/");
+    await expect(page).toHaveURL(/\/start$/);
     await expect(page.getByText(/authorized use only/i)).toBeVisible();
     await expect(page.getByText(/engine live/i)).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /from first click to defensible closeout/i }),
+    ).toBeVisible();
+    await nav(page).getByRole("link", { name: /overview/i }).click();
     await expect(
       page.getByRole("heading", { name: /active directory assessments, one guided step at a time/i }),
     ).toBeVisible();
@@ -69,6 +74,10 @@ test("operator journey: overview -> demo -> findings -> vault -> rollback -> rep
     await expect(page.getByRole("link", { name: /download html/i })).toHaveAttribute(
       "href",
       /\/report\.html$/,
+    );
+    await expect(page.getByRole("link", { name: /download evidence bundle/i })).toHaveAttribute(
+      "href",
+      /\/bundle\.zip$/,
     );
   });
 });

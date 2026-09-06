@@ -19,6 +19,11 @@ function connectedEngagement() {
       secret_ref: null,
       has_secret: false,
       preflight_ok: true,
+      status: "ready",
+      checked_at: "2026-09-01T10:00:00Z",
+      expires_at: "2099-09-01T10:15:00Z",
+      invalidated_reason: null,
+      target: { domain: "corp.local", dc: "10.0.0.1" },
       preflight: {
         ok: true,
         ready: true,
@@ -206,6 +211,113 @@ describe("Run", () => {
     await waitFor(() => {
       expect(screen.queryByDisplayValue("NeverCarryThisAcrossRuns")).not.toBeInTheDocument();
     });
+  });
+
+  it("keeps blocked capabilities visible and disables execution with the reason", async () => {
+    const blocked = makeCapability({
+      id: "blocked-capability",
+      runnable: false,
+      readiness: {
+        ready: false,
+        runner_available: true,
+        reason: "missing declared dependencies",
+        dependencies: [{ id: "fixture-tool", available: false, detail: "Install fixture-tool" }],
+      },
+    });
+    vi.mocked(api.capability).mockResolvedValue({ ok: true, capability: blocked });
+    renderWithRouter(
+      <Run
+        engagement={connectedEngagement()}
+        catalog={[observeCap, blocked]}
+        onRan={vi.fn()}
+        onSeedDemo={vi.fn()}
+      />,
+      { route: "/run?capability=blocked-capability" },
+    );
+    expect(await screen.findByText(/install fixture-tool/i)).toBeInTheDocument();
+    expect(screen.getByText(/blocked locally/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /run observe/i })).toBeDisabled();
+  });
+
+  it("renders typed prompts and preserves secret whitespace exactly", async () => {
+    const typed = makeCapability({
+      id: "typed-capability",
+      required_prompts: [
+        {
+          option: "--operation",
+          key: "operation",
+          label: "Operation",
+          help: "Choose an operation.",
+          input_type: "select",
+          choices: ["one", "two"],
+          required: true,
+          source: "operator",
+        },
+        {
+          option: "--enabled",
+          key: "enabled",
+          label: "Enabled",
+          help: "Choose whether to enable it.",
+          input_type: "boolean",
+          required: true,
+          source: "operator",
+        },
+        {
+          option: "--secret",
+          key: "secret",
+          label: "Secret",
+          help: "Enter the exact secret.",
+          input_type: "secret",
+          trim: false,
+          required: true,
+          source: "operator",
+        },
+      ],
+    });
+    vi.mocked(api.capability).mockResolvedValue({ ok: true, capability: typed });
+    vi.mocked(api.run).mockResolvedValue({
+      ok: true,
+      job_id: "typed-job",
+      status: "completed",
+      findings: [],
+      job: completedJob({ id: "typed-job", capability_id: typed.id }),
+      engagement: connectedEngagement(),
+    });
+    const { user } = renderWithRouter(
+      <Run engagement={connectedEngagement()} catalog={[typed]} onRan={vi.fn()} onSeedDemo={vi.fn()} />,
+      { route: "/run?capability=typed-capability" },
+    );
+    const submit = await screen.findByRole("button", { name: /run observe/i });
+    expect(submit).toBeDisabled();
+    await user.selectOptions(screen.getByRole("combobox", { name: /operation/i }), "two");
+    await user.selectOptions(screen.getByRole("combobox", { name: /enabled/i }), "false");
+    await user.type(screen.getByPlaceholderText("Enter the exact secret."), "  exact value  ");
+    expect(submit).toBeEnabled();
+    await user.click(submit);
+    await waitFor(() => expect(vi.mocked(api.run)).toHaveBeenCalledWith(
+      "eng-001",
+      expect.objectContaining({
+        options: { operation: "two", enabled: "false", secret: "  exact value  " },
+      }),
+    ));
+  });
+
+  it("reattaches to a running job from the URL and polls it", async () => {
+    const running = completedJob({ id: "job-live", status: "running", log: ["still running"] });
+    vi.mocked(api.capability).mockResolvedValue({ ok: true, capability: observeCap });
+    vi.mocked(api.job).mockResolvedValue({ ok: true, job: completedJob({ id: "job-live" }) });
+    vi.mocked(api.engagement).mockResolvedValue({ ok: true, engagement: connectedEngagement() });
+    renderWithRouter(
+      <Run
+        engagement={makeEngagement({ jobs: [running] })}
+        catalog={[observeCap]}
+        onRan={vi.fn()}
+        onSeedDemo={vi.fn()}
+      />,
+      { route: "/run?job=job-live" },
+    );
+    expect(await screen.findByText("still running")).toBeInTheDocument();
+    await waitFor(() => expect(vi.mocked(api.job)).toHaveBeenCalledWith("eng-001", "job-live"));
   });
 
   it("polls a backgrounded run until it reaches a terminal state", async () => {

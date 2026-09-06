@@ -27,6 +27,17 @@ def clear_bind_secret(engagement_id: str) -> None:
         _STORE.pop(engagement_id, None)
 
 
+def has_bind_secret(engagement_id: str, secret_ref: str | None = None) -> bool:
+    """Return whether the referenced in-memory bind material still exists."""
+    if not secret_ref:
+        return False
+    parts = secret_ref.split(":")
+    if len(parts) != 3 or parts != ["memory", engagement_id, "bind"]:
+        return False
+    with _LOCK:
+        return bool(_STORE.get(engagement_id))
+
+
 def resolve_bind_secret(engagement_id: str, secret_ref: str | None = None) -> dict[str, str]:
     """Return {password?, hashes?} for an engagement. secret_ref must match when provided."""
     if secret_ref:

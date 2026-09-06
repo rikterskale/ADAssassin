@@ -156,9 +156,102 @@ def create_engagement(settings: Settings, *, name: str, domain: str = "", dc: st
         "vault": {"secrets": 0, "tickets": 0, "certificates": 0},
         "rollback": {"pending": 0},
         "target_contacted": False,
-        "guided_marked": ["demo", "findings"] if demo else [],
+        # Page-visit milestones start empty even for the seeded demo. The
+        # frontend records them only when the operator actually opens a page.
+        "guided_marked": [],
+        "archived": False,
+        "archived_at": None,
+        "engagement_audit": [],
     }
     return save_engagement(settings, payload)
+
+
+def update_engagement_metadata(
+    settings: Settings,
+    engagement_id: str,
+    *,
+    name: str,
+    domain: str = "",
+    dc: str = "",
+    notes: str = "",
+) -> dict[str, Any]:
+    """Edit operator-owned metadata and invalidate approval when target scope changes."""
+    from adassassin.secrets import clear_bind_secret
+    from adassassin.targets import invalidate_connection, normalize_target
+
+    cleaned_name = (name or "").strip()
+    if not cleaned_name:
+        raise ValueError("Engagement name is required")
+    domain = (domain or "").strip().rstrip(".")
+    dc = (dc or "").strip().rstrip(".")
+    notes = notes or ""
+    target_changed = False
+
+    def _apply(current: dict[str, Any]) -> None:
+        nonlocal target_changed
+        if current.get("mode") == "demo" and (domain or dc):
+            raise ValueError("Offline demo engagements cannot be assigned a live target")
+        before = normalize_target(str(current.get("domain") or ""), str(current.get("dc") or ""))
+        after = normalize_target(domain, dc)
+        target_changed = before != after
+        if target_changed and any(
+            job.get("status") == "running" for job in current.get("jobs") or []
+        ):
+            raise ValueError(
+                "The target cannot change while a capability is running. Review the live job first."
+            )
+        current.update({"name": cleaned_name, "domain": domain, "dc": dc, "notes": notes})
+        if target_changed:
+            invalidate_connection(current)
+        audit = list(current.get("engagement_audit") or [])
+        audit.append(
+            {
+                "id": uuid4().hex[:10],
+                "action": "metadata-updated",
+                "at": _now(),
+                "target_changed": target_changed,
+            }
+        )
+        current["engagement_audit"] = audit[-100:]
+
+    saved = update_engagement(settings, engagement_id, _apply)
+    if target_changed:
+        clear_bind_secret(engagement_id)
+    return saved
+
+
+def set_engagement_archived(
+    settings: Settings, engagement_id: str, *, archived: bool
+) -> dict[str, Any]:
+    """Archive or restore an engagement without deleting evidence."""
+    from adassassin.secrets import clear_bind_secret
+    from adassassin.targets import invalidate_connection
+
+    def _apply(current: dict[str, Any]) -> None:
+        if archived and any(
+            job.get("status") == "running" for job in current.get("jobs") or []
+        ):
+            raise ValueError(
+                "This engagement has a running capability. Review it before archiving."
+            )
+        current["archived"] = archived
+        current["archived_at"] = _now() if archived else None
+        if archived:
+            invalidate_connection(current, "Engagement archived. Restore it and run Connect again.")
+        audit = list(current.get("engagement_audit") or [])
+        audit.append(
+            {
+                "id": uuid4().hex[:10],
+                "action": "archived" if archived else "restored",
+                "at": _now(),
+            }
+        )
+        current["engagement_audit"] = audit[-100:]
+
+    saved = update_engagement(settings, engagement_id, _apply)
+    if archived:
+        clear_bind_secret(engagement_id)
+    return saved
 
 
 def get_job(settings: Settings, engagement_id: str, job_id: str) -> dict[str, Any] | None:
@@ -177,6 +270,8 @@ def ensure_demo(settings: Settings) -> dict[str, Any]:
 
     for item in list_engagements(settings):
         if item.get("mode") == "demo":
+            if item.get("archived"):
+                item = set_engagement_archived(settings, item["id"], archived=False)
             ensure_demo_vault(settings, item["id"])
             seed_demo_pending_cleanup(settings, item["id"])
             list_vault(settings, item["id"])

@@ -109,6 +109,9 @@ export function Report({
                 <a className="btn ghost" href={`/api/engagements/${engagement.id}/report.html`}>
                   Download HTML
                 </a>
+                <a className="btn ghost" href={`/api/engagements/${engagement.id}/bundle.zip`}>
+                  Download evidence bundle
+                </a>
               </>
             )}
           </div>
@@ -122,6 +125,10 @@ export function Report({
               <pre className="log">{report.markdown.slice(0, 4000)}{report.markdown.length > 4000 ? "\n…" : ""}</pre>
             </>
           )}
+          <p className="muted">
+            The ZIP includes portable engagement metadata, reports, workspace evidence, and SHA-256
+            checksums. Bind credentials and reusable preflight state are excluded.
+          </p>
         </div>
       </div>
     </>

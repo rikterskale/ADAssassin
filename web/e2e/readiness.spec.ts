@@ -40,12 +40,18 @@ test.describe("backend readiness", () => {
     expect(await deep.text()).toContain('<div id="root">');
   });
 
-  test("the packaged Start Here guide exposes the full operator surface", async ({ page }) => {
+  test("the packaged Start Here guide exposes the full operator surface", async ({ page, request }) => {
     await page.goto("/start");
     await expect(page.getByRole("heading", { name: /first click to defensible closeout/i })).toBeVisible();
     await expect(page.getByText(/nothing is removed in this view/i)).toBeVisible();
     await expect(page.getByRole("link", { name: "Open Catalog" })).toBeVisible();
-    await expect(page.getByText(/all 27 operations/i)).toBeVisible();
+    await expect(page.getByText(/all 30 local api operations/i)).toBeVisible();
+    const guide = await request.get("/operator-guide.md");
+    expect(guide.ok()).toBeTruthy();
+    expect(await guide.text()).toContain("# ADAssassin: Start Here");
+    const security = await request.get("/SECURITY.md");
+    expect(security.ok()).toBeTruthy();
+    expect(await security.text()).toContain("# Security");
   });
 
   test("static serving rejects path traversal", async ({ request }) => {

@@ -4,6 +4,8 @@ import { api } from "../api";
 import { Field, SecretField } from "../components/Field";
 import { NoEngagement } from "../components/NoEngagement";
 import { useToast } from "../components/Toasts";
+import { connectStatusMessage } from "../connection";
+import { formatWhen } from "../format";
 import type { Engagement } from "../types";
 
 export function Connect({
@@ -24,6 +26,7 @@ export function Connect({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preflight, setPreflight] = useState(engagement?.connect?.preflight ?? null);
+  const activeJob = engagement?.jobs?.find((job) => job.status === "running");
 
   useEffect(() => {
     setDomain(engagement?.domain ?? "");
@@ -45,6 +48,10 @@ export function Connect({
       setError("Offline demo engagements cannot contact a directory. Create a live-ready engagement first.");
       return;
     }
+    if (password && hashes) {
+      setError("Choose one bind method: password or NTLM hashes, not both.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -60,8 +67,8 @@ export function Connect({
       setPreflight(result.preflight);
       onConnected(result.engagement);
       notify(
-        result.preflight.ok ? "Preflight ready. Target checks completed." : "Preflight blocked. Review the checks before running.",
-        result.preflight.ok ? "ok" : "warn",
+        result.preflight.ready ? "Preflight ready. Target checks completed." : "Preflight blocked. Review the checks before running.",
+        result.preflight.ready ? "ok" : "warn",
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -92,6 +99,20 @@ export function Connect({
                 <div className="banner-error">
                   This is an offline demo engagement. Create or select a live-ready engagement before connecting.
                 </div>
+              )}
+              {engagement.archived && (
+                <div className="banner-warning">
+                  This engagement is archived and execution-locked. Restore it from Engagements before connecting.
+                </div>
+              )}
+              {activeJob && (
+                <div className="banner-warning">
+                  {activeJob.capability_id} is running. Review its live status before starting a new
+                  target preflight.
+                </div>
+              )}
+              {engagement.mode !== "demo" && engagement.connect && !engagement.connect.preflight_ok && (
+                <div className="banner-warning">{connectStatusMessage(engagement)}</div>
               )}
               <Field label="Domain" hint="FQDN of the authorized forest or domain.">
                 <input
@@ -124,7 +145,7 @@ export function Connect({
               </Field>
               <SecretField
                 label="Password"
-                hint="Held in process memory only. Never written to disk."
+                hint="Use either a password or NTLM hashes. Held in process memory only."
                 placeholder="Password (optional, not saved to disk)"
                 value={password}
                 onChange={setPassword}
@@ -132,7 +153,7 @@ export function Connect({
               />
               <SecretField
                 label="NTLM hashes"
-                hint="LM:NT or NT. Held in process memory only."
+                hint="Use either hashes or a password. LM:NT or NT; held in process memory only."
                 placeholder="NTLM hashes LM:NT or NT (optional, not saved to disk)"
                 value={hashes}
                 onChange={setHashes}
@@ -140,7 +161,7 @@ export function Connect({
               />
               {error && <div className="banner-error">{error}</div>}
               <div className="actions">
-                <button className="btn primary" type="submit" disabled={busy || engagement.mode === "demo"}>
+                <button className="btn primary" type="submit" disabled={busy || engagement.mode === "demo" || engagement.archived || Boolean(activeJob)}>
                   {busy ? "Checking…" : "Run preflight"}
                 </button>
                 <Link className="btn ghost" to="/run">
@@ -157,11 +178,14 @@ export function Connect({
           ) : (
             <>
               <p className="muted">
-                <span className={`badge ${preflight.ok ? "green" : "red"}`}>
-                  {preflight.ok ? "ready" : "blocked"}
+                <span className={`badge ${preflight.ready ? "green" : "red"}`}>
+                  {preflight.ready ? "ready" : "blocked"}
                 </span>{" "}
-                target contacted {preflight.target_contacted ? "yes" : "no"}
+                target probes attempted {preflight.target_contacted ? "yes" : "no"}
               </p>
+              {engagement?.connect?.expires_at && preflight.ready && (
+                <p className="muted">Valid until {formatWhen(engagement.connect.expires_at)}. Restarting the console requires a new preflight.</p>
+              )}
               {(preflight.checks ?? []).map((check) => (
                 <div className="finding" key={check.id}>
                   <span className={`badge ${check.status === "ok" ? "green" : check.status === "warning" ? "yellow" : "red"}`}>

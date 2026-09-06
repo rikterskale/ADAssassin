@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { api } from "./api";
 import { Shell } from "./components/Shell";
 import { ToastProvider, useToast } from "./components/Toasts";
@@ -15,7 +15,12 @@ import { Rollback } from "./pages/Rollback";
 import { Run } from "./pages/Run";
 import { StartHere } from "./pages/StartHere";
 import { Vault } from "./pages/Vault";
-import { readCurrentEngagement, writeCurrentEngagement } from "./storage";
+import {
+  readCurrentEngagement,
+  readOnboardingSeen,
+  writeCurrentEngagement,
+  writeOnboardingSeen,
+} from "./storage";
 import type { CatalogResponse, DoctorResponse, Engagement, GuideResponse, HealthResponse } from "./types";
 
 export default function App() {
@@ -28,6 +33,7 @@ export default function App() {
 
 function Console() {
   const notify = useToast();
+  const location = useLocation();
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [doctor, setDoctor] = useState<DoctorResponse | null>(null);
   const [guide, setGuide] = useState<GuideResponse | null>(null);
@@ -38,22 +44,27 @@ function Console() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const autoSeededRef = useRef(false);
+  const currentIdRef = useRef<string | null>(null);
+  const [firstRun, setFirstRun] = useState(() => !readOnboardingSeen());
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      const [nextHealth, nextDoctor, nextGuide, nextCatalog, nextEngagements] = await Promise.all([
-        api.health(), api.doctor(), api.guide(), api.catalog(), api.engagements(),
+      const [nextHealth, nextDoctor, nextCatalog, nextEngagements] = await Promise.all([
+        api.health(), api.doctor(), api.catalog(), api.engagements(),
       ]);
+      const ids = new Set(nextEngagements.engagements.map((item) => item.id));
+      const stored = readCurrentEngagement();
+      const selected = currentIdRef.current && ids.has(currentIdRef.current)
+        ? currentIdRef.current
+        : stored && ids.has(stored)
+          ? stored
+          : nextEngagements.engagements[0]?.id ?? null;
+      const nextGuide = await api.guide(selected);
       setHealth(nextHealth); setDoctor(nextDoctor); setGuide(nextGuide); setCatalog(nextCatalog);
       setEngagements(nextEngagements.engagements);
-      setCurrentId((current) => {
-        const ids = new Set(nextEngagements.engagements.map((item) => item.id));
-        if (current && ids.has(current)) return current;
-        const stored = readCurrentEngagement();
-        if (stored && ids.has(stored)) return stored;
-        return nextEngagements.engagements[0]?.id ?? null;
-      });
+      currentIdRef.current = selected;
+      setCurrentId(selected);
       setError(null);
       setLoaded(true);
     } catch (err) {
@@ -68,8 +79,23 @@ function Console() {
   useEffect(() => { void refresh(); }, [refresh]);
 
   useEffect(() => {
+    currentIdRef.current = currentId;
     if (currentId) writeCurrentEngagement(currentId);
   }, [currentId]);
+
+  useEffect(() => {
+    if (loaded && location.pathname === "/start" && firstRun) {
+      writeOnboardingSeen();
+      setFirstRun(false);
+    }
+  }, [firstRun, loaded, location.pathname]);
+
+  useEffect(() => {
+    if (!loaded) return;
+    void api.guide(currentId).then(setGuide).catch((err) => {
+      setError(err instanceof Error ? err.message : String(err));
+    });
+  }, [currentId, loaded]);
 
   // Zero-friction start: if nothing exists yet, seed the offline demo once so no page is empty.
   useEffect(() => {
@@ -102,6 +128,23 @@ function Console() {
     const created = await api.createEngagement(body);
     upsertEngagement(created.engagement);
     notify(`Engagement “${created.engagement.name}” ready`);
+    await refresh();
+  }
+
+  async function updateEngagement(
+    id: string,
+    body: { name: string; domain: string; dc: string; notes: string },
+  ) {
+    const updated = await api.updateEngagement(id, body);
+    upsertEngagement(updated.engagement);
+    notify(`Engagement “${updated.engagement.name}” updated`);
+    await refresh();
+  }
+
+  async function archiveEngagement(id: string, archived: boolean) {
+    const updated = await api.archiveEngagement(id, archived);
+    upsertEngagement(updated.engagement);
+    notify(archived ? "Engagement archived. Evidence remains available." : "Engagement restored.");
     await refresh();
   }
 
@@ -163,15 +206,15 @@ function Console() {
         )}
       >
         <Route path="/start" element={<StartHere />} />
-        <Route path="/" element={<Overview health={health} doctor={doctor} guide={guide} engagement={current} onSeedDemo={seedDemo} />} />
+        <Route path="/" element={firstRun ? <Navigate to="/start" replace /> : <Overview health={health} doctor={doctor} guide={guide} engagement={current} onSeedDemo={seedDemo} />} />
         <Route path="/guided" element={<Guided guide={guide} engagement={current} onDemo={() => void seedDemo()} />} />
         <Route path="/catalog" element={<Catalog catalog={catalog} onViewGreen={markGreenCatalog} />} />
         <Route path="/glossary" element={<Glossary onSeen={markGlossary} />} />
-        <Route path="/engagements" element={<Engagements items={engagements} currentId={current?.id ?? null} onCreate={createEngagement} onDemo={() => void seedDemo()} onSelect={setCurrentId} />} />
+        <Route path="/engagements" element={<Engagements items={engagements} currentId={current?.id ?? null} onCreate={createEngagement} onUpdate={updateEngagement} onArchive={archiveEngagement} onDemo={() => void seedDemo()} onSelect={setCurrentId} />} />
         <Route path="/connect" element={<Connect engagement={current} onConnected={(item) => void handleConnected(item)} onSeedDemo={() => void seedDemo()} />} />
         <Route path="/run" element={<Run engagement={current} catalog={catalog?.capabilities ?? []} onRan={(item) => void handleRan(item)} onSeedDemo={() => void seedDemo()} />} />
-        <Route path="/findings" element={<Findings engagement={current} onUpdated={(item) => void handleConnected(item)} onSeedDemo={() => void seedDemo()} />} />
-        <Route path="/vault" element={<Vault engagement={current} onUpdated={(item) => void handleConnected(item)} onSeedDemo={() => void seedDemo()} />} />
+        <Route path="/findings" element={<Findings engagement={current} onUpdated={(item) => void handleConnected(item)} onSeedDemo={() => void seedDemo()} onSeen={() => void mark("findings")} />} />
+        <Route path="/vault" element={<Vault engagement={current} onUpdated={(item) => void handleConnected(item)} onSeedDemo={() => void seedDemo()} onSeen={() => void mark("vault-review")} />} />
         <Route path="/rollback" element={<Rollback engagement={current} onUpdated={(item) => void handleConnected(item)} onSeedDemo={() => void seedDemo()} />} />
         <Route path="/report" element={<Report engagement={current} onUpdated={(item) => void handleConnected(item)} onSeedDemo={() => void seedDemo()} />} />
         <Route path="*" element={<Navigate to="/" replace />} />

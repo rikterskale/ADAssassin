@@ -23,6 +23,6 @@ describe("StartHere", () => {
     expect(screen.getByText(/ADAF_SESSION_VAULT_KEY/)).toBeInTheDocument();
     expect(screen.getByText(/\/api\/catalog/)).toBeInTheDocument();
     expect(screen.getByText(/ADASSASSIN_RUN_SYNCHRONOUS/)).toBeInTheDocument();
-    expect(screen.getByText(/all 27 operations/i)).toBeInTheDocument();
+    expect(screen.getByText(/all 30 local api operations/i)).toBeInTheDocument();
   });
 });

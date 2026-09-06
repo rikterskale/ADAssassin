@@ -159,6 +159,8 @@ nav a.active { box-shadow: inset 2px 0 0 var(--gold); }
 .scope-detail { color: var(--muted); }
 .scope-detail.warning { color: var(--yellow); }
 .scopebar a { color: var(--gold); margin-left: auto; }
+.scopebar a.scope-detail { margin-left: 0; }
+.scopebar a:last-child { margin-left: auto; }
 .scopebar a:hover { text-decoration: underline; text-underline-offset: 3px; }
 
 .content {
@@ -236,7 +238,9 @@ input:hover, textarea:hover, select:hover { border-color: var(--line-strong); }
 input:focus, textarea:focus, select:focus { border-color: rgba(224, 178, 90, 0.55); }
 input[type="search"], .grow { flex: 1; }
 .form { display: grid; gap: 10px; }
+.form-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .muted { color: var(--muted); }
+input:disabled, textarea:disabled, select:disabled { opacity: 0.65; cursor: not-allowed; }
 
 .field { display: grid; gap: 6px; }
 .field-label {
@@ -355,6 +359,14 @@ button.finding:first-of-type { padding-top: 10px; border-top: 1px solid var(--li
 }
 .review-card h3 {
   color: var(--gold); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+}
+.target-lock {
+  border: 1px solid rgba(126, 163, 107, 0.35);
+  background: rgba(126, 163, 107, 0.07);
+  padding: 12px; display: grid; gap: 5px; font-size: 13px;
+}
+.target-lock strong {
+  color: var(--green); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
 }
 
 /* Start Here ----------------------------------------------------------- */
@@ -539,6 +551,7 @@ button.finding:first-of-type { padding-top: 10px; border-top: 1px solid var(--li
   .metric-row { grid-template-columns: 1fr; }
   .guide-steps.wide { grid-template-columns: 1fr; }
   .meta-list > div { grid-template-columns: 1fr; gap: 2px; }
+  .form-grid { grid-template-columns: 1fr; }
   .sticky-side { position: static; max-height: none; }
   .btn { min-height: 42px; }
   .status-pills .pill:nth-last-child(-n + 2) { display: none; }

@@ -127,7 +127,7 @@ def test_red_run_with_ack_uses_mock_engine(tmp_path: Path) -> None:
     assert last["options"].get("username") == "admin"
     assert "password" not in last["options"] or last["options"]["password"] == "***"
     assert "red-run" in detail["guided_marked"]
-    guide = client.get("/api/guide").json()
+    guide = client.get(f"/api/guide?engagement_id={engagement['id']}").json()
     assert "red-run" in guide["completed"]
     assert "red-run" in [step["id"] for step in guide["steps"]]
 
