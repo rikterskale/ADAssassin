@@ -21,7 +21,7 @@ Do not reopen these unless the owner changes them in this file.
 | Decision | Choice |
 | --- | --- |
 | Engine coupling | Dependency + pinned version. Do **not** vendor a snapshot of ADAF-ATTACK. |
-| Engine pin | `adaf-attack==0.10.1` at commit `fdb60b90b910ba3dcbd582e2c72ce48189191214` |
+| Engine pin | `adaf-attack==0.10.1` at commit `df92b617ad7d2ca3603408d59fcef50338e50bab` |
 | Frontend | React + Vite. Vendor-grade console, not HTMX-in-Python. |
 | First-run lock | **No** authorization checkbox gate. Banner only. |
 | Repo posture | Public, with a strong authorized-use banner. |
@@ -186,7 +186,8 @@ DC and run **green/yellow observe** capabilities. No directory mutation.
 
 Shipped:
 
-- `src/adassassin/targets.py` — connect + live-ad doctor preflight wrap
+- `src/adassassin/targets.py` — connect + live-ad doctor preflight wrap with a
+  transport-bound standard LDAP endpoint (LDAP/StartTLS 389, LDAPS 636)
 - `src/adassassin/runner.py` — observe gate + `execute_capability` wrap (RED confirm landed in Phase 5)
 - `src/adassassin/secrets.py` — in-memory bind password/hashes (not on disk)
 - Connect + Run React pages; catalog **Run** button for observe caps

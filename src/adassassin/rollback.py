@@ -10,7 +10,7 @@ from adassassin.config import Settings
 from adassassin.engagements import get_engagement, update_engagement
 from adassassin.secrets import resolve_bind_secret
 from adassassin.storage import ensure_private_dir, write_private_text
-from adassassin.targets import has_successful_connect
+from adassassin.targets import directory_port, has_successful_connect, normalize_directory_transport
 from adassassin.workspace import engagement_workspace, session_dirs
 
 CONFIRM_TOKEN = "YES"
@@ -195,12 +195,16 @@ def apply_rollback(
     from adaf_attack.core.target import Target
 
     secret = resolve_bind_secret(engagement_id, connect.get("secret_ref"))
+    transport = normalize_directory_transport(str(connect.get("transport") or "ldap"))
     target = Target(
         domain=domain,
         dc_ip=dc,
         username=(connect.get("username") or item.get("username") or None) or None,
         password=secret.get("password"),
         hashes=secret.get("hashes"),
+        ldaps=transport == "ldaps",
+        starttls=transport == "starttls",
+        port=directory_port(transport),
     )
 
     results: list[dict[str, Any]] = []

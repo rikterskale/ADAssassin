@@ -24,7 +24,7 @@ from adassassin.engagements import (
 )
 from adassassin.guide import guide_payload
 from adassassin.report import build_engagement_bundle
-from adassassin.runner import RunRefused, execute_run
+from adassassin.runner import RunRefused, _validate_and_coerce_options, execute_run
 from adassassin.targets import TargetError, connect_engagement, has_successful_connect
 
 
@@ -346,6 +346,21 @@ def test_catalog_prompts_have_typed_validation_metadata() -> None:
         for prompt in prompts
         if prompt.get("key") in {"domain", "dc_ip"}
     )
+
+    policy_probe = next(
+        capability
+        for capability in catalog_payload()["capabilities"]
+        if capability["id"] == "adcs-policy-probe"
+    )
+    artifact = next(
+        prompt
+        for prompt in policy_probe["required_prompts"]
+        if prompt.get("key") == "artifact"
+    )
+    assert artifact["input_type"] == "path"
+    assert artifact["source"] == "operator"
+    with pytest.raises(RunRefused, match="Authorized evidence file path"):
+        _validate_and_coerce_options(policy_probe, {})
     assert all(
         prompt.get("source") == "safety_gate"
         for prompt in prompts

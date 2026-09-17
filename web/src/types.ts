@@ -180,9 +180,13 @@ export type PreflightCheck = {
   scope?: string;
 };
 
+export type DirectoryTransport = "ldap" | "starttls" | "ldaps";
+
 export type ConnectState = {
   domain: string;
   dc: string;
+  transport?: DirectoryTransport;
+  ldap_port?: number;
   username: string;
   secret_ref: string | null;
   has_secret: boolean;
@@ -191,10 +195,12 @@ export type ConnectState = {
   checked_at?: string;
   expires_at?: string;
   invalidated_reason?: string | null;
-  target?: { domain: string; dc: string };
+  target?: { domain: string; dc: string; transport?: DirectoryTransport; ldap_port?: number };
   preflight: {
     ok: boolean;
     ready?: boolean;
+    transport?: DirectoryTransport;
+    ldap_port?: number;
     blocking_checks: string[];
     advisory_checks: string[];
     next_step?: string;
@@ -216,7 +222,7 @@ export type Job = {
   error: string | null;
   next_actions?: { id: string; message: string }[];
   red?: boolean;
-  target?: { domain: string; dc: string };
+  target?: { domain: string; dc: string; transport?: DirectoryTransport; ldap_port?: number };
 };
 
 export type Engagement = {
@@ -264,6 +270,8 @@ export type ConnectResponse = {
   preflight: {
     ok: boolean;
     ready: boolean;
+    transport?: DirectoryTransport;
+    ldap_port?: number;
     target_contacted: boolean;
     blocking_checks: string[];
     advisory_checks: string[];

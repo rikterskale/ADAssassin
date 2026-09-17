@@ -1,7 +1,7 @@
 {
   "source": "bundled",
   "engine_version": "0.10.1",
-  "engine_commit": "fdb60b90b910ba3dcbd582e2c72ce48189191214",
+  "engine_commit": "df92b617ad7d2ca3603408d59fcef50338e50bab",
   "count": 92,
   "capabilities": [
     {
@@ -340,6 +340,13 @@
           "option": "--dc-ip",
           "label": "Domain controller IP or hostname",
           "help": "Reachable address of the DC you will query.",
+          "is_param": "",
+          "param_key": ""
+        },
+        {
+          "option": "--artifact",
+          "label": "Authorized evidence file path",
+          "help": "Path to an operator-supplied evidence file approved for this engagement.",
           "is_param": "",
           "param_key": ""
         }

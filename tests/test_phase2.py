@@ -106,16 +106,21 @@ def test_connect_persists_without_password(tmp_path: Path) -> None:
         "first_run": False,
     }
 
-    with patch("adaf_attack.cli._doctor_payload", return_value=fake_preflight):
+    with (
+        patch("adaf_attack.cli._doctor_payload", return_value=fake_preflight),
+        patch("adaf_attack.cli._socket_check", return_value=("ok", None)) as socket_check,
+    ):
         response = client.post(
             f"/api/engagements/{engagement['id']}/connect",
             json={
                 "domain": "corp.local",
                 "dc": "10.0.0.10",
+                "transport": "ldaps",
                 "username": "operator",
                 "password": "should-not-persist",
             },
         )
+    socket_check.assert_called_once_with("10.0.0.10", 636, 3.0)
     assert response.status_code == 200
     body = response.json()
     assert body["preflight"]["ok"] is True
@@ -124,12 +129,63 @@ def test_connect_persists_without_password(tmp_path: Path) -> None:
     assert saved["domain"] == "corp.local"
     assert saved["dc"] == "10.0.0.10"
     assert saved["username"] == "operator"
+    assert saved["connect"]["transport"] == "ldaps"
+    assert saved["connect"]["ldap_port"] == 636
+    assert saved["connect"]["target"] == {
+        "domain": "corp.local",
+        "dc": "10.0.0.10",
+        "transport": "ldaps",
+        "ldap_port": 636,
+    }
+    assert any(
+        check["id"] == "dc-ldaps" and check["value"] == "10.0.0.10:636"
+        for check in body["preflight"]["checks"]
+    )
     assert saved["connect"]["has_secret"] is True
     assert saved["connect"]["secret_ref"] == f"memory:{engagement['id']}:bind"
     assert saved["target_contacted"] is True
     raw = (tmp_path / "engagements" / f"{engagement['id']}.json").read_text(encoding="utf-8")
     assert "should-not-persist" not in raw
     assert "password" not in saved["connect"]
+
+
+def test_ldaps_endpoint_failure_blocks_preflight_and_secret_staging(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    engagement = _engagement(client)
+    fake_preflight = {
+        "ok": True,
+        "ready": True,
+        "profile": "live-ad",
+        "checks": [],
+        "blocking_checks": [],
+        "advisory_checks": [],
+        "next_step": "plan",
+        "first_run": False,
+    }
+
+    with (
+        patch("adaf_attack.cli._doctor_payload", return_value=fake_preflight),
+        patch(
+            "adaf_attack.cli._socket_check",
+            return_value=("warning", "10.0.0.10:636 is not reachable"),
+        ),
+    ):
+        response = client.post(
+            f"/api/engagements/{engagement['id']}/connect",
+            json={
+                "domain": "corp.local",
+                "dc": "10.0.0.10",
+                "transport": "ldaps",
+                "password": "must-not-be-staged",
+            },
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["preflight"]["ready"] is False
+    assert "dc-ldaps" in body["preflight"]["blocking_checks"]
+    assert body["engagement"]["connect"]["has_secret"] is False
+    assert body["engagement"]["connect"]["secret_ref"] is None
 
 
 def test_failed_preflight_without_fields_does_not_mark_contacted(tmp_path: Path) -> None:
@@ -181,6 +237,9 @@ def test_yellow_observe_after_successful_connect(tmp_path: Path) -> None:
         assert capability_id == "ldap-enum"
         assert target.domain == "corp.local"
         assert target.dc_ip == "10.0.0.10"
+        assert target.ldaps is True
+        assert target.starttls is False
+        assert target.port == 636
         return {
             "ok": True,
             "capability": capability_id,
@@ -201,10 +260,13 @@ def test_yellow_observe_after_successful_connect(tmp_path: Path) -> None:
             "outcome": {"status": "success"},
         }
 
-    with patch("adaf_attack.cli._doctor_payload", return_value=fake_preflight):
+    with (
+        patch("adaf_attack.cli._doctor_payload", return_value=fake_preflight),
+        patch("adaf_attack.cli._socket_check", return_value=("ok", None)),
+    ):
         connect = client.post(
             f"/api/engagements/{engagement['id']}/connect",
-            json={"domain": "corp.local", "dc": "10.0.0.10"},
+            json={"domain": "corp.local", "dc": "10.0.0.10", "transport": "ldaps"},
         )
     assert connect.status_code == 200
     assert connect.json()["engagement"]["connect"]["preflight_ok"] is True
@@ -222,6 +284,39 @@ def test_yellow_observe_after_successful_connect(tmp_path: Path) -> None:
     assert detail["target_contacted"] is True
     assert "connect" in detail["guided_marked"]
     assert "observe-run" in detail["guided_marked"]
+
+
+def test_live_run_rejects_transport_override_after_preflight(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    engagement = _engagement(client)
+    fake_preflight = {
+        "ok": True,
+        "ready": True,
+        "profile": "live-ad",
+        "checks": [],
+        "blocking_checks": [],
+        "advisory_checks": [],
+        "next_step": "plan",
+        "first_run": False,
+    }
+    with (
+        patch("adaf_attack.cli._doctor_payload", return_value=fake_preflight),
+        patch("adaf_attack.cli._socket_check", return_value=("ok", None)),
+    ):
+        connected = client.post(
+            f"/api/engagements/{engagement['id']}/connect",
+            json={"domain": "corp.local", "dc": "10.0.0.10", "transport": "ldaps"},
+        )
+    assert connected.status_code == 200
+
+    with patch("adaf_attack.core.runner.execute_capability") as engine_run:
+        response = client.post(
+            f"/api/engagements/{engagement['id']}/run",
+            json={"capability_id": "ldap-enum", "options": {"transport": "ldap"}},
+        )
+    assert response.status_code == 409
+    assert "transport" in response.json()["detail"].lower()
+    engine_run.assert_not_called()
 
 
 def test_failed_preflight_still_marks_contacted_when_probes_ran(tmp_path: Path) -> None:

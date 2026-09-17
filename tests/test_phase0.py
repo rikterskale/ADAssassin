@@ -16,7 +16,7 @@ def test_health_catalog_and_demo(tmp_path: Path) -> None:
     assert health["ok"] is True
     assert health["catalog_count"] == 92
     assert health["engine_pin"] == "0.10.1"
-    assert health["engine_commit"] == "fdb60b90b910ba3dcbd582e2c72ce48189191214"
+    assert health["engine_commit"] == "df92b617ad7d2ca3603408d59fcef50338e50bab"
     assert "engine" in health
     assert health["bind"].startswith("127.0.0.1:")
 

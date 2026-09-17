@@ -7,7 +7,7 @@ function catalogOf(...capabilities: ReturnType<typeof makeCapability>[]): Catalo
   return {
     source: "engine",
     engine_version: "0.10.1",
-    engine_commit: "fdb60b90",
+    engine_commit: "df92b617",
     count: capabilities.length,
     capabilities,
   };

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -113,6 +113,7 @@ class GuidedMarkIn(BaseModel):
 class ConnectIn(BaseModel):
     domain: str = Field(min_length=1, max_length=255)
     dc: str = Field(min_length=1, max_length=255)
+    transport: Literal["ldap", "starttls", "ldaps"] = "ldap"
     username: str = Field(default="", max_length=320)
     password: str | None = Field(default=None, max_length=4096)
     hashes: str | None = Field(default=None, max_length=4096)
@@ -300,6 +301,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 engagement_id,
                 domain=body.domain,
                 dc=body.dc,
+                transport=body.transport,
                 username=body.username,
                 password=body.password,
                 hashes=body.hashes,

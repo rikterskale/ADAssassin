@@ -11,7 +11,7 @@ from typing import Any
 from adassassin import ENGINE_COMMIT, ENGINE_PIN
 
 _SECRET_KEYS = {"password", "new_password", "spray_password", "hashes", "nthash", "aes_key"}
-_PATH_KEYS = {"ca_pfx", "pfx", "sysvol", "users"}
+_PATH_KEYS = {"artifact", "ca_pfx", "pfx", "sysvol", "users"}
 _CHOICES = {
     "operation": [
         "import-ccache",

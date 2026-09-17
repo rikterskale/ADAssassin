@@ -6,7 +6,7 @@ import { NoEngagement } from "../components/NoEngagement";
 import { useToast } from "../components/Toasts";
 import { connectStatusMessage } from "../connection";
 import { formatWhen } from "../format";
-import type { Engagement } from "../types";
+import type { DirectoryTransport, Engagement } from "../types";
 
 export function Connect({
   engagement,
@@ -20,6 +20,9 @@ export function Connect({
   const notify = useToast();
   const [domain, setDomain] = useState("");
   const [dc, setDc] = useState("");
+  const [transport, setTransport] = useState<DirectoryTransport>(
+    engagement?.connect?.transport ?? "ldap",
+  );
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [hashes, setHashes] = useState("");
@@ -27,10 +30,12 @@ export function Connect({
   const [error, setError] = useState<string | null>(null);
   const [preflight, setPreflight] = useState(engagement?.connect?.preflight ?? null);
   const activeJob = engagement?.jobs?.find((job) => job.status === "running");
+  const ldapPort = transport === "ldaps" ? 636 : 389;
 
   useEffect(() => {
     setDomain(engagement?.domain ?? "");
     setDc(engagement?.dc ?? "");
+    setTransport(engagement?.connect?.transport ?? "ldap");
     setUsername(engagement?.username ?? "");
     setPreflight(engagement?.connect?.preflight ?? null);
     setPassword("");
@@ -58,6 +63,7 @@ export function Connect({
       const result = await api.connect(engagement.id, {
         domain: domain.trim(),
         dc: dc.trim(),
+        transport,
         username: username.trim() || undefined,
         password: password || undefined,
         hashes: hashes.trim() || undefined,
@@ -83,8 +89,9 @@ export function Connect({
         <div className="brand-sub">Connect</div>
         <h1>Point this engagement at an authorized domain controller.</h1>
         <p className="lede">
-          Preflight wraps the engine live-ad doctor (DNS + DC ports). It does not run a capability.
-          Passwords and hashes stay in process memory and are never written to engagement JSON.
+          Preflight wraps the engine live-ad doctor and binds the selected directory transport and
+          standard port to this target. It does not run a capability. Passwords and hashes stay in
+          process memory and are never written to engagement JSON.
         </p>
       </section>
       <div className="grid">
@@ -134,6 +141,25 @@ export function Connect({
                   spellCheck={false}
                 />
               </Field>
+              <Field
+                label="Directory transport"
+                hint="The selected transport and its standard port become part of the preflight-bound target."
+              >
+                <select
+                  value={transport}
+                  onChange={(event) => setTransport(event.target.value as DirectoryTransport)}
+                >
+                  <option value="ldap">LDAP (389)</option>
+                  <option value="starttls">LDAP + StartTLS (389)</option>
+                  <option value="ldaps">LDAPS (636)</option>
+                </select>
+              </Field>
+              <Field
+                label="LDAP port"
+                hint="Derived from the selected transport because the pinned engine supports the standard LDAP ports."
+              >
+                <input type="number" value={ldapPort} readOnly />
+              </Field>
               <Field label="Username" hint="Optional bind account. Stored on the engagement; the password is not.">
                 <input
                   placeholder="Username (optional)"
@@ -182,6 +208,9 @@ export function Connect({
                   {preflight.ready ? "ready" : "blocked"}
                 </span>{" "}
                 target probes attempted {preflight.target_contacted ? "yes" : "no"}
+              </p>
+              <p className="muted mono">
+                {(preflight.transport ?? transport).toUpperCase()} · port {preflight.ldap_port ?? ldapPort}
               </p>
               {engagement?.connect?.expires_at && preflight.ready && (
                 <p className="muted">Valid until {formatWhen(engagement.connect.expires_at)}. Restarting the console requires a new preflight.</p>

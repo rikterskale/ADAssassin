@@ -323,10 +323,12 @@ work, and do not combine targets governed by different authorization records.
 2. Confirm the correct engagement ID above the form.
 3. Enter the authorized domain FQDN.
 4. Enter the authorized DC hostname or IP.
-5. Optionally enter the approved bind username.
-6. Enter either the password or NTLM material only when required by the
+5. Choose the approved directory transport: LDAP (389), LDAP + StartTLS (389),
+   or LDAPS (636). The port is derived from the transport and is read-only.
+6. Optionally enter the approved bind username.
+7. Enter either the password or NTLM material only when required by the
    approved engine workflow.
-7. Choose **Run preflight**.
+8. Choose **Run preflight**.
 
 Credential handling:
 
@@ -340,7 +342,9 @@ Password and NTLM-hash inputs are mutually exclusive. Choose one bind method;
 the server refuses an ambiguous request containing both.
 
 Preflight wraps the engine live-AD doctor. It can perform DNS and DC-port
-checks, so it can contact the target. It does not execute a capability.
+checks, so it can contact the target. The selected LDAP/StartTLS/LDAPS endpoint
+is a blocking connectivity check. Preflight does not bind credentials or
+execute a capability.
 
 ### 7.1 Interpret the result
 
@@ -353,8 +357,9 @@ checks, so it can contact the target. It does not execute a capability.
 
 YELLOW and RED Run buttons remain disabled until the active engagement has a
 successful preflight. The scope bar then displays **preflight ready**. The
-result is bound to the normalized domain/DC pair and expires after 15 minutes
-by default. A target edit or console restart requires a new preflight.
+result is bound to the normalized domain/DC/transport/port endpoint and expires
+after 15 minutes by default. A target edit or console restart requires a new
+preflight. Live runs cannot override the preflight-bound transport or port.
 
 ## 8. Choose a capability without losing visibility
 
@@ -793,12 +798,14 @@ This can contact the named target. Use only authorized values.
 ```bash
 curl -X POST "$BASE_URL/api/engagements/ENGAGEMENT_ID/connect" \
   -H "Content-Type: application/json" \
-  -d '{"domain":"corp.example","dc":"dc01.corp.example","username":"approved-operator","password":"REDACTED","timeout":3.0}'
+  -d '{"domain":"corp.example","dc":"dc01.corp.example","transport":"ldaps","username":"approved-operator","password":"REDACTED","timeout":3.0}'
 ```
 
-Use `hashes` instead of `password` only when approved. Valid timeout is 0.2 to
-30 seconds. Avoid placing real secrets in shell history; the GUI's masked form
-or an approved secret-injection process is preferable.
+Valid `transport` values are `ldap` (389), `starttls` (389), and `ldaps` (636).
+The API derives the port and does not accept an arbitrary LDAP port. Use
+`hashes` instead of `password` only when approved. Valid timeout is 0.2 to 30
+seconds. Avoid placing real secrets in shell history; the GUI's masked form or
+an approved secret-injection process is preferable.
 
 ### 19.5 Start and poll a GREEN/YELLOW run
 

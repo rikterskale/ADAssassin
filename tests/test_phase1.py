@@ -68,7 +68,7 @@ def test_missing_engine_is_warn_not_fail(tmp_path: Path) -> None:
             "available": False,
             "version": None,
             "pin": "0.10.1",
-            "commit": "fdb60b90b910ba3dcbd582e2c72ce48189191214",
+            "commit": "df92b617ad7d2ca3603408d59fcef50338e50bab",
             "capability_count": 0,
             "error": "simulated import failure",
         },

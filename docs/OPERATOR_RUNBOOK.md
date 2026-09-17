@@ -13,7 +13,7 @@ If this is your first session, use the comprehensive
 CLI option, runtime setting, API operation, success checkpoint, and recovery
 path. Nothing in this compact runbook replaces or hides those controls.
 
-Engine pin: `adaf-attack==0.10.1` @ `fdb60b90b910ba3dcbd582e2c72ce48189191214`.
+Engine pin: `adaf-attack==0.10.1` @ `df92b617ad7d2ca3603408d59fcef50338e50bab`.
 
 ---
 
@@ -83,10 +83,17 @@ ready. Operational steps are state-backed and cannot be manually marked done.
 3. Enter authorized **domain** and **DC host/IP**.
 4. Optional username / password / NTLM hashes — secrets stay in process memory,
    not engagement JSON on disk.
-5. Run **preflight** (engine live-ad doctor: DNS + DC ports). Preflight does
-   **not** run a capability.
-6. Yellow and RED work require a successful preflight on that engagement.
+5. Choose the approved directory transport. LDAP and StartTLS use port 389;
+   LDAPS uses port 636. The port is derived and displayed, not freely editable.
+6. Run **preflight** (engine live-ad doctor: DNS + DC ports, plus a blocking
+   check of the selected directory endpoint). Preflight does **not** run a
+   capability.
+7. Yellow and RED work require a successful preflight on that engagement.
    The Run button stays disabled until that preflight is ready.
+
+The successful preflight binds domain, DC, directory transport, and standard
+port together. Live runs and rollback reuse that exact endpoint and reject
+per-run transport or LDAP-port overrides.
 
 ---
 
@@ -98,6 +105,27 @@ ready. Operational steps are state-backed and cannot be manually marked done.
 4. After a run, check **Job log**, then **Findings**.
 5. Use **Explain + remediate** and set finding status
    (`open` / `accepted` / `fixed` / `retest`).
+
+### AD CS policy evidence
+
+`adcs-policy-probe` does not collect CA or DC policy. Before running it, prepare
+an authorized JSON evidence file and select that path in the capability's
+**Authorized evidence file path** field. Use `false` or an empty list when the
+reviewed evidence is negative:
+
+```json
+{
+  "weak_certificate_mapping": false,
+  "rpc_encryption_not_enforced": false,
+  "issuance_policy_group_links": [],
+  "application_policy_maps_to_group": false,
+  "shell_access_via_certificate": false,
+  "privileged_enrollment_agent": false
+}
+```
+
+The evidence file remains operator-supplied; ADAssassin does not create policy
+facts or expand collection beyond the approved scope.
 
 ---
 

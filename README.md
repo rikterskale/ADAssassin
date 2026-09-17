@@ -54,7 +54,7 @@ python -m pytest                                         # backend suite
 - Built-in Start Here guide with every console surface and launch/runtime command
 - Guided checklist through connect, observe, and typed-confirm RED
 - Catalog lanes, inspector prompts, and Run for observe + RED
-- Connect preflight (engine live-ad doctor); passwords stay in memory
+- Connect preflight with a bound LDAP/StartTLS/LDAPS endpoint; passwords stay in memory
 - Observe runs plus typed-confirm RED (capability id + ack/force)
 - Findings pane: severity groups, explain, remediation checklist, status
 - Vault metadata inventory with single-item TTL unmask + audit
@@ -93,7 +93,7 @@ interpreter path.
 
 ## Engine pin
 
-`adaf-attack==0.10.1` @ `fdb60b90b910ba3dcbd582e2c72ce48189191214`
+`adaf-attack==0.10.1` @ `df92b617ad7d2ca3603408d59fcef50338e50bab`
 
 See [docs/START_HERE.md](docs/START_HERE.md), [ROADMAP.md](ROADMAP.md), [docs/INSTALLATION.md](docs/INSTALLATION.md),
 [docs/OPERATOR_RUNBOOK.md](docs/OPERATOR_RUNBOOK.md),

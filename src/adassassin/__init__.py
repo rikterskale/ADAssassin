@@ -4,6 +4,6 @@ from __future__ import annotations
 
 __version__ = "1.0.0"
 ENGINE_PIN = "0.10.1"
-ENGINE_COMMIT = "fdb60b90b910ba3dcbd582e2c72ce48189191214"
+ENGINE_COMMIT = "df92b617ad7d2ca3603408d59fcef50338e50bab"
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8745

@@ -91,10 +91,13 @@ def test_rollback_apply_with_connect_and_mock_cleanup(tmp_path: Path) -> None:
         "next_step": "plan",
         "first_run": False,
     }
-    with patch("adaf_attack.cli._doctor_payload", return_value=fake_preflight):
+    with (
+        patch("adaf_attack.cli._doctor_payload", return_value=fake_preflight),
+        patch("adaf_attack.cli._socket_check", return_value=("ok", None)),
+    ):
         client.post(
             f"/api/engagements/{engagement['id']}/connect",
-            json={"domain": "corp.local", "dc": "10.0.0.10"},
+            json={"domain": "corp.local", "dc": "10.0.0.10", "transport": "ldaps"},
         )
 
     from adassassin.rollback import seed_demo_pending_cleanup
@@ -113,6 +116,10 @@ def test_rollback_apply_with_connect_and_mock_cleanup(tmp_path: Path) -> None:
     body = response.json()
     assert body["applied"] is True
     assert mocked.called
+    rollback_target = mocked.call_args.args[1]
+    assert rollback_target.ldaps is True
+    assert rollback_target.starttls is False
+    assert rollback_target.port == 636
     detail = client.get(f"/api/engagements/{engagement['id']}").json()["engagement"]
     assert detail["rollback_audit"]
     assert detail["rollback_audit"][-1]["confirm"] == "YES"

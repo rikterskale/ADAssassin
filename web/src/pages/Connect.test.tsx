@@ -8,6 +8,8 @@ vi.mock("../api", () => ({ api: { connect: vi.fn() } }));
 const preflight = {
   ok: true,
   ready: true,
+  transport: "ldap" as const,
+  ldap_port: 389,
   target_contacted: true,
   blocking_checks: [],
   advisory_checks: [],
@@ -45,12 +47,37 @@ describe("Connect", () => {
     await waitFor(() =>
       expect(vi.mocked(api.connect)).toHaveBeenCalledWith(
         "eng-001",
-        expect.objectContaining({ domain: "corp.local", dc: "10.0.0.1" }),
+        expect.objectContaining({ domain: "corp.local", dc: "10.0.0.1", transport: "ldap" }),
       ),
     );
     expect(await screen.findByText("ready")).toBeInTheDocument();
     expect(screen.getByText("dns")).toBeInTheDocument();
     expect(onConnected).toHaveBeenCalledWith(engagement);
+  });
+
+  it("binds LDAPS to the standard port in the connect request", async () => {
+    const engagement = makeEngagement();
+    const ldapsPreflight = { ...preflight, transport: "ldaps" as const, ldap_port: 636 };
+    vi.mocked(api.connect).mockResolvedValue({
+      ok: true,
+      engagement,
+      preflight: ldapsPreflight,
+    });
+    const { user } = renderWithRouter(
+      <Connect engagement={engagement} onConnected={vi.fn()} onSeedDemo={vi.fn()} />,
+    );
+
+    await user.selectOptions(screen.getByLabelText(/directory transport/i), "ldaps");
+    expect(screen.getByLabelText(/ldap port/i)).toHaveValue(636);
+    await user.click(screen.getByRole("button", { name: /run preflight/i }));
+
+    await waitFor(() =>
+      expect(vi.mocked(api.connect)).toHaveBeenCalledWith(
+        "eng-001",
+        expect.objectContaining({ transport: "ldaps" }),
+      ),
+    );
+    expect(await screen.findByText(/port 636/i)).toBeInTheDocument();
   });
 
   it("surfaces a preflight error", async () => {

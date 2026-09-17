@@ -27,7 +27,7 @@ dependencies = [
     "pydantic-settings==2.15.0",
     # Install the engine's capability dependencies with the console so every
     # catalog entry can report its true readiness immediately after install.
-    "adaf-attack[kerberos,certipy] @ git+https://github.com/rikterskale/ADAF-ATTACK.git@fdb60b90b910ba3dcbd582e2c72ce48189191214",
+    "adaf-attack[kerberos,certipy] @ git+https://github.com/rikterskale/ADAF-ATTACK.git@df92b617ad7d2ca3603408d59fcef50338e50bab",
 ]
 
 [project.optional-dependencies]

@@ -20,7 +20,7 @@ path from first launch through demo, live work, rollback, report, and closeout.
 | --- | --- |
 | Product | ADAssassin `1.0.0` |
 | Python | `>=3.11,<3.15` (3.11, 3.12, 3.13, or 3.14) |
-| Engine pin | `adaf-attack==0.10.1` @ `fdb60b90b910ba3dcbd582e2c72ce48189191214` |
+| Engine pin | `adaf-attack==0.10.1` @ `df92b617ad7d2ca3603408d59fcef50338e50bab` |
 | Default bind | `127.0.0.1:8745` only |
 | Repo | https://github.com/rikterskale/ADAssassin |
 
@@ -198,7 +198,7 @@ py -3.12 --version
 ```powershell
 Test-NetConnection github.com -Port 443
 git ls-remote https://github.com/rikterskale/ADAssassin.git HEAD
-git ls-remote https://github.com/rikterskale/ADAF-ATTACK.git fdb60b90b910ba3dcbd582e2c72ce48189191214
+git ls-remote https://github.com/rikterskale/ADAF-ATTACK.git df92b617ad7d2ca3603408d59fcef50338e50bab
 ```
 
 **Error:** timeout / proxy / SSL failures — see [F3](#f3-github--tls--proxy-failures).
@@ -297,7 +297,7 @@ This installs FastAPI/uvicorn and the pinned ADAF-ATTACK git commit.
 | Collect | Fix |
 | --- | --- |
 | `git --version` | Install/fix Git PATH |
-| `python -m pip install -v "adaf-attack[kerberos,certipy] @ git+https://github.com/rikterskale/ADAF-ATTACK.git@fdb60b90b910ba3dcbd582e2c72ce48189191214"` | Installs the engine and all catalog capability dependencies |
+| `python -m pip install -v "adaf-attack[kerberos,certipy] @ git+https://github.com/rikterskale/ADAF-ATTACK.git@df92b617ad7d2ca3603408d59fcef50338e50bab"` | Installs the engine and all catalog capability dependencies |
 
 **Error:** long compile failures around `cryptography` / `ldap3` / native wheels
 
@@ -321,7 +321,7 @@ python -m pytest -q
 Expect:
 
 - version `1.0.0`
-- pin `0.10.1` and commit `fdb60b90...`
+- pin `0.10.1` and commit `df92b617...`
 - catalog count `92`
 - pytest all passed
 
@@ -420,7 +420,7 @@ ls /usr/bin/python3*
 ```bash
 curl -I https://github.com | head -n 5
 git ls-remote https://github.com/rikterskale/ADAssassin.git HEAD
-git ls-remote https://github.com/rikterskale/ADAF-ATTACK.git fdb60b90b910ba3dcbd582e2c72ce48189191214
+git ls-remote https://github.com/rikterskale/ADAF-ATTACK.git df92b617ad7d2ca3603408d59fcef50338e50bab
 ```
 
 TLS/proxy failures → [F3](#f3-github--tls--proxy-failures).
@@ -492,8 +492,8 @@ python -m pip install . --no-cache-dir -v
 **Error:** `Failed to fetch ... ADAF-ATTACK` / git clone during pip
 
 ```bash
-git ls-remote https://github.com/rikterskale/ADAF-ATTACK.git fdb60b90b910ba3dcbd582e2c72ce48189191214
-python -m pip install -v "adaf-attack[kerberos,certipy] @ git+https://github.com/rikterskale/ADAF-ATTACK.git@fdb60b90b910ba3dcbd582e2c72ce48189191214"
+git ls-remote https://github.com/rikterskale/ADAF-ATTACK.git df92b617ad7d2ca3603408d59fcef50338e50bab
+python -m pip install -v "adaf-attack[kerberos,certipy] @ git+https://github.com/rikterskale/ADAF-ATTACK.git@df92b617ad7d2ca3603408d59fcef50338e50bab"
 ```
 
 ### B7. Kali verify (quick)
@@ -597,7 +597,7 @@ python3.12 --version
 ```bash
 curl -I https://github.com | head -n 5
 git ls-remote https://github.com/rikterskale/ADAssassin.git HEAD
-git ls-remote https://github.com/rikterskale/ADAF-ATTACK.git fdb60b90b910ba3dcbd582e2c72ce48189191214
+git ls-remote https://github.com/rikterskale/ADAF-ATTACK.git df92b617ad7d2ca3603408d59fcef50338e50bab
 ```
 
 ### C3. Clone the repository
@@ -868,7 +868,7 @@ Collect:
 curl -vI https://github.com 2>&1 | tee /tmp/github-tls.txt
 git -c http.version=HTTP/1.1 ls-remote https://github.com/rikterskale/ADAF-ATTACK.git HEAD
 env | grep -i proxy
-python -m pip install -v "adaf-attack[kerberos,certipy] @ git+https://github.com/rikterskale/ADAF-ATTACK.git@fdb60b90b910ba3dcbd582e2c72ce48189191214"
+python -m pip install -v "adaf-attack[kerberos,certipy] @ git+https://github.com/rikterskale/ADAF-ATTACK.git@df92b617ad7d2ca3603408d59fcef50338e50bab"
 ```
 
 Fix actions:
@@ -935,7 +935,7 @@ Fix:
 
 ```bash
 python -c "import adaf_attack; print(adaf_attack.__version__, adaf_attack.__file__)"
-python -m pip install -v "adaf-attack[kerberos,certipy] @ git+https://github.com/rikterskale/ADAF-ATTACK.git@fdb60b90b910ba3dcbd582e2c72ce48189191214"
+python -m pip install -v "adaf-attack[kerberos,certipy] @ git+https://github.com/rikterskale/ADAF-ATTACK.git@df92b617ad7d2ca3603408d59fcef50338e50bab"
 python -m pip install .
 ```
 
@@ -1007,7 +1007,7 @@ requests. See [SECURITY.md](../SECURITY.md).
 You are done with installation when all of the following are true:
 
 1. Venv Python is 3.11–3.14 and `adassassin --version` prints `1.0.0`
-2. `ENGINE_PIN` is `0.10.1` and commit starts with `fdb60b90`
+2. `ENGINE_PIN` is `0.10.1` and commit starts with `df92b617`
 3. Catalog count is `92`
 4. `adassassin --no-browser` serves `/api/health` on `127.0.0.1`
 5. Doctor reports `contacts_directory: false`

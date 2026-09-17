@@ -21,7 +21,13 @@ from adassassin.engine import capability_detail, lane_for
 from adassassin.findings import normalize_finding
 from adassassin.secrets import resolve_bind_secret
 from adassassin.storage import ensure_private_dir
-from adassassin.targets import has_successful_connect, normalize_target
+from adassassin.targets import (
+    TargetError,
+    directory_port,
+    has_successful_connect,
+    normalize_directory_transport,
+    normalize_target,
+)
 
 # In-memory live-job registry: job_id -> job dict (mutated by the worker thread).
 _LIVE_LOCK = Lock()
@@ -104,6 +110,76 @@ def _risk_label(risk: str) -> str:
     return risk
 
 
+def _transport_from_options(options: dict[str, Any], *, default: str = "ldap") -> str:
+    """Resolve legacy transport flags without allowing contradictory values."""
+    try:
+        selected = normalize_directory_transport(str(options.get("transport") or default))
+    except TargetError as exc:
+        raise RunRefused(str(exc), status_code=422) from exc
+
+    if "ldaps" in options or "starttls" in options:
+        ldaps = _as_bool(options.get("ldaps"))
+        starttls = _as_bool(options.get("starttls"))
+        if ldaps and starttls:
+            raise RunRefused("Choose LDAPS or StartTLS, not both.", status_code=422)
+        flagged = "ldaps" if ldaps else "starttls" if starttls else "ldap"
+        if "transport" in options and flagged != selected:
+            raise RunRefused(
+                "Directory transport conflicts with the LDAPS/StartTLS options.",
+                status_code=422,
+            )
+        selected = flagged
+    return selected
+
+
+def _assert_transport_matches_preflight(
+    connect: dict[str, Any], options: dict[str, Any]
+) -> tuple[str, int]:
+    try:
+        approved_transport = normalize_directory_transport(
+            str(connect.get("transport") or "ldap")
+        )
+    except TargetError as exc:
+        raise RunRefused(
+            "The saved directory transport is invalid. Return to Connect and run preflight again.",
+            status_code=409,
+        ) from exc
+    approved_port = directory_port(approved_transport)
+    try:
+        stored_port = int(connect.get("ldap_port") or approved_port)
+    except (TypeError, ValueError) as exc:
+        raise RunRefused(
+            "The saved LDAP port is invalid. Return to Connect and run preflight again.",
+            status_code=409,
+        ) from exc
+    if stored_port != approved_port:
+        raise RunRefused(
+            "The saved directory transport and port do not match. Return to Connect and run preflight again.",
+            status_code=409,
+        )
+
+    if "transport" in options or "ldaps" in options or "starttls" in options:
+        requested_transport = _transport_from_options(options, default=approved_transport)
+        if requested_transport != approved_transport:
+            raise RunRefused(
+                "The requested directory transport does not match this engagement's current preflight. "
+                "Return to Connect and preflight the exact transport before running.",
+                status_code=409,
+            )
+    if "ldap_port" in options:
+        try:
+            requested_port = int(options["ldap_port"])
+        except (TypeError, ValueError) as exc:
+            raise RunRefused("LDAP port must be an integer.", status_code=422) from exc
+        if requested_port != approved_port:
+            raise RunRefused(
+                "The requested LDAP port does not match this engagement's current preflight. "
+                "Return to Connect and preflight the exact transport before running.",
+                status_code=409,
+            )
+    return approved_transport, approved_port
+
+
 def assert_run_allowed(
     capability_id: str,
     engagement: dict[str, Any],
@@ -139,6 +215,7 @@ def assert_run_allowed(
 
     if lane != "green":
         connect = engagement.get("connect") or {}
+        _assert_transport_matches_preflight(connect, options)
         approved = normalize_target(
             str(connect.get("domain") or ""), str(connect.get("dc") or "")
         )
@@ -372,6 +449,12 @@ def _target_for_run(engagement: dict[str, Any], options: dict[str, Any], entry: 
         options.get("username") or connect.get("username") or engagement.get("username") or ""
     ).strip() or None
 
+    if live_target:
+        transport, ldap_port = _assert_transport_matches_preflight(connect, options)
+    else:
+        transport = _transport_from_options(options)
+        ldap_port = directory_port(transport)
+
     lane = entry.get("lane")
     if lane == "green" and (not domain or not dc):
         domain = domain or "offline.local"
@@ -394,8 +477,9 @@ def _target_for_run(engagement: dict[str, Any], options: dict[str, Any], entry: 
         password=password if password else None,
         hashes=hashes if hashes else None,
         use_kerberos=_as_bool(options.get("kerberos") or options.get("use_kerberos")),
-        ldaps=_as_bool(options.get("ldaps")),
-        starttls=_as_bool(options.get("starttls")),
+        ldaps=transport == "ldaps",
+        starttls=transport == "starttls",
+        port=ldap_port,
         ccache=options.get("ccache"),
         aes_key=options.get("aes_key"),
     )
@@ -413,6 +497,8 @@ def _runner_kwargs(options: dict[str, Any]) -> dict[str, Any]:
         "use_kerberos",
         "ldaps",
         "starttls",
+        "transport",
+        "ldap_port",
         "ccache",
         "aes_key",
         "ack",
@@ -628,7 +714,12 @@ def execute_run(
         "outcome": None,
         "next_actions": [],
         "red": red,
-        "target": {"domain": target.domain, "dc": target.dc_ip},
+        "target": {
+            "domain": target.domain,
+            "dc": target.dc_ip,
+            "transport": "ldaps" if target.ldaps else "starttls" if target.starttls else "ldap",
+            "ldap_port": target.port,
+        },
     }
     # Record the RED authorization and the queued job synchronously so the audit
     # trail and job list reflect the run even before the engine finishes.

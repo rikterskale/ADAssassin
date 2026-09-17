@@ -10,6 +10,13 @@ import { connectStatusMessage, isConnectReady } from "../connection";
 import { formatWhen } from "../format";
 import type { Capability, Engagement, Job, Lane } from "../types";
 
+function connectionTransportLabel(engagement: Engagement): string {
+  const connect = engagement.connect;
+  const transport = connect?.target?.transport ?? connect?.transport ?? "ldap";
+  const port = connect?.target?.ldap_port ?? connect?.ldap_port ?? (transport === "ldaps" ? 636 : 389);
+  return `${transport.toUpperCase()}:${port}`;
+}
+
 function promptKey(prompt: NonNullable<Capability["required_prompts"]>[number]): string {
   return prompt.key ?? (prompt.is_param && prompt.param_key
     ? prompt.param_key
@@ -324,6 +331,7 @@ export function Run({
                     {" · "}
                     {engagement.connect?.target?.dc ?? engagement.connect?.dc ?? "DC unset"}
                   </span>
+                  <span className="muted mono">{connectionTransportLabel(engagement)}</span>
                   <span className="muted">Target fields are locked here. Change them in Connect, which runs a new preflight.</span>
                 </div>
               )}
@@ -409,6 +417,7 @@ export function Run({
                   <dl className="meta-list">
                     <div><dt>Capability</dt><dd className="mono">{detail.id}</dd></div>
                     <div><dt>Target</dt><dd>{detail.lane === "green" ? "Local evidence only" : `${engagement.connect?.target?.domain ?? engagement.connect?.domain ?? "domain unset"} · ${engagement.connect?.target?.dc ?? engagement.connect?.dc ?? "DC unset"}`}</dd></div>
+                    <div><dt>Directory</dt><dd>{detail.lane === "green" ? "Not applicable" : connectionTransportLabel(engagement)}</dd></div>
                     <div><dt>Lane</dt><dd><RiskBadge lane={detail.lane} risk={detail.risk} /></dd></div>
                     <div><dt>Authentication</dt><dd>{detail.auth_modes.join(", ") || "none"}</dd></div>
                     <div><dt>Noise</dt><dd>{detail.noise || "not declared"}</dd></div>

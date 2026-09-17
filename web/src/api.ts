@@ -2,6 +2,7 @@ import type {
   CatalogResponse,
   Capability,
   ConnectResponse,
+  DirectoryTransport,
   DoctorResponse,
   Engagement,
   FindingDetailResponse,
@@ -116,7 +117,14 @@ export const api = {
     }),
   connect: (
     engagementId: string,
-    body: { domain: string; dc: string; username?: string; password?: string; hashes?: string },
+    body: {
+      domain: string;
+      dc: string;
+      transport?: DirectoryTransport;
+      username?: string;
+      password?: string;
+      hashes?: string;
+    },
   ) =>
     request<ConnectResponse>(`/api/engagements/${engagementId}/connect`, {
       method: "POST",
