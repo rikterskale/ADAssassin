@@ -102,6 +102,34 @@ def _is_red(entry: dict[str, Any]) -> bool:
     return lane == "red" or risk in {"destructive", "side_effect"}
 
 
+def _supports_anonymous(entry: dict[str, Any]) -> bool:
+    return any(str(mode).strip().lower() == "anonymous" for mode in entry.get("auth_modes") or [])
+
+
+def _has_target_credentials(options: dict[str, Any]) -> bool:
+    for key in ("username", "password", "hashes", "ccache", "aes_key"):
+        value = options.get(key)
+        if value is not None and (not isinstance(value, str) or value != ""):
+            return True
+    return _as_bool(options.get("kerberos") or options.get("use_kerberos"))
+
+
+def _assert_anonymous_run(entry: dict[str, Any], options: dict[str, Any]) -> None:
+    if not _supports_anonymous(entry):
+        raise RunRefused(
+            f"Capability '{entry.get('id')}' is not declared anonymous by the pinned engine. "
+            "Choose an anonymous capability, run a GREEN offline capability, or return to Connect "
+            "and select authenticated mode.",
+            status_code=403,
+        )
+    if _has_target_credentials(options):
+        raise RunRefused(
+            "Anonymous connection mode cannot accept username, password, hashes, Kerberos, "
+            "ccache, or AES-key target credentials.",
+            status_code=403,
+        )
+
+
 def _risk_label(risk: str) -> str:
     if risk == "side_effect":
         return "side effect"
@@ -215,6 +243,8 @@ def assert_run_allowed(
 
     if lane != "green":
         connect = engagement.get("connect") or {}
+        if connect.get("auth_mode") == "anonymous":
+            _assert_anonymous_run(entry, options)
         _assert_transport_matches_preflight(connect, options)
         approved = normalize_target(
             str(connect.get("domain") or ""), str(connect.get("dc") or "")
@@ -470,18 +500,28 @@ def _target_for_run(engagement: dict[str, Any], options: dict[str, Any], entry: 
     password = options.get("password") or secret.get("password")
     hashes = options.get("hashes") or secret.get("hashes")
 
+    anonymous = live_target and connect.get("auth_mode") == "anonymous"
+    if anonymous:
+        username = None
+        password = None
+        hashes = None
+
     return Target(
         domain=domain,
         dc_ip=dc,
         username=username,
         password=password if password else None,
         hashes=hashes if hashes else None,
-        use_kerberos=_as_bool(options.get("kerberos") or options.get("use_kerberos")),
+        use_kerberos=(
+            False
+            if anonymous
+            else _as_bool(options.get("kerberos") or options.get("use_kerberos"))
+        ),
         ldaps=transport == "ldaps",
         starttls=transport == "starttls",
         port=ldap_port,
-        ccache=options.get("ccache"),
-        aes_key=options.get("aes_key"),
+        ccache=None if anonymous else options.get("ccache"),
+        aes_key=None if anonymous else options.get("aes_key"),
     )
 
 

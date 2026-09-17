@@ -60,6 +60,20 @@ describe("Catalog", () => {
     expect(onViewGreen).toHaveBeenCalled();
   });
 
+  it("filters the catalog to engine-declared anonymous capabilities", () => {
+    const offline = makeCapability({ id: "offline-report", lane: "green", environment: "offline" });
+    const anonymous = makeCapability({ id: "anonymous-ldap-probe", auth_modes: ["anonymous"] });
+    const credentialed = makeCapability({ id: "ldap-enum", auth_modes: [] });
+    renderWithRouter(
+      <Catalog catalog={catalogOf(offline, anonymous, credentialed)} onViewGreen={vi.fn()} />,
+      { route: "/catalog?auth=anonymous" },
+    );
+    expect(screen.getByText("anonymous-ldap-probe")).toBeInTheDocument();
+    expect(screen.queryByText("offline-report")).not.toBeInTheDocument();
+    expect(screen.queryByText("ldap-enum")).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/authentication filter/i)).toHaveValue("anonymous");
+  });
+
   it("shows dependency readiness and withholds run links when blocked", async () => {
     const cap = makeCapability({
       runnable: false,

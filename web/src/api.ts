@@ -1,6 +1,7 @@
 import type {
   CatalogResponse,
   Capability,
+  ConnectAuthMode,
   ConnectResponse,
   DirectoryTransport,
   DoctorResponse,
@@ -121,6 +122,7 @@ export const api = {
       domain: string;
       dc: string;
       transport?: DirectoryTransport;
+      auth_mode?: ConnectAuthMode;
       username?: string;
       password?: string;
       hashes?: string;

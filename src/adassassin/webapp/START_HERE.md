@@ -325,10 +325,23 @@ work, and do not combine targets governed by different authorization records.
 4. Enter the authorized DC hostname or IP.
 5. Choose the approved directory transport: LDAP (389), LDAP + StartTLS (389),
    or LDAPS (636). The port is derived from the transport and is read-only.
-6. Optionally enter the approved bind username.
-7. Enter either the password or NTLM material only when required by the
-   approved engine workflow.
+6. Choose an authentication mode:
+   - **Anonymous — no domain credentials** when no domain account or credential
+     material is available;
+   - **Authenticated — supplied or engine credential** only when the approved
+     workflow has authorized credential material.
+7. In authenticated mode, optionally enter the approved bind username and
+   either the password or NTLM material required by the engine workflow.
 8. Choose **Run preflight**.
+
+Anonymous mode is explicit and fail-closed. It refuses username, password,
+NTLM hashes, Kerberos, ccache, and AES-key target credentials. After an
+anonymous preflight, ADAssassin permits only GREEN capabilities or capabilities
+whose pinned-engine metadata contains `auth_modes: ["anonymous"]`. Anonymous
+does **not** mean zero contact: preflight and anonymous YELLOW capabilities can
+contact the authorized target. Review the **ACTIVE AUTHENTICATION** warning,
+because an anonymous capability can still generate login attempts or lockout
+risk.
 
 Credential handling:
 
@@ -369,6 +382,8 @@ Catalog provides:
 
 - free-text search across capability metadata;
 - lane filters: all, GREEN, YELLOW, RED;
+- authentication filters: Offline, Anonymous—no domain credentials, and
+  Credentialed/other;
 - category filters;
 - the capability ID and plain-language summary;
 - environment, maturity, tools, authentication modes, and noise;
@@ -392,6 +407,11 @@ The catalog is the authoritative, complete command list. Do not rely on a
 memorized capability name or old runbook: inspect the pinned engine metadata
 immediately before every run.
 
+If no domain credentials are available, select **Offline** for zero-contact
+local evidence processing or **Anonymous** for target checks explicitly
+declared anonymous by the pinned engine. The Run page repeats the classification
+and blocks a credential-dependent capability when the connection is anonymous.
+
 Run also shows all 92 capabilities. A capability that is unavailable locally
 is labeled **blocked locally**, remains selectable for inspection, and cannot
 be submitted until its displayed dependency problem is resolved.
@@ -411,6 +431,7 @@ be submitted until its displayed dependency problem is resolved.
    - target;
    - lane and risk;
    - authentication modes;
+   - the current connection mode (anonymous or authenticated);
    - expected noise;
    - approval requirement;
    - rollback expectation.
@@ -554,7 +575,7 @@ they do not replace encrypted storage or your evidence-handling policy.
 | Overview | `/` | Doctor, health, capability metrics, active workspace, recent jobs |
 | Guided | `/guided` | Engagement-scoped core milestones, closeout, and clearly optional RED work |
 | Engagements | `/engagements` | Create, seed demo, list, select, edit, archive, and restore workspaces |
-| Connect | `/connect` | Domain, DC, username, password/hashes, preflight checks |
+| Connect | `/connect` | Domain, DC, explicit anonymous/authenticated mode, optional credentials, preflight checks |
 | Run | `/run` | All capabilities, typed prompts, exact target review, confirmations, job recovery |
 | Findings | `/findings` | Search, filters, evidence, explain, remediation, all four statuses |
 | Catalog | `/catalog` | All capabilities, lanes, categories, dependencies, prompts, run links |
@@ -713,7 +734,7 @@ $BaseUrl = "http://127.0.0.1:8745"
 | 11 | POST | `/api/engagements/demo` | Ensure and return isolated demo |
 | 12 | POST | `/api/engagements/{id}/guided` | Record an allowed page-visit milestone |
 | 13 | GET | `/api/engagements/{id}` | Get one engagement |
-| 14 | POST | `/api/engagements/{id}/connect` | Live preflight; domain/DC and one optional credential method |
+| 14 | POST | `/api/engagements/{id}/connect` | Live preflight; domain/DC, explicit auth mode, and one optional credential method |
 | 15 | POST | `/api/engagements/{id}/run` | Start capability job with typed options and gates |
 | 16 | GET | `/api/engagements/{id}/jobs/{job_id}` | Poll live or completed job |
 | 17 | GET | `/api/engagements/{id}/findings` | List/group findings |
@@ -798,7 +819,7 @@ This can contact the named target. Use only authorized values.
 ```bash
 curl -X POST "$BASE_URL/api/engagements/ENGAGEMENT_ID/connect" \
   -H "Content-Type: application/json" \
-  -d '{"domain":"corp.example","dc":"dc01.corp.example","transport":"ldaps","username":"approved-operator","password":"REDACTED","timeout":3.0}'
+  -d '{"domain":"corp.example","dc":"dc01.corp.example","transport":"ldaps","auth_mode":"authenticated","username":"approved-operator","password":"REDACTED","timeout":3.0}'
 ```
 
 Valid `transport` values are `ldap` (389), `starttls` (389), and `ldaps` (636).
@@ -806,6 +827,10 @@ The API derives the port and does not accept an arbitrary LDAP port. Use
 `hashes` instead of `password` only when approved. Valid timeout is 0.2 to 30
 seconds. Avoid placing real secrets in shell history; the GUI's masked form or
 an approved secret-injection process is preferable.
+
+For an authorized anonymous preflight, send `"auth_mode":"anonymous"` and omit
+`username`, `password`, and `hashes`. A later non-GREEN run is accepted only
+when the pinned engine declares `anonymous` in that capability's `auth_modes`.
 
 ### 19.5 Start and poll a GREEN/YELLOW run
 

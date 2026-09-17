@@ -30,7 +30,11 @@ def _connected_engagement(client: TestClient) -> dict[str, Any]:
     with patch("adaf_attack.cli._doctor_payload", return_value=fake_preflight):
         client.post(
             f"/api/engagements/{engagement['id']}/connect",
-            json={"domain": "corp.local", "dc": "10.0.0.10"},
+            json={
+                "domain": "corp.local",
+                "dc": "10.0.0.10",
+                "auth_mode": "authenticated",
+            },
         )
     return client.get(f"/api/engagements/{engagement['id']}").json()["engagement"]
 

@@ -191,6 +191,8 @@ Shipped:
 - `src/adassassin/runner.py` — observe gate + `execute_capability` wrap (RED confirm landed in Phase 5)
 - `src/adassassin/secrets.py` — in-memory bind password/hashes (not on disk)
 - Connect + Run React pages; catalog **Run** button for observe caps
+- Explicit anonymous/authenticated Connect mode plus Catalog/Run authentication
+  filters and badges for Offline, Anonymous, and Credentialed/other capabilities
 - Guided steps `connect` and `observe-run`
 - Tests: `tests/test_phase2.py`
 
@@ -212,7 +214,15 @@ Acceptance that already passed:
 - Green/offline caps run with no DC
 - Red without ack/force/confirm is refused (Phase 5 typed confirm)
 - Secrets never written into engagement JSON
+- Anonymous mode passes no username/password/hashes/Kerberos/ccache/AES key to
+  the engine and refuses non-GREEN capabilities not declared anonymous by the pin
 - Tests cover refuse red without confirm, refuse yellow without connect, mocked observe run
+
+No-credential expansion remains engine-owned. A new target capability must add
+an artifact-driven offline runner or genuine `anonymous` support in ADAF-ATTACK,
+including engine tests and metadata. ADAssassin may update its engine pin only
+after compatibility and regression review; the GUI/API must not infer or
+reimplement that support.
 
 ---
 

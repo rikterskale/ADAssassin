@@ -1,4 +1,6 @@
 export type Lane = "green" | "yellow" | "red";
+export type AuthenticationFilter = "all" | "offline" | "anonymous" | "credentialed";
+export type ConnectAuthMode = "anonymous" | "authenticated";
 
 export type RequiredPrompt = {
   option: string;
@@ -187,6 +189,7 @@ export type ConnectState = {
   dc: string;
   transport?: DirectoryTransport;
   ldap_port?: number;
+  auth_mode?: ConnectAuthMode;
   username: string;
   secret_ref: string | null;
   has_secret: boolean;

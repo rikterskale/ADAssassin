@@ -19,6 +19,7 @@ DIRECTORY_TRANSPORT_PORTS = {
     "starttls": 389,
     "ldaps": 636,
 }
+AUTH_MODES = {"anonymous", "authenticated"}
 
 
 def _now() -> datetime:
@@ -78,6 +79,27 @@ def validate_target_fields(*, domain: str, dc: str) -> tuple[str, str]:
     if missing:
         raise TargetError("Target is missing: " + ", ".join(missing))
     return domain, dc
+
+
+def normalize_auth_mode(
+    auth_mode: str | None,
+    *,
+    username: str = "",
+    password: str | None = None,
+    hashes: str | None = None,
+) -> str:
+    """Resolve an explicit connection authentication mode and fail closed."""
+    value = (auth_mode or "").strip().lower()
+    if not value:
+        value = "authenticated" if username or password or hashes else "anonymous"
+    if value not in AUTH_MODES:
+        raise TargetError("Authentication mode must be 'anonymous' or 'authenticated'.")
+    if value == "anonymous" and (username or password or hashes):
+        raise TargetError(
+            "Anonymous mode cannot include a username, password, or NTLM hashes. "
+            "Choose authenticated mode to supply domain credentials."
+        )
+    return value
 
 
 def run_preflight(
@@ -187,6 +209,7 @@ def connect_engagement(
     domain: str,
     dc: str,
     transport: str = "ldap",
+    auth_mode: str | None = None,
     username: str = "",
     password: str | None = None,
     hashes: str | None = None,
@@ -214,6 +237,12 @@ def connect_engagement(
 
     if password and hashes:
         raise TargetError("Choose one bind method: password or NTLM hashes, not both.")
+    auth_mode = normalize_auth_mode(
+        auth_mode,
+        username=username,
+        password=password,
+        hashes=hashes,
+    )
 
     # Revoke the old assertion before starting a new check. If the preflight
     # process itself errors, a previous target approval must not remain usable.
@@ -271,6 +300,7 @@ def connect_engagement(
             "dc": dc,
             "transport": transport,
             "ldap_port": ldap_port,
+            "auth_mode": auth_mode,
             "username": username,
             "secret_ref": secret_ref,
             "has_secret": bool(secret_ref),
@@ -314,6 +344,8 @@ def connect_engagement(
 
 def has_successful_connect(engagement: dict[str, Any]) -> bool:
     connect = engagement.get("connect") or {}
+    if str(connect.get("auth_mode") or "authenticated") not in AUTH_MODES:
+        return False
     if not connect.get("preflight_ok") or connect.get("status") not in {None, "ready"}:
         return False
     if not bool((connect.get("preflight") or {}).get("ready", connect.get("preflight_ok"))):

@@ -97,7 +97,12 @@ def test_rollback_apply_with_connect_and_mock_cleanup(tmp_path: Path) -> None:
     ):
         client.post(
             f"/api/engagements/{engagement['id']}/connect",
-            json={"domain": "corp.local", "dc": "10.0.0.10", "transport": "ldaps"},
+            json={
+                "domain": "corp.local",
+                "dc": "10.0.0.10",
+                "transport": "ldaps",
+                "auth_mode": "authenticated",
+            },
         )
 
     from adassassin.rollback import seed_demo_pending_cleanup

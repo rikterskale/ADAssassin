@@ -131,6 +131,7 @@ def test_connect_persists_without_password(tmp_path: Path) -> None:
     assert saved["username"] == "operator"
     assert saved["connect"]["transport"] == "ldaps"
     assert saved["connect"]["ldap_port"] == 636
+    assert saved["connect"]["auth_mode"] == "authenticated"
     assert saved["connect"]["target"] == {
         "domain": "corp.local",
         "dc": "10.0.0.10",
@@ -266,7 +267,12 @@ def test_yellow_observe_after_successful_connect(tmp_path: Path) -> None:
     ):
         connect = client.post(
             f"/api/engagements/{engagement['id']}/connect",
-            json={"domain": "corp.local", "dc": "10.0.0.10", "transport": "ldaps"},
+            json={
+                "domain": "corp.local",
+                "dc": "10.0.0.10",
+                "transport": "ldaps",
+                "auth_mode": "authenticated",
+            },
         )
     assert connect.status_code == 200
     assert connect.json()["engagement"]["connect"]["preflight_ok"] is True
@@ -305,7 +311,12 @@ def test_live_run_rejects_transport_override_after_preflight(tmp_path: Path) -> 
     ):
         connected = client.post(
             f"/api/engagements/{engagement['id']}/connect",
-            json={"domain": "corp.local", "dc": "10.0.0.10", "transport": "ldaps"},
+            json={
+                "domain": "corp.local",
+                "dc": "10.0.0.10",
+                "transport": "ldaps",
+                "auth_mode": "authenticated",
+            },
         )
     assert connected.status_code == 200
 
@@ -378,3 +389,101 @@ def test_green_observe_without_domain_or_dc(tmp_path: Path) -> None:
         )
     assert response.status_code == 200
     assert response.json()["status"] == "completed"
+
+
+def test_anonymous_connect_allows_only_engine_declared_anonymous_runs(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    engagement = _engagement(client)
+    fake_preflight = {
+        "ok": True,
+        "ready": True,
+        "profile": "live-ad",
+        "checks": [{"id": "dc-ldap", "status": "ok", "scope": "live-ad", "value": "ok"}],
+        "blocking_checks": [],
+        "advisory_checks": [],
+        "next_step": "plan",
+    }
+    with patch("adaf_attack.cli._doctor_payload", return_value=fake_preflight):
+        connected = client.post(
+            f"/api/engagements/{engagement['id']}/connect",
+            json={
+                "domain": "corp.local",
+                "dc": "10.0.0.10",
+                "auth_mode": "anonymous",
+            },
+        )
+    assert connected.status_code == 200
+    assert connected.json()["engagement"]["connect"]["auth_mode"] == "anonymous"
+    assert connected.json()["engagement"]["connect"]["has_secret"] is False
+
+    def fake_execute(capability_id: str, target: Any, **kwargs: Any) -> dict[str, Any]:
+        assert capability_id == "anonymous-ldap-probe"
+        assert target.username is None
+        assert target.password is None
+        assert target.hashes is None
+        assert target.ccache is None
+        assert target.aes_key is None
+        assert target.use_kerberos is False
+        return {"ok": True, "result": {"ok": True, "findings": []}}
+
+    with patch("adaf_attack.core.runner.execute_capability", side_effect=fake_execute):
+        allowed = client.post(
+            f"/api/engagements/{engagement['id']}/run",
+            json={"capability_id": "anonymous-ldap-probe", "options": {}},
+        )
+    assert allowed.status_code == 200
+    assert allowed.json()["status"] == "completed"
+
+    with patch("adaf_attack.core.runner.execute_capability") as engine_run:
+        blocked = client.post(
+            f"/api/engagements/{engagement['id']}/run",
+            json={"capability_id": "ldap-enum", "options": {}},
+        )
+    assert blocked.status_code == 403
+    assert "not declared anonymous" in blocked.json()["detail"]
+    engine_run.assert_not_called()
+
+
+def test_anonymous_connect_and_run_reject_target_credentials(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    engagement = _engagement(client)
+    with patch("adaf_attack.cli._doctor_payload") as doctor:
+        refused = client.post(
+            f"/api/engagements/{engagement['id']}/connect",
+            json={
+                "domain": "corp.local",
+                "dc": "10.0.0.10",
+                "auth_mode": "anonymous",
+                "username": "operator",
+                "password": "fixture-only",
+            },
+        )
+    assert refused.status_code == 400
+    assert "anonymous mode cannot include" in refused.json()["detail"].lower()
+    doctor.assert_not_called()
+
+    fake_preflight = {
+        "ok": True,
+        "ready": True,
+        "checks": [{"id": "dc-ldap", "status": "ok", "scope": "live-ad", "value": "ok"}],
+        "blocking_checks": [],
+        "advisory_checks": [],
+        "next_step": "plan",
+    }
+    with patch("adaf_attack.cli._doctor_payload", return_value=fake_preflight):
+        connected = client.post(
+            f"/api/engagements/{engagement['id']}/connect",
+            json={"domain": "corp.local", "dc": "10.0.0.10", "auth_mode": "anonymous"},
+        )
+    assert connected.status_code == 200
+    with patch("adaf_attack.core.runner.execute_capability") as engine_run:
+        run = client.post(
+            f"/api/engagements/{engagement['id']}/run",
+            json={
+                "capability_id": "anonymous-ldap-probe",
+                "options": {"password": "fixture-only"},
+            },
+        )
+    assert run.status_code == 403
+    assert "cannot accept" in run.json()["detail"].lower()
+    engine_run.assert_not_called()

@@ -47,7 +47,12 @@ describe("Connect", () => {
     await waitFor(() =>
       expect(vi.mocked(api.connect)).toHaveBeenCalledWith(
         "eng-001",
-        expect.objectContaining({ domain: "corp.local", dc: "10.0.0.1", transport: "ldap" }),
+        expect.objectContaining({
+          domain: "corp.local",
+          dc: "10.0.0.1",
+          transport: "ldap",
+          auth_mode: "authenticated",
+        }),
       ),
     );
     expect(await screen.findByText("ready")).toBeInTheDocument();
@@ -88,6 +93,51 @@ describe("Connect", () => {
     );
     await user.click(screen.getByRole("button", { name: /run preflight/i }));
     expect(await screen.findByText(/dns resolution failed/i)).toBeInTheDocument();
+  });
+
+  it("makes no-credential anonymous connect explicit and omits credential fields", async () => {
+    const engagement = makeEngagement({ username: "" });
+    const anonymousEngagement = makeEngagement({
+      username: "",
+      connect: {
+        domain: "corp.local",
+        dc: "10.0.0.1",
+        auth_mode: "anonymous",
+        username: "",
+        secret_ref: null,
+        has_secret: false,
+        preflight_ok: true,
+        status: "ready",
+        checked_at: "2026-09-01T10:00:00Z",
+        expires_at: "2099-09-01T10:15:00Z",
+        invalidated_reason: null,
+        target: { domain: "corp.local", dc: "10.0.0.1" },
+        preflight,
+      },
+    });
+    vi.mocked(api.connect).mockResolvedValue({
+      ok: true,
+      engagement: anonymousEngagement,
+      preflight,
+    });
+    const { user } = renderWithRouter(
+      <Connect engagement={engagement} onConnected={vi.fn()} onSeedDemo={vi.fn()} />,
+    );
+
+    expect(screen.getByLabelText(/authentication mode/i)).toHaveValue("anonymous");
+    expect(screen.getByText(/anonymous — no domain credentials\./i)).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/username/i)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /run preflight/i }));
+
+    await waitFor(() => expect(vi.mocked(api.connect)).toHaveBeenCalledWith(
+      "eng-001",
+      expect.objectContaining({
+        auth_mode: "anonymous",
+        username: undefined,
+        password: undefined,
+        hashes: undefined,
+      }),
+    ));
   });
 
   it("keeps demo engagements offline", () => {

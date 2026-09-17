@@ -1,6 +1,7 @@
 import { useMemo } from "react";
+import { authenticationClass, authenticationLabel } from "../authentication";
 import { RiskBadge } from "./RiskBadge";
-import type { Capability, Lane } from "../types";
+import type { AuthenticationFilter, Capability, Lane } from "../types";
 
 export function CapabilityPicker({
   capabilities,
@@ -12,6 +13,8 @@ export function CapabilityPicker({
   onLaneChange,
   category,
   onCategoryChange,
+  authentication,
+  onAuthenticationChange,
 }: {
   capabilities: Capability[];
   selectedId: string;
@@ -22,8 +25,11 @@ export function CapabilityPicker({
   onLaneChange: (value: Lane | "all") => void;
   category?: string;
   onCategoryChange?: (value: string) => void;
+  authentication?: AuthenticationFilter;
+  onAuthenticationChange?: (value: AuthenticationFilter) => void;
 }) {
   const showCategory = category !== undefined && onCategoryChange !== undefined;
+  const showAuthentication = authentication !== undefined && onAuthenticationChange !== undefined;
 
   const categories = useMemo(
     () => ["all", ...Array.from(new Set(capabilities.map((item) => item.category))).sort()],
@@ -35,12 +41,17 @@ export function CapabilityPicker({
     return capabilities.filter((item) => {
       if (lane !== "all" && item.lane !== lane) return false;
       if (showCategory && category !== "all" && item.category !== category) return false;
+      if (
+        showAuthentication
+        && authentication !== "all"
+        && authenticationClass(item) !== authentication
+      ) return false;
       if (!q) return true;
       return `${item.id} ${item.summary} ${item.plain ?? ""} ${item.category}`
         .toLowerCase()
         .includes(q);
     });
-  }, [capabilities, query, lane, category, showCategory]);
+  }, [capabilities, query, lane, category, showCategory, authentication, showAuthentication]);
 
   return (
     <div className="picker">
@@ -74,6 +85,18 @@ export function CapabilityPicker({
             ))}
           </select>
         )}
+        {showAuthentication && (
+          <select
+            value={authentication}
+            aria-label="Authentication filter"
+            onChange={(event) => onAuthenticationChange!(event.target.value as AuthenticationFilter)}
+          >
+            <option value="all">All authentication</option>
+            <option value="offline">Offline — no DC or credentials</option>
+            <option value="anonymous">Anonymous — no domain credentials</option>
+            <option value="credentialed">Credentialed / other</option>
+          </select>
+        )}
       </div>
       <div className="picker-list">
         {filtered.length === 0 ? (
@@ -92,6 +115,17 @@ export function CapabilityPicker({
                 {!(item.readiness?.ready ?? item.runnable ?? true) && (
                   <span className="badge">blocked locally</span>
                 )}
+                <span
+                  className={`badge ${
+                    authenticationClass(item) === "offline"
+                      ? "green"
+                      : authenticationClass(item) === "anonymous"
+                        ? "yellow"
+                        : ""
+                  }`}
+                >
+                  {authenticationLabel(item)}
+                </span>
               </div>
               <div className="muted">{item.plain ?? item.summary}</div>
             </button>

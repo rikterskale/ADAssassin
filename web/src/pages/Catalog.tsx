@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { CapabilityPicker } from "../components/CapabilityPicker";
 import { CopyButton } from "../components/CopyButton";
-import type { Capability, CatalogResponse, Lane } from "../types";
+import { authenticationClass, authenticationLabel } from "../authentication";
+import type { AuthenticationFilter, Capability, CatalogResponse, Lane } from "../types";
 
 function runLabel(item: Capability): string {
   const red = item.requires_red_confirm || item.lane === "red" || item.risk === "destructive" || item.risk === "side_effect";
@@ -16,6 +17,10 @@ export function Catalog({ catalog, onViewGreen }: { catalog: CatalogResponse | n
   const [query, setQuery] = useState(params.get("q") ?? "");
   const [lane, setLane] = useState<Lane | "all">((params.get("lane") as Lane) || "all");
   const [category, setCategory] = useState(params.get("category") ?? "all");
+  const [authentication, setAuthentication] = useState<AuthenticationFilter>(() => {
+    const value = params.get("auth");
+    return value === "offline" || value === "anonymous" || value === "credentialed" ? value : "all";
+  });
   const [selectedId, setSelectedId] = useState<string>("");
 
   useEffect(() => { if (lane === "green") onViewGreen(); }, [lane, onViewGreen]);
@@ -45,6 +50,10 @@ export function Catalog({ catalog, onViewGreen }: { catalog: CatalogResponse | n
     setCategory(next);
     syncParam("category", next, "all");
   }
+  function updateAuthentication(next: AuthenticationFilter) {
+    setAuthentication(next);
+    syncParam("auth", next, "all");
+  }
 
   const canRun = Boolean(selected?.runnable ?? selected);
   const selectedRed = Boolean(
@@ -58,10 +67,15 @@ export function Catalog({ catalog, onViewGreen }: { catalog: CatalogResponse | n
         <div className="brand-sub">Advanced catalog</div>
         <h1>{catalog?.count ?? 0} capabilities from the pinned engine.</h1>
         <p className="lede">
-          Source: {catalog?.source ?? "…"}. Search or filter by lane and category, then open a
+          Source: {catalog?.source ?? "…"}. Search or filter by lane, authentication, and category, then open a
           capability to inspect it. Observe runs freely; RED capabilities require a typed confirm on
           the Run page.
         </p>
+        <div className="banner-ok">
+          <strong>No domain credentials available?</strong> Choose <strong>Offline</strong> for zero-contact
+          analysis or <strong>Anonymous</strong> for engine-declared checks that need no domain account.
+          Anonymous checks still contact the authorized target.
+        </div>
       </section>
       <div className="grid">
         <div className="panel span-8">
@@ -75,6 +89,8 @@ export function Catalog({ catalog, onViewGreen }: { catalog: CatalogResponse | n
             onLaneChange={updateLane}
             category={category}
             onCategoryChange={updateCategory}
+            authentication={authentication}
+            onAuthenticationChange={updateAuthentication}
           />
         </div>
         <div className="panel span-4 sticky-side">
@@ -102,7 +118,31 @@ export function Catalog({ catalog, onViewGreen }: { catalog: CatalogResponse | n
                   <span className="mono">{selected.id}</span> to confirm.
                 </p>
               )}
+              {authenticationClass(selected) === "offline" && (
+                <div className="banner-ok">
+                  OFFLINE: no domain credentials and no domain-controller contact.
+                </div>
+              )}
+              {authenticationClass(selected) === "anonymous" && (
+                <div className="banner-warning">
+                  ANONYMOUS AVAILABLE: no domain credentials are required. This capability still
+                  contacts the authorized target and requires a successful anonymous preflight.
+                </div>
+              )}
+              {authenticationClass(selected) === "credentialed" && (
+                <div className="banner-warning">
+                  This capability is not declared anonymous by the pinned engine. Use approved
+                  credentials or choose an Offline/Anonymous capability.
+                </div>
+              )}
+              {selected.active_authentication && (
+                <div className="banner-error">
+                  ACTIVE AUTHENTICATION: this capability can generate login attempts and lockout or
+                  detection risk even when no starting credentials are required.
+                </div>
+              )}
               <dl className="meta-list">
+                <div><dt>Authentication</dt><dd>{authenticationLabel(selected)}</dd></div>
                 <div><dt>Environment</dt><dd>{selected.environment}</dd></div>
                 <div><dt>Maturity</dt><dd>{selected.maturity}</dd></div>
                 <div><dt>Approval</dt><dd>{selected.approval}</dd></div>

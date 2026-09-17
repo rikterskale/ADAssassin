@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../api";
+import { authenticationLabel, supportsAnonymous } from "../authentication";
 import { CapabilityPicker } from "../components/CapabilityPicker";
 import { Field, SecretField } from "../components/Field";
 import { NoEngagement } from "../components/NoEngagement";
@@ -8,7 +9,7 @@ import { RiskBadge } from "../components/RiskBadge";
 import { useToast } from "../components/Toasts";
 import { connectStatusMessage, isConnectReady } from "../connection";
 import { formatWhen } from "../format";
-import type { Capability, Engagement, Job, Lane } from "../types";
+import type { AuthenticationFilter, Capability, Engagement, Job, Lane } from "../types";
 
 function connectionTransportLabel(engagement: Engagement): string {
   const connect = engagement.connect;
@@ -53,6 +54,9 @@ export function Run({
   const [detail, setDetail] = useState<Capability | null>(null);
   const [query, setQuery] = useState("");
   const [lane, setLane] = useState<Lane | "all">("all");
+  const [authentication, setAuthentication] = useState<AuthenticationFilter>(
+    engagement?.connect?.auth_mode === "anonymous" ? "anonymous" : "all",
+  );
   const [pollId, setPollId] = useState<string | null>(null);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
@@ -89,6 +93,10 @@ export function Run({
     });
     return () => { cancelled = true; };
   }, [capabilityId, engagement?.id, engagement?.domain, engagement?.dc]);
+
+  useEffect(() => {
+    setAuthentication(engagement?.connect?.auth_mode === "anonymous" ? "anonymous" : "all");
+  }, [engagement?.id, engagement?.connect?.auth_mode]);
 
   useEffect(() => {
     if (!engagement) return;
@@ -182,6 +190,13 @@ export function Run({
     || (detail?.risk === "side_effect" ? "side effect" : detail?.risk === "destructive" ? "destructive" : "observe");
   const requiresScopedApproval = detail?.approval === "scoped_token";
   const demoBlocked = engagement?.mode === "demo" && detail?.lane !== "green";
+  const anonymousConnection = engagement?.connect?.auth_mode === "anonymous";
+  const anonymousBlocked = Boolean(
+    anonymousConnection
+    && detail
+    && detail.lane !== "green"
+    && !supportsAnonymous(detail),
+  );
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -253,6 +268,7 @@ export function Run({
   const canSubmit = Boolean(capabilityId)
     && Boolean(detail)
     && !demoBlocked
+    && !anonymousBlocked
     && (!requiresConnection || connected)
     && Boolean(detail?.readiness?.ready ?? detail?.runnable ?? true)
     && !engagement?.archived
@@ -269,6 +285,15 @@ export function Run({
           Search for a capability below. Yellow observe needs connect. Destructive and side-effect
           capabilities require ack, force, and typing the capability id. No global red toggle.
         </p>
+        <div className="banner-ok">
+          <strong>No domain credentials?</strong> Use the <strong>Anonymous — no domain credentials</strong>
+          filter. GREEN checks run offline; anonymous target checks run only when the pinned engine
+          explicitly advertises anonymous authentication.
+          <div className="actions">
+            <Link className="btn ghost" to="/catalog?auth=anonymous">Browse anonymous checks</Link>
+            <Link className="btn ghost" to="/catalog?auth=offline">Browse offline checks</Link>
+          </div>
+        </div>
       </section>
       <div className="grid">
         <div className="panel span-6">
@@ -280,7 +305,11 @@ export function Run({
               <div className="muted">
                 {engagement.name}
                 {" · "}
-                {connected ? <span className="badge green">connected</span> : <span className="badge yellow">no connect</span>}
+                {connected ? (
+                  anonymousConnection
+                    ? <span className="badge yellow">connected anonymously — no credentials</span>
+                    : <span className="badge green">connected authenticated</span>
+                ) : <span className="badge yellow">no connect</span>}
                 {" · "}
                 <Link to="/connect">Connect</Link>
               </div>
@@ -292,6 +321,8 @@ export function Run({
                 onQueryChange={setQuery}
                 lane={lane}
                 onLaneChange={setLane}
+                authentication={authentication}
+                onAuthenticationChange={setAuthentication}
               />
               {detail && (
                 <div className="muted">
@@ -309,6 +340,26 @@ export function Run({
               {demoBlocked && (
                 <div className="banner-error">
                   Offline demo engagements can run GREEN capabilities only. Create a live-ready engagement first.
+                </div>
+              )}
+              {detail && detail.lane === "green" && (
+                <div className="banner-ok">
+                  <strong>OFFLINE — NO DOMAIN CREDENTIALS.</strong> This GREEN capability uses local
+                  evidence and does not require a target connection.
+                </div>
+              )}
+              {detail && detail.lane !== "green" && supportsAnonymous(detail) && (
+                <div className="banner-ok">
+                  <strong>ANONYMOUS CHECK AVAILABLE — NO DOMAIN CREDENTIALS.</strong> The pinned engine
+                  declares this capability anonymous. It still contacts the authorized target and
+                  requires a successful anonymous preflight.
+                </div>
+              )}
+              {anonymousBlocked && (
+                <div className="banner-error" role="alert">
+                  <strong>BLOCKED IN ANONYMOUS MODE.</strong> The pinned engine does not declare this
+                  capability anonymous. Choose an Offline or Anonymous capability, or return to Connect
+                  and explicitly establish an authenticated session.
                 </div>
               )}
               {requiresConnection && !connected && engagement.mode !== "demo" && (
@@ -332,6 +383,9 @@ export function Run({
                     {engagement.connect?.target?.dc ?? engagement.connect?.dc ?? "DC unset"}
                   </span>
                   <span className="muted mono">{connectionTransportLabel(engagement)}</span>
+                  <span className="muted">
+                    {anonymousConnection ? "Anonymous — no domain credentials" : "Authenticated connection"}
+                  </span>
                   <span className="muted">Target fields are locked here. Change them in Connect, which runs a new preflight.</span>
                 </div>
               )}
@@ -419,7 +473,8 @@ export function Run({
                     <div><dt>Target</dt><dd>{detail.lane === "green" ? "Local evidence only" : `${engagement.connect?.target?.domain ?? engagement.connect?.domain ?? "domain unset"} · ${engagement.connect?.target?.dc ?? engagement.connect?.dc ?? "DC unset"}`}</dd></div>
                     <div><dt>Directory</dt><dd>{detail.lane === "green" ? "Not applicable" : connectionTransportLabel(engagement)}</dd></div>
                     <div><dt>Lane</dt><dd><RiskBadge lane={detail.lane} risk={detail.risk} /></dd></div>
-                    <div><dt>Authentication</dt><dd>{detail.auth_modes.join(", ") || "none"}</dd></div>
+                    <div><dt>Authentication</dt><dd>{authenticationLabel(detail)}</dd></div>
+                    <div><dt>Connection mode</dt><dd>{detail.lane === "green" ? "Not applicable" : anonymousConnection ? "Anonymous — no domain credentials" : "Authenticated"}</dd></div>
                     <div><dt>Noise</dt><dd>{detail.noise || "not declared"}</dd></div>
                     <div><dt>Approval</dt><dd>{detail.approval || "none"}</dd></div>
                     <div><dt>Rollback</dt><dd>{detail.rollback_expectation || detail.rollback || "none"}</dd></div>

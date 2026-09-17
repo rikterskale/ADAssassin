@@ -53,7 +53,11 @@ def _connect(client: TestClient, engagement_id: str) -> None:
     with patch("adaf_attack.cli._doctor_payload", return_value=preflight):
         response = client.post(
             f"/api/engagements/{engagement_id}/connect",
-            json={"domain": "corp.local", "dc": "127.0.0.1"},
+            json={
+                "domain": "corp.local",
+                "dc": "127.0.0.1",
+                "auth_mode": "authenticated",
+            },
         )
     assert response.status_code == 200
 
@@ -315,6 +319,7 @@ def test_run_target_must_exactly_match_current_preflight(tmp_path: Path) -> None
             engagement["id"],
             domain="corp.local",
             dc="dc01.corp.local",
+            auth_mode="authenticated",
         )
     with (
         patch("adaf_attack.core.runner.execute_capability") as engine_run,

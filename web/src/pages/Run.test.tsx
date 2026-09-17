@@ -16,6 +16,7 @@ function connectedEngagement() {
       domain: "corp.local",
       dc: "10.0.0.1",
       username: "operator",
+      auth_mode: "authenticated",
       secret_ref: null,
       has_secret: false,
       preflight_ok: true,
@@ -32,6 +33,20 @@ function connectedEngagement() {
         checks: [],
         target_contacted: true,
       },
+    },
+  });
+}
+
+function anonymousEngagement() {
+  const engagement = connectedEngagement();
+  return makeEngagement({
+    username: "",
+    connect: engagement.connect && {
+      ...engagement.connect,
+      username: "",
+      auth_mode: "anonymous",
+      secret_ref: null,
+      has_secret: false,
     },
   });
 }
@@ -176,6 +191,59 @@ describe("Run", () => {
     expect(await screen.findByText(/complete a successful target preflight/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /run observe/i })).toBeDisabled();
     expect(screen.getByRole("link", { name: /open connect/i })).toHaveAttribute("href", "/connect");
+  });
+
+  it("blocks capabilities the engine does not declare anonymous", async () => {
+    vi.mocked(api.capability).mockResolvedValue({ ok: true, capability: observeCap });
+    renderWithRouter(
+      <Run
+        engagement={anonymousEngagement()}
+        catalog={[observeCap]}
+        onRan={vi.fn()}
+        onSeedDemo={vi.fn()}
+      />,
+      { route: "/run?capability=ldap-signing-check" },
+    );
+
+    expect(await screen.findByText(/blocked in anonymous mode/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /run observe/i })).toBeDisabled();
+    expect(screen.getByText(/connected anonymously — no credentials/i)).toBeInTheDocument();
+  });
+
+  it("allows an engine-declared anonymous capability without domain credentials", async () => {
+    const anonymousCapability = makeCapability({
+      id: "anonymous-ldap-probe",
+      plain: "Checks LDAP anonymously.",
+      auth_modes: ["anonymous"],
+    });
+    const engagement = anonymousEngagement();
+    vi.mocked(api.capability).mockResolvedValue({ ok: true, capability: anonymousCapability });
+    vi.mocked(api.run).mockResolvedValue({
+      ok: true,
+      job_id: "anonymous-job",
+      status: "completed",
+      findings: [],
+      job: completedJob({ id: "anonymous-job", capability_id: anonymousCapability.id }),
+      engagement,
+    });
+    const { user } = renderWithRouter(
+      <Run
+        engagement={engagement}
+        catalog={[anonymousCapability]}
+        onRan={vi.fn()}
+        onSeedDemo={vi.fn()}
+      />,
+      { route: "/run?capability=anonymous-ldap-probe" },
+    );
+
+    expect(await screen.findByText(/anonymous check available — no domain credentials/i)).toBeInTheDocument();
+    const submit = screen.getByRole("button", { name: /run observe/i });
+    expect(submit).toBeEnabled();
+    await user.click(submit);
+    await waitFor(() => expect(vi.mocked(api.run)).toHaveBeenCalledWith(
+      "eng-001",
+      expect.objectContaining({ capability_id: "anonymous-ldap-probe", options: {} }),
+    ));
   });
 
   it("masks sensitive prompts and clears their values when switching capabilities", async () => {

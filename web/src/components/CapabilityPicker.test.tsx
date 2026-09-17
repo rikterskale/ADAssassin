@@ -64,6 +64,31 @@ describe("CapabilityPicker", () => {
     expect(screen.queryByText("smb-null-session")).not.toBeInTheDocument();
   });
 
+  it("filters explicitly for engine-declared anonymous capabilities", () => {
+    const anonymous = makeCapability({
+      id: "anonymous-ldap-probe",
+      plain: "Checks LDAP without domain credentials.",
+      auth_modes: ["anonymous"],
+    });
+    render(
+      <CapabilityPicker
+        capabilities={[...caps, anonymous]}
+        selectedId=""
+        onSelect={noop}
+        query=""
+        onQueryChange={noop}
+        lane="all"
+        onLaneChange={noop}
+        authentication="anonymous"
+        onAuthenticationChange={noop}
+      />,
+    );
+    expect(screen.getByText("anonymous-ldap-probe")).toBeInTheDocument();
+    expect(screen.queryByText("ldap-signing-check")).not.toBeInTheDocument();
+    expect(screen.queryByText("smb-null-session")).not.toBeInTheDocument();
+    expect(screen.getByText(/showing 1 of 4 capabilities/i)).toBeInTheDocument();
+  });
+
   it("shows an empty state when nothing matches", () => {
     render(
       <CapabilityPicker

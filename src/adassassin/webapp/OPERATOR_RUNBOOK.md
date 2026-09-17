@@ -81,14 +81,16 @@ ready. Operational steps are state-backed and cannot be manually marked done.
 1. Create a **live-ready** engagement under **Engagements** (name + scope notes).
 2. Open **Connect**.
 3. Enter authorized **domain** and **DC host/IP**.
-4. Optional username / password / NTLM hashes — secrets stay in process memory,
-   not engagement JSON on disk.
-5. Choose the approved directory transport. LDAP and StartTLS use port 389;
+4. Choose **Anonymous — no domain credentials** when no domain credentials are
+   available. Choose authenticated mode only for an approved credential workflow.
+5. In authenticated mode, optional username / password / NTLM hashes stay in
+   process memory, not engagement JSON on disk. Anonymous mode refuses them.
+6. Choose the approved directory transport. LDAP and StartTLS use port 389;
    LDAPS uses port 636. The port is derived and displayed, not freely editable.
-6. Run **preflight** (engine live-ad doctor: DNS + DC ports, plus a blocking
+7. Run **preflight** (engine live-ad doctor: DNS + DC ports, plus a blocking
    check of the selected directory endpoint). Preflight does **not** run a
    capability.
-7. Yellow and RED work require a successful preflight on that engagement.
+8. Yellow and RED work require a successful preflight on that engagement.
    The Run button stays disabled until that preflight is ready.
 
 The successful preflight binds domain, DC, directory transport, and standard
@@ -101,9 +103,16 @@ per-run transport or LDAP-port overrides.
 
 1. Open **Catalog** (filter GREEN or YELLOW) or **Run**.
 2. GREEN / offline observe caps can run without a DC.
-3. YELLOW observe caps require connect/preflight first.
-4. After a run, check **Job log**, then **Findings**.
-5. Use **Explain + remediate** and set finding status
+3. With no domain credentials, use the **Offline** or **Anonymous — no domain
+   credentials** authentication filter. Anonymous checks still contact the
+   authorized target and require anonymous preflight.
+4. In anonymous connection mode, non-GREEN capabilities run only when the
+   pinned engine declares `auth_modes: ["anonymous"]`; all others fail closed.
+5. Treat **ACTIVE AUTHENTICATION** as a lockout/detection warning even when the
+   capability needs no starting credentials.
+6. YELLOW observe caps require connect/preflight first.
+7. After a run, check **Job log**, then **Findings**.
+8. Use **Explain + remediate** and set finding status
    (`open` / `accepted` / `fixed` / `retest`).
 
 ### AD CS policy evidence

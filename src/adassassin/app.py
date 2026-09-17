@@ -114,6 +114,7 @@ class ConnectIn(BaseModel):
     domain: str = Field(min_length=1, max_length=255)
     dc: str = Field(min_length=1, max_length=255)
     transport: Literal["ldap", "starttls", "ldaps"] = "ldap"
+    auth_mode: Literal["anonymous", "authenticated"] | None = None
     username: str = Field(default="", max_length=320)
     password: str | None = Field(default=None, max_length=4096)
     hashes: str | None = Field(default=None, max_length=4096)
@@ -302,6 +303,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 domain=body.domain,
                 dc=body.dc,
                 transport=body.transport,
+                auth_mode=body.auth_mode,
                 username=body.username,
                 password=body.password,
                 hashes=body.hashes,

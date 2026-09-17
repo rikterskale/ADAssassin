@@ -6,7 +6,12 @@ import { NoEngagement } from "../components/NoEngagement";
 import { useToast } from "../components/Toasts";
 import { connectStatusMessage } from "../connection";
 import { formatWhen } from "../format";
-import type { DirectoryTransport, Engagement } from "../types";
+import type { ConnectAuthMode, DirectoryTransport, Engagement } from "../types";
+
+function initialAuthMode(engagement: Engagement | null): ConnectAuthMode {
+  if (engagement?.connect) return engagement.connect.auth_mode ?? "authenticated";
+  return engagement?.username ? "authenticated" : "anonymous";
+}
 
 export function Connect({
   engagement,
@@ -23,6 +28,7 @@ export function Connect({
   const [transport, setTransport] = useState<DirectoryTransport>(
     engagement?.connect?.transport ?? "ldap",
   );
+  const [authMode, setAuthMode] = useState<ConnectAuthMode>(initialAuthMode(engagement));
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [hashes, setHashes] = useState("");
@@ -36,6 +42,7 @@ export function Connect({
     setDomain(engagement?.domain ?? "");
     setDc(engagement?.dc ?? "");
     setTransport(engagement?.connect?.transport ?? "ldap");
+    setAuthMode(initialAuthMode(engagement));
     setUsername(engagement?.username ?? "");
     setPreflight(engagement?.connect?.preflight ?? null);
     setPassword("");
@@ -57,6 +64,10 @@ export function Connect({
       setError("Choose one bind method: password or NTLM hashes, not both.");
       return;
     }
+    if (authMode === "anonymous" && (username.trim() || password || hashes.trim())) {
+      setError("Anonymous mode cannot include a username, password, or NTLM hashes.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -64,16 +75,21 @@ export function Connect({
         domain: domain.trim(),
         dc: dc.trim(),
         transport,
-        username: username.trim() || undefined,
-        password: password || undefined,
-        hashes: hashes.trim() || undefined,
+        auth_mode: authMode,
+        username: authMode === "authenticated" ? username.trim() || undefined : undefined,
+        password: authMode === "authenticated" ? password || undefined : undefined,
+        hashes: authMode === "authenticated" ? hashes.trim() || undefined : undefined,
       });
       setPassword("");
       setHashes("");
       setPreflight(result.preflight);
       onConnected(result.engagement);
       notify(
-        result.preflight.ready ? "Preflight ready. Target checks completed." : "Preflight blocked. Review the checks before running.",
+        result.preflight.ready
+          ? authMode === "anonymous"
+            ? "Anonymous preflight ready. No domain credentials were supplied."
+            : "Authenticated preflight ready. Target checks completed."
+          : "Preflight blocked. Review the checks before running.",
         result.preflight.ready ? "ok" : "warn",
       );
     } catch (err) {
@@ -93,6 +109,15 @@ export function Connect({
           standard port to this target. It does not run a capability. Passwords and hashes stay in
           process memory and are never written to engagement JSON.
         </p>
+        <div className="banner-ok">
+          <strong>No domain credentials?</strong> Choose <strong>Anonymous — no domain credentials</strong> below.
+          ADAssassin will then permit runs only for GREEN offline checks and capabilities the pinned engine
+          explicitly declares anonymous.
+          <div className="actions">
+            <Link className="btn ghost" to="/catalog?auth=anonymous">Browse anonymous checks</Link>
+            <Link className="btn ghost" to="/catalog?auth=offline">Browse offline checks</Link>
+          </div>
+        </div>
       </section>
       <div className="grid">
         <div className="panel span-6">
@@ -160,31 +185,65 @@ export function Connect({
               >
                 <input type="number" value={ldapPort} readOnly />
               </Field>
-              <Field label="Username" hint="Optional bind account. Stored on the engagement; the password is not.">
-                <input
-                  placeholder="Username (optional)"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  maxLength={320}
-                  spellCheck={false}
-                />
+              <Field
+                label="Authentication mode"
+                hint="Anonymous mode never sends a username, password, hashes, Kerberos cache, or AES key to the engine."
+              >
+                <select
+                  value={authMode}
+                  onChange={(event) => {
+                    const next = event.target.value as ConnectAuthMode;
+                    setAuthMode(next);
+                    if (next === "anonymous") {
+                      setUsername("");
+                      setPassword("");
+                      setHashes("");
+                    }
+                  }}
+                >
+                  <option value="anonymous">Anonymous — no domain credentials</option>
+                  <option value="authenticated">Authenticated — supplied or engine credential</option>
+                </select>
               </Field>
-              <SecretField
-                label="Password"
-                hint="Use either a password or NTLM hashes. Held in process memory only."
-                placeholder="Password (optional, not saved to disk)"
-                value={password}
-                onChange={setPassword}
-                maxLength={4096}
-              />
-              <SecretField
-                label="NTLM hashes"
-                hint="Use either hashes or a password. LM:NT or NT; held in process memory only."
-                placeholder="NTLM hashes LM:NT or NT (optional, not saved to disk)"
-                value={hashes}
-                onChange={setHashes}
-                maxLength={4096}
-              />
+              {authMode === "anonymous" ? (
+                <div className="banner-ok" role="status">
+                  <strong>ANONYMOUS — NO DOMAIN CREDENTIALS.</strong> Preflight still contacts the
+                  authorized target, but later runs are limited to GREEN or engine-declared anonymous
+                  capabilities. Credential-dependent capabilities fail closed.
+                </div>
+              ) : (
+                <>
+                  <div className="banner-warning">
+                    <strong>AUTHENTICATED MODE.</strong> Supply credentials here or use only credential
+                    material explicitly supported by the pinned engine at run time.
+                  </div>
+                  <Field label="Username" hint="Optional bind account. Stored on the engagement; the password is not.">
+                    <input
+                      placeholder="Username (optional)"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      maxLength={320}
+                      spellCheck={false}
+                    />
+                  </Field>
+                  <SecretField
+                    label="Password"
+                    hint="Use either a password or NTLM hashes. Held in process memory only."
+                    placeholder="Password (optional, not saved to disk)"
+                    value={password}
+                    onChange={setPassword}
+                    maxLength={4096}
+                  />
+                  <SecretField
+                    label="NTLM hashes"
+                    hint="Use either hashes or a password. LM:NT or NT; held in process memory only."
+                    placeholder="NTLM hashes LM:NT or NT (optional, not saved to disk)"
+                    value={hashes}
+                    onChange={setHashes}
+                    maxLength={4096}
+                  />
+                </>
+              )}
               {error && <div className="banner-error">{error}</div>}
               <div className="actions">
                 <button className="btn primary" type="submit" disabled={busy || engagement.mode === "demo" || engagement.archived || Boolean(activeJob)}>
@@ -211,6 +270,9 @@ export function Connect({
               </p>
               <p className="muted mono">
                 {(preflight.transport ?? transport).toUpperCase()} · port {preflight.ldap_port ?? ldapPort}
+              </p>
+              <p className="muted">
+                Authentication: <strong>{authMode === "anonymous" ? "Anonymous — no domain credentials" : "Authenticated"}</strong>
               </p>
               {engagement?.connect?.expires_at && preflight.ready && (
                 <p className="muted">Valid until {formatWhen(engagement.connect.expires_at)}. Restarting the console requires a new preflight.</p>
