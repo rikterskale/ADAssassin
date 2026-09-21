@@ -23,6 +23,11 @@ Build order and acceptance criteria: **[ROADMAP.md](ROADMAP.md)**.
 Install on Windows, Kali, or macOS (full steps + troubleshooting):
 **[docs/INSTALLATION.md](docs/INSTALLATION.md)**.
 
+Supported Python is 3.11 through 3.14. CI runs the full Python matrix on
+Ubuntu and representative Python 3.12 package checks on Windows and macOS;
+the Kali-specific install path remains documented manual validation. Rebuilding
+the optional React source requires Node.js `^20.19.0 || >=22.12.0`.
+
 Complete operator path (install → demo → connect → observe → RED → closeout):
 **[docs/START_HERE.md](docs/START_HERE.md)**. The compact field checklist is
 **[docs/OPERATOR_RUNBOOK.md](docs/OPERATOR_RUNBOOK.md)**.

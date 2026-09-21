@@ -15,12 +15,18 @@ concurrency:
 
 jobs:
   test:
-    name: pytest (py${{ matrix.python-version }})
-    runs-on: ubuntu-latest
+    name: pytest (${{ matrix.label }}, py${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.12", "3.13"]
+        include:
+          - { os: ubuntu-latest, label: ubuntu, python-version: "3.11" }
+          - { os: ubuntu-latest, label: ubuntu, python-version: "3.12" }
+          - { os: ubuntu-latest, label: ubuntu, python-version: "3.13" }
+          - { os: ubuntu-latest, label: ubuntu, python-version: "3.14" }
+          - { os: windows-latest, label: windows, python-version: "3.12" }
+          - { os: macos-latest, label: macos, python-version: "3.12" }
 
     steps:
       - name: Check out
@@ -41,7 +47,7 @@ jobs:
       - name: Packaging smoke
         run: |
           python -m build
-          python -m pip install --force-reinstall --no-deps dist/*.whl
+          python -c "import glob, subprocess, sys; wheels = glob.glob('dist/*.whl'); assert len(wheels) == 1, wheels; subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--force-reinstall', '--no-deps', wheels[0]])"
           python -c "from adassassin import __version__, ENGINE_PIN, ENGINE_COMMIT; assert __version__ == '1.0.0'; assert ENGINE_PIN == '0.10.1'"
           python -c "from adassassin.catalog import static_catalog; c=static_catalog(); assert c['count'] == 92"
           python -c "from adassassin.engine import probe; p=probe(); assert p['available'], p; assert p['version'] == '0.10.1', p; assert p['capability_count'] >= 90, p"
@@ -67,8 +73,12 @@ jobs:
         run: python -m ruff check src tests
 
   web:
-    name: web tests + build + bundle sync
+    name: web tests + build + bundle sync (node${{ matrix.node-version }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ["20.19.0", "22.12.0"]
     steps:
       - name: Check out
         uses: actions/checkout@v7
@@ -76,7 +86,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version: ${{ matrix.node-version }}
           cache: npm
           cache-dependency-path: web/package-lock.json
 
@@ -122,7 +132,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version: "20.19.0"
           cache: npm
           cache-dependency-path: web/package-lock.json
 

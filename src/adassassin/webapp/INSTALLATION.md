@@ -50,7 +50,7 @@ See [AUTHORIZED_USE.md](../AUTHORIZED_USE.md) and [SECURITY.md](../SECURITY.md).
 | `git` | Engine is installed from a pinned Git commit |
 | Network to `github.com` | First `pip install` fetches ADAF-ATTACK |
 | Modern browser | Console UI at `http://127.0.0.1:8745` |
-| Optional: Node.js 20+ | Only if you rebuild the React UI from `web/` |
+| Optional: Node.js `^20.19.0 || >=22.12.0` | Only if you rebuild the React UI from `web/` |
 
 You do **not** need a domain controller to install, run Doctor, or seed the
 offline demo.
@@ -62,6 +62,11 @@ offline demo.
 | Windows 10/11 / Server | [Section A — Windows](#a-windows) |
 | Kali Linux | [Section B — Kali Linux](#b-kali-linux) |
 | macOS | [Section C — macOS](#c-macos) |
+
+The automated support matrix runs the full Python 3.11–3.14 backend and
+package checks on Ubuntu, plus representative Python 3.12 checks on native
+Windows and macOS runners. The Kali-specific path remains documented manual
+validation; Ubuntu CI is Linux evidence, not a claim that Kali itself ran.
 
 Shared verify / uninstall / deep troubleshooting:
 
@@ -331,14 +336,14 @@ Continue at [Section D](#d-verify-install-all-platforms).
 
 Only needed if you change files under `web/`.
 
-1. Install Node.js LTS from https://nodejs.org/
+1. Install a supported Node.js release (`20.19.x` or `22.12+`) from https://nodejs.org/
 2. New PowerShell:
 
 ```powershell
 node --version
 npm --version
 cd $env:USERPROFILE\Documents\ADAssassin\web
-npm install 2>&1 | Tee-Object -FilePath "$env:USERPROFILE\adassassin-install-logs\npm-install.log"
+npm ci 2>&1 | Tee-Object -FilePath "$env:USERPROFILE\adassassin-install-logs\npm-ci.log"
 npm run build 2>&1 | Tee-Object -FilePath "$env:USERPROFILE\adassassin-install-logs\npm-build.log"
 ```
 
@@ -355,7 +360,7 @@ $env:Path = "$env:ProgramFiles\nodejs;" + $env:Path
 ```powershell
 Remove-Item -Recurse -Force node_modules, dist -ErrorAction SilentlyContinue
 npm cache clean --force
-npm install
+npm ci
 npm run build
 ```
 
@@ -515,19 +520,19 @@ sudo apt install -y nodejs npm   # only if versions are recent enough
 node --version
 npm --version
 cd ~/ADAssassin/web
-npm install 2>&1 | tee "$HOME/adassassin-install-logs/npm-install.log"
+npm ci 2>&1 | tee "$HOME/adassassin-install-logs/npm-ci.log"
 npm run build 2>&1 | tee "$HOME/adassassin-install-logs/npm-build.log"
 ```
 
-If Kali’s Node is too old, install Node 20+ via nvm:
+If Kali’s Node is too old, install the supported Node 20 floor via nvm:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
 # reopen shell
-nvm install 20
-nvm use 20
+nvm install 20.19.0
+nvm use 20.19.0
 cd ~/ADAssassin/web
-npm install && npm run build
+npm ci && npm run build
 ```
 
 ---
@@ -667,7 +672,7 @@ brew install node
 node --version
 npm --version
 cd ~/ADAssassin/web
-npm install 2>&1 | tee "$HOME/adassassin-install-logs/npm-install.log"
+npm ci 2>&1 | tee "$HOME/adassassin-install-logs/npm-ci.log"
 npm run build 2>&1 | tee "$HOME/adassassin-install-logs/npm-build.log"
 ```
 
@@ -920,7 +925,7 @@ Fix actions:
 
 1. Confirm you are hitting `127.0.0.1`, not a remote host.
 2. Confirm `src/adassassin/webapp/index.html` exists (shipped fallback).
-3. If you customized UI, rebuild: `cd web && npm install && npm run build`.
+3. If you customized UI, rebuild: `cd web && npm ci && npm run build`.
 4. Hard-refresh the browser (cache).
 
 ### F6. Engine import warn in Doctor

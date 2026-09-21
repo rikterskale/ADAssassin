@@ -464,3 +464,8 @@ committed bundle drifts from source.
   rejected credentials are not staged, and live run credential overrides fail
   closed. Rejections include a redacted attempt trace and precise, ordered
   remediation; anonymous mode remains explicit and unchanged.
+- 2026-09-21 — Release-evidence hardening aligns the declared Python, platform,
+  and Node.js support contracts with CI: Python 3.11–3.14 on Ubuntu,
+  representative Python 3.12 package checks on Windows and macOS, and frontend
+  checks at the locked Vite Node.js floors. Clean frontend setup consistently
+  uses `npm ci`. No engine, API, capability, or safety behavior changed.
