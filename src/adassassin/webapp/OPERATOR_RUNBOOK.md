@@ -83,19 +83,41 @@ ready. Operational steps are state-backed and cannot be manually marked done.
 3. Enter authorized **domain** and **DC host/IP**.
 4. Choose **Anonymous — no domain credentials** when no domain credentials are
    available. Choose authenticated mode only for an approved credential workflow.
-5. In authenticated mode, optional username / password / NTLM hashes stay in
-   process memory, not engagement JSON on disk. Anonymous mode refuses them.
+5. In authenticated mode, enter the approved bind username and exactly one
+   password or NTLM hash. The credential stays in process memory, not
+   engagement JSON on disk. Anonymous mode refuses credential fields.
 6. Choose the approved directory transport. LDAP and StartTLS use port 389;
    LDAPS uses port 636. The port is derived and displayed, not freely editable.
-7. Run **preflight** (engine live-ad doctor: DNS + DC ports, plus a blocking
-   check of the selected directory endpoint). Preflight does **not** run a
-   capability.
-8. Yellow and RED work require a successful preflight on that engagement.
+7. Run **preflight** (engine live-ad doctor: DNS + DC ports, a blocking check
+   of the selected directory endpoint, and one LDAP bind for authenticated
+   mode). This is an active authentication attempt and may affect lockout
+   counters or detection. Preflight does **not** run a capability.
+8. Yellow and RED work require a successful preflight, including accepted
+   credentials in authenticated mode, on that engagement.
    The Run button stays disabled until that preflight is ready.
 
 The successful preflight binds domain, DC, directory transport, and standard
 port together. Live runs and rollback reuse that exact endpoint and reject
-per-run transport or LDAP-port overrides.
+per-run transport, LDAP-port, or target-credential overrides.
+
+If `credential-bind` fails, do not repeat the attempt. Connect shows a redacted
+authentication log containing the network gate, method, transport/port,
+attempt/result, secret-handling decision, and confirmation that automatic
+retries were disabled. It never logs the supplied username or credential.
+Complete the displayed remediation in order:
+
+1. Check the account lockout threshold and current bad-password count through
+   the approved identity-administration channel.
+2. Confirm the authorized domain/DC and the `DOMAIN\user` or `user@domain`
+   principal form.
+3. Verify that the account is enabled, unlocked, unexpired, permitted to
+   authenticate, and paired with the current approved credential.
+4. Re-enter the password without accidental whitespace, or supply the approved
+   bare NT hash or `LM:NT` pair.
+5. Check the selected LDAP transport against NTLM restrictions, LDAP signing
+   and channel binding, TLS trust, DNS, and time synchronization.
+6. Rerun Connect once. If it fails again, stop and escalate to the engagement
+   or identity owner rather than risking lockout.
 
 ---
 

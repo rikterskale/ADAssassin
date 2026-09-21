@@ -27,13 +27,18 @@ def _connected_engagement(client: TestClient) -> dict[str, Any]:
         "next_step": "plan",
         "first_run": False,
     }
-    with patch("adaf_attack.cli._doctor_payload", return_value=fake_preflight):
+    with (
+        patch("adaf_attack.cli._doctor_payload", return_value=fake_preflight),
+        patch("adassassin.targets.validate_bind_credential", return_value=True),
+    ):
         client.post(
             f"/api/engagements/{engagement['id']}/connect",
             json={
                 "domain": "corp.local",
                 "dc": "10.0.0.10",
                 "auth_mode": "authenticated",
+                "username": "operator",
+                "password": "fixture-only-secret",
             },
         )
     return client.get(f"/api/engagements/{engagement['id']}").json()["engagement"]
@@ -112,7 +117,7 @@ def test_red_run_with_ack_uses_mock_engine(tmp_path: Path) -> None:
             f"/api/engagements/{engagement['id']}/run",
             json={
                 "capability_id": "dcsync",
-                "options": {"username": "admin"},
+                "options": {},
                 "ack": True,
                 "force": True,
                 "confirm": "dcsync",
@@ -128,12 +133,63 @@ def test_red_run_with_ack_uses_mock_engine(tmp_path: Path) -> None:
     assert last["capability_id"] == "dcsync"
     assert last["actor"] == "tester"
     assert last["confirm"] == "dcsync"
-    assert last["options"].get("username") == "admin"
-    assert "password" not in last["options"] or last["options"]["password"] == "***"
+    assert last["options"] == {}
     assert "red-run" in detail["guided_marked"]
     guide = client.get(f"/api/guide?engagement_id={engagement['id']}").json()
     assert "red-run" in guide["completed"]
     assert "red-run" in [step["id"] for step in guide["steps"]]
+
+
+def test_red_run_refuses_unvalidated_runtime_credential_override(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    engagement = _connected_engagement(client)
+    with patch("adaf_attack.core.runner.execute_capability") as engine_run:
+        response = client.post(
+            f"/api/engagements/{engagement['id']}/run",
+            json={
+                "capability_id": "dcsync",
+                "options": {"password": "unvalidated-fixture-secret"},
+                "ack": True,
+                "force": True,
+                "confirm": "dcsync",
+            },
+        )
+    assert response.status_code == 409
+    assert "validated in connect" in response.json()["detail"].lower()
+    engine_run.assert_not_called()
+
+
+def test_runtime_credential_failure_is_redacted_and_has_remediation(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    engagement = _connected_engagement(client)
+    engine_error = (
+        "LDAP bind failed for the preflight principal: fixture-only-secret; "
+        "the account may have changed"
+    )
+
+    with patch("adaf_attack.core.runner.execute_capability", side_effect=RuntimeError(engine_error)):
+        response = client.post(
+            f"/api/engagements/{engagement['id']}/run",
+            json={
+                "capability_id": "dcsync",
+                "options": {},
+                "ack": True,
+                "force": True,
+                "confirm": "dcsync",
+            },
+        )
+
+    assert response.status_code == 200
+    job = response.json()["job"]
+    assert job["status"] == "failed"
+    assert job["failure_category"] == "credential"
+    assert "fixture-only-secret" not in job["error"]
+    assert "***" in job["error"]
+    assert any("credential was accepted before queueing" in line for line in job["log"])
+    assert any("remediation 1:" in line for line in job["log"])
+    assert len(job["next_actions"]) == 6
+    assert job["next_actions"][0]["id"] == "credential-stop-retries"
+    assert "fixture-only-secret" not in str(job)
 
 
 def test_health_phase_five(tmp_path: Path) -> None:

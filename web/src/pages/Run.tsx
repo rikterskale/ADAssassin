@@ -559,6 +559,9 @@ export function Run({
                 >
                   {job.status}
                 </span>
+                {job.failure_category && (
+                  <> · <span className="badge red">{job.failure_category} failure</span></>
+                )}
                 {job.status === "running" && <> · <span className="live-dot" /> {elapsed}s elapsed</>}
               </p>
               {job.status === "running" && (
@@ -599,7 +602,11 @@ export function Run({
                   <h2>What next</h2>
                   {job.next_actions!.map((action) => (
                     <div className="finding" key={action.id}>
-                      <Link to={`/run?capability=${encodeURIComponent(action.id)}`}>{action.id}</Link>
+                      {action.id.startsWith("credential-") ? (
+                        <strong className="mono">{action.id}</strong>
+                      ) : (
+                        <Link to={`/run?capability=${encodeURIComponent(action.id)}`}>{action.id}</Link>
+                      )}
                       <div className="muted">{action.message}</div>
                     </div>
                   ))}

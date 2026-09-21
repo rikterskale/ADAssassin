@@ -17,8 +17,9 @@ function connectedEngagement() {
       dc: "10.0.0.1",
       username: "operator",
       auth_mode: "authenticated",
-      secret_ref: null,
-      has_secret: false,
+      credential_validation: { required: true, attempted: true, valid: true, method: "password" },
+      secret_ref: "memory:eng-001:bind",
+      has_secret: true,
       preflight_ok: true,
       status: "ready",
       checked_at: "2026-09-01T10:00:00Z",
@@ -32,6 +33,7 @@ function connectedEngagement() {
         advisory_checks: [],
         checks: [],
         target_contacted: true,
+        credential_validation: { required: true, attempted: true, valid: true, method: "password" },
       },
     },
   });
@@ -386,6 +388,34 @@ describe("Run", () => {
     );
     expect(await screen.findByText("still running")).toBeInTheDocument();
     await waitFor(() => expect(vi.mocked(api.job)).toHaveBeenCalledWith("eng-001", "job-live"));
+  });
+
+  it("renders credential-failure diagnostics as remediation rather than capability links", async () => {
+    const failed = completedJob({
+      id: "credential-failure",
+      status: "failed",
+      failure_category: "credential",
+      error: "LDAP bind failed; secret redacted",
+      log: ["failure category: credential authentication", "remediation 1: Stop retries."],
+      next_actions: [
+        { id: "credential-stop-retries", message: "Stop repeated attempts and check lockout state." },
+      ],
+    });
+    vi.mocked(api.capability).mockResolvedValue({ ok: true, capability: observeCap });
+    renderWithRouter(
+      <Run
+        engagement={makeEngagement({ jobs: [failed] })}
+        catalog={[observeCap]}
+        onRan={vi.fn()}
+        onSeedDemo={vi.fn()}
+      />,
+      { route: "/run?job=credential-failure" },
+    );
+
+    expect(await screen.findByText(/credential failure/i)).toBeInTheDocument();
+    expect(screen.getByText("credential-stop-retries")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "credential-stop-retries" })).not.toBeInTheDocument();
+    expect(screen.getByText(/check lockout state/i)).toBeInTheDocument();
   });
 
   it("polls a backgrounded run until it reaches a terminal state", async () => {

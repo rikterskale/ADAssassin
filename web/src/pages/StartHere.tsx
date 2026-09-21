@@ -121,7 +121,7 @@ export function StartHere() {
           <ol className="steps guide-steps wide">
             <li><strong>Verify written scope.</strong> Record in-scope domains, DCs, identities, time window, approvals, exclusions, stop conditions, and rollback owner.</li>
             <li><strong>Create a live-ready engagement.</strong> Use a unique name and paste the scope into Scope notes.</li>
-            <li><strong>Run Connect preflight.</strong> Enter the authorized domain and DC. The result is bound to that exact target, expires after 15 minutes by default, and is invalidated by a restart or target edit.</li>
+            <li><strong>Run Connect preflight.</strong> Enter the authorized domain and DC. Authenticated mode requires an approved username plus one password or NTLM hash and makes one LDAP bind to validate it. A rejection blocks execution and shows a redacted authentication trace with ordered remediation and no automatic retries. The result is bound to that exact target, expires after 15 minutes by default, and is invalidated by a restart or target edit.</li>
             <li><strong>Resolve every blocking check.</strong> Do not continue with YELLOW or RED until the scope bar says preflight ready.</li>
             <li><strong>Select work from Catalog or Run.</strong> Search all capabilities, inspect required prompts and local dependencies, then review the target and safety metadata.</li>
             <li><strong>Run GREEN/YELLOW observe work first.</strong> Watch the live job log and review the resulting evidence.</li>

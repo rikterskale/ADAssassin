@@ -184,6 +184,13 @@ export type PreflightCheck = {
 
 export type DirectoryTransport = "ldap" | "starttls" | "ldaps";
 
+export type CredentialValidation = {
+  required: boolean;
+  attempted: boolean;
+  valid: boolean | null;
+  method: "anonymous" | "password" | "ntlm_hash";
+};
+
 export type ConnectState = {
   domain: string;
   dc: string;
@@ -191,6 +198,9 @@ export type ConnectState = {
   ldap_port?: number;
   auth_mode?: ConnectAuthMode;
   username: string;
+  credential_validation?: CredentialValidation;
+  credential_log?: string[];
+  credential_remediation?: string[];
   secret_ref: string | null;
   has_secret: boolean;
   preflight_ok: boolean;
@@ -202,6 +212,7 @@ export type ConnectState = {
   preflight: {
     ok: boolean;
     ready?: boolean;
+    network_status?: "reachable" | "blocked";
     transport?: DirectoryTransport;
     ldap_port?: number;
     blocking_checks: string[];
@@ -209,6 +220,9 @@ export type ConnectState = {
     next_step?: string;
     checks: PreflightCheck[];
     target_contacted: boolean;
+    credential_validation?: CredentialValidation;
+    credential_log?: string[];
+    credential_remediation?: string[];
   };
 } | null;
 
@@ -223,6 +237,7 @@ export type Job = {
   log: string[];
   findings: Finding[];
   error: string | null;
+  failure_category?: string | null;
   next_actions?: { id: string; message: string }[];
   red?: boolean;
   target?: { domain: string; dc: string; transport?: DirectoryTransport; ldap_port?: number };
@@ -273,9 +288,13 @@ export type ConnectResponse = {
   preflight: {
     ok: boolean;
     ready: boolean;
+    network_status?: "reachable" | "blocked";
     transport?: DirectoryTransport;
     ldap_port?: number;
     target_contacted: boolean;
+    credential_validation?: CredentialValidation;
+    credential_log?: string[];
+    credential_remediation?: string[];
     blocking_checks: string[];
     advisory_checks: string[];
     next_step?: string;

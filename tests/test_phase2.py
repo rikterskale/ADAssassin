@@ -88,7 +88,7 @@ def test_accept_mocked_observe_run(tmp_path: Path) -> None:
     assert "observe-run" in detail["guided_marked"]
 
 
-def test_connect_persists_without_password(tmp_path: Path) -> None:
+def test_connect_validates_credential_without_persisting_password(tmp_path: Path) -> None:
     client = _client(tmp_path)
     engagement = _engagement(client)
 
@@ -109,6 +109,7 @@ def test_connect_persists_without_password(tmp_path: Path) -> None:
     with (
         patch("adaf_attack.cli._doctor_payload", return_value=fake_preflight),
         patch("adaf_attack.cli._socket_check", return_value=("ok", None)) as socket_check,
+        patch("adassassin.targets.validate_bind_credential", return_value=True) as credential_check,
     ):
         response = client.post(
             f"/api/engagements/{engagement['id']}/connect",
@@ -121,6 +122,14 @@ def test_connect_persists_without_password(tmp_path: Path) -> None:
             },
         )
     socket_check.assert_called_once_with("10.0.0.10", 636, 3.0)
+    credential_check.assert_called_once_with(
+        domain="corp.local",
+        dc="10.0.0.10",
+        transport="ldaps",
+        username="operator",
+        password="should-not-persist",
+        hashes=None,
+    )
     assert response.status_code == 200
     body = response.json()
     assert body["preflight"]["ok"] is True
@@ -132,6 +141,19 @@ def test_connect_persists_without_password(tmp_path: Path) -> None:
     assert saved["connect"]["transport"] == "ldaps"
     assert saved["connect"]["ldap_port"] == 636
     assert saved["connect"]["auth_mode"] == "authenticated"
+    assert saved["connect"]["credential_validation"] == {
+        "required": True,
+        "attempted": True,
+        "valid": True,
+        "method": "password",
+    }
+    assert body["preflight"]["network_status"] == "reachable"
+    assert any(
+        "one password LDAP bind" in line for line in body["preflight"]["credential_log"]
+    )
+    assert any("credential accepted" in line for line in body["preflight"]["credential_log"])
+    assert body["preflight"]["credential_remediation"] == []
+    assert "should-not-persist" not in str(body["preflight"])
     assert saved["connect"]["target"] == {
         "domain": "corp.local",
         "dc": "10.0.0.10",
@@ -140,6 +162,10 @@ def test_connect_persists_without_password(tmp_path: Path) -> None:
     }
     assert any(
         check["id"] == "dc-ldaps" and check["value"] == "10.0.0.10:636"
+        for check in body["preflight"]["checks"]
+    )
+    assert any(
+        check["id"] == "credential-bind" and check["status"] == "ok"
         for check in body["preflight"]["checks"]
     )
     assert saved["connect"]["has_secret"] is True
@@ -177,6 +203,7 @@ def test_ldaps_endpoint_failure_blocks_preflight_and_secret_staging(tmp_path: Pa
                 "domain": "corp.local",
                 "dc": "10.0.0.10",
                 "transport": "ldaps",
+                "username": "operator",
                 "password": "must-not-be-staged",
             },
         )
@@ -184,9 +211,112 @@ def test_ldaps_endpoint_failure_blocks_preflight_and_secret_staging(tmp_path: Pa
     assert response.status_code == 200
     body = response.json()
     assert body["preflight"]["ready"] is False
+    assert body["preflight"]["network_status"] == "blocked"
+    assert body["preflight"]["credential_validation"]["attempted"] is False
+    assert any("Attempt: skipped" in line for line in body["preflight"]["credential_log"])
     assert "dc-ldaps" in body["preflight"]["blocking_checks"]
     assert body["engagement"]["connect"]["has_secret"] is False
     assert body["engagement"]["connect"]["secret_ref"] is None
+
+
+def test_rejected_credential_blocks_preflight_and_secret_staging(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    engagement = _engagement(client)
+    fake_preflight = {
+        "ok": True,
+        "ready": True,
+        "profile": "live-ad",
+        "checks": [{"id": "dc-ldap", "status": "ok", "scope": "live-ad", "value": "ok"}],
+        "blocking_checks": [],
+        "advisory_checks": [],
+        "next_step": "plan",
+    }
+
+    with (
+        patch("adaf_attack.cli._doctor_payload", return_value=fake_preflight),
+        patch("adassassin.targets.validate_bind_credential", return_value=False),
+    ):
+        response = client.post(
+            f"/api/engagements/{engagement['id']}/connect",
+            json={
+                "domain": "corp.local",
+                "dc": "10.0.0.10",
+                "auth_mode": "authenticated",
+                "username": "operator",
+                "password": "rejected-fixture-secret",
+            },
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["preflight"]["ready"] is False
+    assert body["preflight"]["credential_validation"] == {
+        "required": True,
+        "attempted": True,
+        "valid": False,
+        "method": "password",
+    }
+    assert "credential-bind" in body["preflight"]["blocking_checks"]
+    assert any(
+        "did not establish an authenticated bind"
+        in line
+        for line in body["preflight"]["credential_log"]
+    )
+    assert len(body["preflight"]["credential_remediation"]) == 6
+    assert "Stop repeated attempts" in body["preflight"]["credential_remediation"][0]
+    assert "retry once" in body["preflight"]["credential_remediation"][-1]
+    assert "rejected-fixture-secret" not in str(body["preflight"])
+    assert body["engagement"]["connect"]["has_secret"] is False
+    assert body["engagement"]["connect"]["secret_ref"] is None
+    raw = (tmp_path / "engagements" / f"{engagement['id']}.json").read_text(encoding="utf-8")
+    assert "rejected-fixture-secret" not in raw
+
+    run = client.post(
+        f"/api/engagements/{engagement['id']}/run",
+        json={"capability_id": "ldap-enum", "options": {}},
+    )
+    assert run.status_code == 409
+
+
+def test_authenticated_connect_requires_username_and_credential(tmp_path: Path) -> None:
+    client = _client(tmp_path)
+    engagement = _engagement(client)
+    with patch("adaf_attack.cli._doctor_payload") as doctor:
+        response = client.post(
+            f"/api/engagements/{engagement['id']}/connect",
+            json={
+                "domain": "corp.local",
+                "dc": "10.0.0.10",
+                "auth_mode": "authenticated",
+                "username": "operator",
+            },
+        )
+    assert response.status_code == 400
+    assert "credential" in response.json()["detail"].lower()
+    doctor.assert_not_called()
+
+
+def test_credential_validation_wraps_engine_ldap_probe() -> None:
+    from adassassin.targets import validate_bind_credential
+
+    with patch("adaf_attack.core.runner._probe_ldap", return_value=True) as engine_probe:
+        assert validate_bind_credential(
+            domain="corp.local",
+            dc="10.0.0.10",
+            transport="starttls",
+            username="operator",
+            hashes="fixture-nt-hash",
+        )
+
+    target = engine_probe.call_args.args[0]
+    assert target.domain == "corp.local"
+    assert target.dc_ip == "10.0.0.10"
+    assert target.username == "operator"
+    assert target.password is None
+    assert target.hashes == "fixture-nt-hash"
+    assert target.starttls is True
+    assert target.ldaps is False
+    assert target.port == 389
 
 
 def test_failed_preflight_without_fields_does_not_mark_contacted(tmp_path: Path) -> None:
@@ -264,6 +394,7 @@ def test_yellow_observe_after_successful_connect(tmp_path: Path) -> None:
     with (
         patch("adaf_attack.cli._doctor_payload", return_value=fake_preflight),
         patch("adaf_attack.cli._socket_check", return_value=("ok", None)),
+        patch("adassassin.targets.validate_bind_credential", return_value=True),
     ):
         connect = client.post(
             f"/api/engagements/{engagement['id']}/connect",
@@ -272,6 +403,8 @@ def test_yellow_observe_after_successful_connect(tmp_path: Path) -> None:
                 "dc": "10.0.0.10",
                 "transport": "ldaps",
                 "auth_mode": "authenticated",
+                "username": "operator",
+                "password": "fixture-only-secret",
             },
         )
     assert connect.status_code == 200
@@ -308,6 +441,7 @@ def test_live_run_rejects_transport_override_after_preflight(tmp_path: Path) -> 
     with (
         patch("adaf_attack.cli._doctor_payload", return_value=fake_preflight),
         patch("adaf_attack.cli._socket_check", return_value=("ok", None)),
+        patch("adassassin.targets.validate_bind_credential", return_value=True),
     ):
         connected = client.post(
             f"/api/engagements/{engagement['id']}/connect",
@@ -316,6 +450,8 @@ def test_live_run_rejects_transport_override_after_preflight(tmp_path: Path) -> 
                 "dc": "10.0.0.10",
                 "transport": "ldaps",
                 "auth_mode": "authenticated",
+                "username": "operator",
+                "password": "fixture-only-secret",
             },
         )
     assert connected.status_code == 200
@@ -403,7 +539,10 @@ def test_anonymous_connect_allows_only_engine_declared_anonymous_runs(tmp_path: 
         "advisory_checks": [],
         "next_step": "plan",
     }
-    with patch("adaf_attack.cli._doctor_payload", return_value=fake_preflight):
+    with (
+        patch("adaf_attack.cli._doctor_payload", return_value=fake_preflight),
+        patch("adassassin.targets.validate_bind_credential") as credential_check,
+    ):
         connected = client.post(
             f"/api/engagements/{engagement['id']}/connect",
             json={
@@ -413,6 +552,7 @@ def test_anonymous_connect_allows_only_engine_declared_anonymous_runs(tmp_path: 
             },
         )
     assert connected.status_code == 200
+    credential_check.assert_not_called()
     assert connected.json()["engagement"]["connect"]["auth_mode"] == "anonymous"
     assert connected.json()["engagement"]["connect"]["has_secret"] is False
 

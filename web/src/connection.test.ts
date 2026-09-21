@@ -7,8 +7,10 @@ function connection(expiresAt: string) {
       domain: "corp.local",
       dc: "dc01.corp.local",
       username: "operator",
-      secret_ref: null,
-      has_secret: false,
+      auth_mode: "authenticated",
+      credential_validation: { required: true, attempted: true, valid: true, method: "password" },
+      secret_ref: "memory:eng-001:bind",
+      has_secret: true,
       preflight_ok: true,
       status: "ready",
       checked_at: "2026-09-05T12:00:00Z",
@@ -22,6 +24,7 @@ function connection(expiresAt: string) {
         blocking_checks: [],
         advisory_checks: [],
         target_contacted: true,
+        credential_validation: { required: true, attempted: true, valid: true, method: "password" },
       },
     },
   });
@@ -31,6 +34,17 @@ describe("connection status", () => {
   it("accepts only an unexpired ready preflight", () => {
     expect(isConnectReady(connection("2099-09-05T12:15:00Z"))).toBe(true);
     expect(isConnectReady(connection("2020-09-05T12:15:00Z"))).toBe(false);
+  });
+
+  it("fails closed when authenticated credentials were not validated", () => {
+    const engagement = connection("2099-09-05T12:15:00Z");
+    engagement.connect!.credential_validation = {
+      required: true,
+      attempted: true,
+      valid: false,
+      method: "password",
+    };
+    expect(isConnectReady(engagement)).toBe(false);
   });
 
   it("explains expiry and explicit invalidation", () => {

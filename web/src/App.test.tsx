@@ -71,7 +71,9 @@ describe("App bootstrap", () => {
     expect(
       await screen.findByRole("heading", { name: /from first click to defensible closeout/i }),
     ).toBeInTheDocument();
-    expect(window.localStorage.getItem("adassassin.onboardingSeen")).toBe("1");
+    await waitFor(() =>
+      expect(window.localStorage.getItem("adassassin.onboardingSeen")).toBe("1"),
+    );
   });
 
   it("shows a fatal screen when the backend is unreachable and recovers on retry", async () => {

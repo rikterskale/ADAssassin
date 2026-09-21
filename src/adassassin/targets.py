@@ -1,4 +1,4 @@
-"""Engagement target connect / preflight. Wraps engine live-ad doctor checks."""
+"""Engagement target connect / preflight. Wraps engine live-ad checks."""
 
 from __future__ import annotations
 
@@ -20,6 +20,7 @@ DIRECTORY_TRANSPORT_PORTS = {
     "ldaps": 636,
 }
 AUTH_MODES = {"anonymous", "authenticated"}
+CREDENTIAL_CHECK_ID = "credential-bind"
 
 
 def _now() -> datetime:
@@ -47,6 +48,65 @@ def normalize_directory_transport(transport: str) -> str:
 def directory_port(transport: str) -> int:
     """Return the standard port honored by the pinned engine for a transport."""
     return DIRECTORY_TRANSPORT_PORTS[normalize_directory_transport(transport)]
+
+
+def validate_bind_credential(
+    *,
+    domain: str,
+    dc: str,
+    transport: str,
+    username: str,
+    password: str | None = None,
+    hashes: str | None = None,
+) -> bool:
+    """Ask the pinned engine to make exactly one LDAP bind probe."""
+    from adaf_attack.core.runner import _probe_ldap
+    from adaf_attack.core.target import Target
+
+    normalized_transport = normalize_directory_transport(transport)
+    target = Target(
+        domain=domain,
+        dc_ip=dc,
+        username=username,
+        password=password,
+        hashes=hashes,
+        ldaps=normalized_transport == "ldaps",
+        starttls=normalized_transport == "starttls",
+        port=directory_port(normalized_transport),
+    )
+    return bool(_probe_ldap(target))
+
+
+def _credential_remediation(method: str) -> list[str]:
+    method_instruction = (
+        "For a password, re-enter it without accidental leading or trailing whitespace."
+        if method == "password"
+        else "For NTLM, use the approved bare NT hash or LM:NT pair for the intended account."
+    )
+    return [
+        (
+            "Stop repeated attempts. Before retrying, use the approved identity-administration "
+            "channel to check the account lockout threshold and current bad-password count."
+        ),
+        (
+            "Confirm that the Connect domain and domain controller are the authorized target, then "
+            "confirm the principal is entered as DOMAIN\\user or user@domain for that environment."
+        ),
+        (
+            "Verify through the approved identity or secret source that the account is enabled, "
+            "unlocked, unexpired, and permitted to authenticate, and that the credential is current."
+        ),
+        method_instruction,
+        (
+            "Confirm that the selected LDAP, StartTLS, or LDAPS transport matches directory policy. "
+            "Check NTLM restrictions, LDAP signing/channel binding, TLS trust, DNS, and time "
+            "synchronization as applicable."
+        ),
+        (
+            "Correct the credential in Connect, rerun preflight, retry once, and stop/escalate to the "
+            "engagement or identity owner if it fails again to avoid an account lockout."
+        ),
+    ]
 
 
 def normalize_connection_target(
@@ -184,10 +244,12 @@ def run_preflight(
 
     # Socket probes run only when both domain and dc were provided.
     contacted = bool(domain and dc)
+    ready = bool(payload.get("ready")) and transport_ready
     return {
         # ``ok`` means the doctor completed; ``ready`` is the execution gate.
         "ok": bool(payload.get("ok")),
-        "ready": bool(payload.get("ready")) and transport_ready,
+        "ready": ready,
+        "network_status": "reachable" if ready else "blocked",
         "profile": payload.get("profile", "live-ad"),
         "domain": domain,
         "dc": dc,
@@ -215,7 +277,7 @@ def connect_engagement(
     hashes: str | None = None,
     timeout: float = 3.0,
 ) -> dict[str, Any]:
-    """Validate target fields, run preflight, persist non-secret connect state."""
+    """Validate reachability and one authenticated bind, then persist non-secret state."""
     item = get_engagement(settings, engagement_id)
     if item is None:
         raise LookupError("Engagement not found")
@@ -243,6 +305,12 @@ def connect_engagement(
         password=password,
         hashes=hashes,
     )
+    if auth_mode == "authenticated" and not username:
+        raise TargetError("Authenticated mode requires a bind username.")
+    if auth_mode == "authenticated" and not (password or hashes):
+        raise TargetError(
+            "Authenticated mode requires one bind credential: password or NTLM hashes."
+        )
 
     # Revoke the old assertion before starting a new check. If the preflight
     # process itself errors, a previous target approval must not remain usable.
@@ -274,6 +342,110 @@ def connect_engagement(
             f"Preflight could not complete: {exc}. Any previous target approval was revoked; "
             "correct the error and run Connect again."
         ) from exc
+    method = "anonymous" if auth_mode == "anonymous" else "password" if password else "ntlm_hash"
+    credential_validation: dict[str, Any] = {
+        "required": auth_mode == "authenticated",
+        "attempted": False,
+        "valid": None,
+        "method": method,
+    }
+    credential_log = [
+        (
+            "Credential gate: not applicable because anonymous mode was selected."
+            if auth_mode == "anonymous"
+            else "Credential gate: authenticated mode requires one successful LDAP bind."
+        )
+    ]
+    credential_remediation: list[str] = []
+
+    if auth_mode == "authenticated":
+        if preflight["ready"]:
+            credential_validation["attempted"] = True
+            credential_log.extend(
+                [
+                    "Network gate: passed for the selected directory endpoint.",
+                    (
+                        f"Attempt: one {method.replace('_', ' ')} LDAP bind through the pinned "
+                        f"engine over {transport.upper()}:{ldap_port}."
+                    ),
+                    "Principal: supplied bind username (value omitted from this log).",
+                    "Secret handling: credential value redacted; automatic retries disabled.",
+                ]
+            )
+            try:
+                credential_valid = validate_bind_credential(
+                    domain=domain,
+                    dc=dc,
+                    transport=transport,
+                    username=username,
+                    password=password,
+                    hashes=hashes,
+                )
+                probe_error = False
+            except Exception:
+                # The pinned probe normally converts bind errors to False. Keep
+                # unexpected implementation details out of persisted logs too.
+                credential_valid = False
+                probe_error = True
+            credential_validation["valid"] = credential_valid
+            credential_log.append(
+                "Result: credential accepted; eligible for memory-only staging."
+                if credential_valid
+                else (
+                    "Result: engine credential probe could not complete; internal detail suppressed."
+                    if probe_error
+                    else (
+                        "Result: the engine did not establish an authenticated bind; the probe does "
+                        "not distinguish secret rejection from account, transport, or directory-policy "
+                        "failure."
+                    )
+                )
+            )
+        else:
+            credential_valid = False
+            credential_log.extend(
+                [
+                    "Network gate: blocked for the selected directory endpoint.",
+                    "Attempt: skipped; no credential was sent because network preflight did not pass.",
+                    "Secret handling: credential value redacted and not staged.",
+                ]
+            )
+
+        if not credential_valid:
+            credential_remediation = _credential_remediation(method)
+            if CREDENTIAL_CHECK_ID not in preflight["blocking_checks"]:
+                preflight["blocking_checks"].append(CREDENTIAL_CHECK_ID)
+            preflight["next_step"] = (
+                "Stop retries and complete the ordered credential remediation steps before "
+                "running Connect again."
+            )
+        preflight["checks"].append(
+            {
+                "id": CREDENTIAL_CHECK_ID,
+                "status": "ok" if credential_valid else "error",
+                "severity": "blocking",
+                "scope": "live-ad",
+                "value": (
+                    f"accepted ({method.replace('_', ' ')})"
+                    if credential_valid
+                    else (
+                        "authenticated bind not established"
+                        if credential_validation["attempted"]
+                        else "not attempted because the network gate failed"
+                    )
+                ),
+                "remediation": (
+                    None
+                    if credential_valid
+                    else "Follow the ordered credential remediation steps and retry at most once."
+                ),
+            }
+        )
+        preflight["ready"] = bool(preflight["ready"] and credential_valid)
+
+    preflight["credential_validation"] = credential_validation
+    preflight["credential_log"] = credential_log
+    preflight["credential_remediation"] = credential_remediation
     checked_at = _now()
     expires_at = checked_at + timedelta(seconds=max(30, settings.preflight_ttl_seconds))
     ready = bool(preflight["ready"])
@@ -302,6 +474,9 @@ def connect_engagement(
             "ldap_port": ldap_port,
             "auth_mode": auth_mode,
             "username": username,
+            "credential_validation": credential_validation,
+            "credential_log": credential_log,
+            "credential_remediation": credential_remediation,
             "secret_ref": secret_ref,
             "has_secret": bool(secret_ref),
             "preflight_ok": ready,
@@ -318,6 +493,7 @@ def connect_engagement(
             "preflight": {
                 "ok": preflight["ok"],
                 "ready": preflight["ready"],
+                "network_status": preflight["network_status"],
                 "transport": transport,
                 "ldap_port": ldap_port,
                 "blocking_checks": preflight["blocking_checks"],
@@ -325,6 +501,9 @@ def connect_engagement(
                 "next_step": preflight["next_step"],
                 "checks": preflight["checks"],
                 "target_contacted": preflight["target_contacted"],
+                "credential_validation": credential_validation,
+                "credential_log": credential_log,
+                "credential_remediation": credential_remediation,
             },
         }
         if ready:
@@ -344,7 +523,8 @@ def connect_engagement(
 
 def has_successful_connect(engagement: dict[str, Any]) -> bool:
     connect = engagement.get("connect") or {}
-    if str(connect.get("auth_mode") or "authenticated") not in AUTH_MODES:
+    auth_mode = str(connect.get("auth_mode") or "authenticated")
+    if auth_mode not in AUTH_MODES:
         return False
     if not connect.get("preflight_ok") or connect.get("status") not in {None, "ready"}:
         return False
@@ -383,6 +563,16 @@ def has_successful_connect(engagement: dict[str, Any]) -> bool:
         return False
     if expiry <= _now():
         return False
+    if auth_mode == "authenticated":
+        validation = connect.get("credential_validation") or (connect.get("preflight") or {}).get(
+            "credential_validation"
+        )
+        if not isinstance(validation, dict):
+            return False
+        if not validation.get("attempted") or validation.get("valid") is not True:
+            return False
+        if not connect.get("has_secret"):
+            return False
     return not connect.get("has_secret") or has_bind_secret(
         str(engagement.get("id") or ""), connect.get("secret_ref")
     )

@@ -94,6 +94,7 @@ def test_rollback_apply_with_connect_and_mock_cleanup(tmp_path: Path) -> None:
     with (
         patch("adaf_attack.cli._doctor_payload", return_value=fake_preflight),
         patch("adaf_attack.cli._socket_check", return_value=("ok", None)),
+        patch("adassassin.targets.validate_bind_credential", return_value=True),
     ):
         client.post(
             f"/api/engagements/{engagement['id']}/connect",
@@ -102,6 +103,8 @@ def test_rollback_apply_with_connect_and_mock_cleanup(tmp_path: Path) -> None:
                 "dc": "10.0.0.10",
                 "transport": "ldaps",
                 "auth_mode": "authenticated",
+                "username": "operator",
+                "password": "fixture-only-secret",
             },
         )
 

@@ -31,6 +31,17 @@ The console never persists bind passwords, NTLM hashes, or scoped approval
 tokens in engagement JSON. Sensitive dynamic run prompts are masked in the UI
 and cleared whenever the selected capability changes.
 
+Authenticated Connect preflight requires a username plus exactly one password
+or NTLM hash and makes one LDAP bind attempt through the pinned engine. A
+missing, rejected, or unverified credential blocks YELLOW/RED execution and is
+never staged in the in-memory secret store. Live run requests cannot replace
+the preflight-validated target credential. Anonymous mode remains explicit and
+does not perform a credential bind. Credential traces record the gate, method,
+transport, result, secret-handling decision, and retry policy without recording
+the username or credential value. There are no automatic bind retries. A
+rejected bind returns ordered lockout, identity, account, credential-format,
+directory-policy, and controlled-retry remediation.
+
 ## Reporting
 
 Report product defects to the repository owner. Do not file public issues that

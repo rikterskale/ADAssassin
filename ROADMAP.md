@@ -187,7 +187,8 @@ DC and run **green/yellow observe** capabilities. No directory mutation.
 Shipped:
 
 - `src/adassassin/targets.py` — connect + live-ad doctor preflight wrap with a
-  transport-bound standard LDAP endpoint (LDAP/StartTLS 389, LDAPS 636)
+  transport-bound standard LDAP endpoint (LDAP/StartTLS 389, LDAPS 636) and
+  engine-owned LDAP bind validation for authenticated credentials
 - `src/adassassin/runner.py` — observe gate + `execute_capability` wrap (RED confirm landed in Phase 5)
 - `src/adassassin/secrets.py` — in-memory bind password/hashes (not on disk)
 - Connect + Run React pages; catalog **Run** button for observe caps
@@ -198,7 +199,7 @@ Shipped:
 
 APIs:
 
-- `POST /api/engagements/{id}/connect` — preflight only; no capability run
+- `POST /api/engagements/{id}/connect` — connectivity + credential preflight only; no capability run
 - `POST /api/engagements/{id}/run` — observe path; yellow without connect → 409
 - `GET /api/engagements/{id}/jobs/{job_id}`
 - `GET /api/catalog/{capability_id}` — prompts + runnable flag
@@ -211,11 +212,16 @@ false. Yellow observe runs also set it after a completed engine call.
 Acceptance that already passed:
 
 - Yellow run requires successful connect/preflight on that engagement
+- Authenticated preflight requires username plus password or NTLM hash; a
+  failed/unattempted bind blocks execution and does not stage the secret
+- Credential preflight records a redacted authentication trace, performs no
+  automatic retries, and returns ordered remediation for rejected binds
 - Green/offline caps run with no DC
 - Red without ack/force/confirm is refused (Phase 5 typed confirm)
 - Secrets never written into engagement JSON
 - Anonymous mode passes no username/password/hashes/Kerberos/ccache/AES key to
   the engine and refuses non-GREEN capabilities not declared anonymous by the pin
+- Live run requests cannot replace the credential validated by Connect
 - Tests cover refuse red without confirm, refuse yellow without connect, mocked observe run
 
 No-credential expansion remains engine-owned. A new target capability must add
@@ -453,3 +459,8 @@ committed bundle drifts from source.
   toasts, mobile nav), security headers on every response, print-ready HTML
   reports, and a Production/Stable classifier. No engine, API, or capability
   behavior changed.
+- 2026-09-21 — Authenticated Connect preflight now requires and validates one
+  password or NTLM hash with an engine-owned LDAP bind before YELLOW/RED work;
+  rejected credentials are not staged, and live run credential overrides fail
+  closed. Rejections include a redacted attempt trace and precise, ordered
+  remediation; anonymous mode remains explicit and unchanged.

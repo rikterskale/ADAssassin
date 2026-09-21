@@ -68,6 +68,14 @@ export function Connect({
       setError("Anonymous mode cannot include a username, password, or NTLM hashes.");
       return;
     }
+    if (authMode === "authenticated" && !username.trim()) {
+      setError("Authenticated mode requires a bind username.");
+      return;
+    }
+    if (authMode === "authenticated" && !password && !hashes.trim()) {
+      setError("Authenticated mode requires one bind credential: password or NTLM hashes.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -84,11 +92,16 @@ export function Connect({
       setHashes("");
       setPreflight(result.preflight);
       onConnected(result.engagement);
+      const credentialRejected =
+        result.preflight.credential_validation?.attempted &&
+        result.preflight.credential_validation.valid === false;
       notify(
         result.preflight.ready
           ? authMode === "anonymous"
             ? "Anonymous preflight ready. No domain credentials were supplied."
-            : "Authenticated preflight ready. Target checks completed."
+            : "Authenticated preflight ready. The credential was accepted by LDAP."
+          : credentialRejected
+            ? "Credential authentication failed. Stop retries and follow the remediation steps."
           : "Preflight blocked. Review the checks before running.",
         result.preflight.ready ? "ok" : "warn",
       );
@@ -105,9 +118,10 @@ export function Connect({
         <div className="brand-sub">Connect</div>
         <h1>Point this engagement at an authorized domain controller.</h1>
         <p className="lede">
-          Preflight wraps the engine live-ad doctor and binds the selected directory transport and
-          standard port to this target. It does not run a capability. Passwords and hashes stay in
-          process memory and are never written to engagement JSON.
+          Preflight wraps the engine live-ad doctor, binds the selected directory transport and
+          standard port to this target, and validates authenticated credentials with one LDAP bind.
+          It does not run a capability. Passwords and hashes stay in process memory and are never
+          written to engagement JSON.
         </p>
         <div className="banner-ok">
           <strong>No domain credentials?</strong> Choose <strong>Anonymous — no domain credentials</strong> below.
@@ -202,7 +216,7 @@ export function Connect({
                   }}
                 >
                   <option value="anonymous">Anonymous — no domain credentials</option>
-                  <option value="authenticated">Authenticated — supplied or engine credential</option>
+                  <option value="authenticated">Authenticated — validate password or NTLM hash</option>
                 </select>
               </Field>
               {authMode === "anonymous" ? (
@@ -214,22 +228,24 @@ export function Connect({
               ) : (
                 <>
                   <div className="banner-warning">
-                    <strong>AUTHENTICATED MODE.</strong> Supply credentials here or use only credential
-                    material explicitly supported by the pinned engine at run time.
+                    <strong>ACTIVE AUTHENTICATION.</strong> Supply one approved bind credential. Preflight
+                    makes one LDAP authentication attempt, which can affect lockout counters and detection.
+                    A failed bind blocks all target-interacting work.
                   </div>
-                  <Field label="Username" hint="Optional bind account. Stored on the engagement; the password is not.">
+                  <Field label="Username" hint="Required bind account. Stored on the engagement; the credential is not.">
                     <input
-                      placeholder="Username (optional)"
+                      placeholder="Username"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       maxLength={320}
+                      required
                       spellCheck={false}
                     />
                   </Field>
                   <SecretField
                     label="Password"
                     hint="Use either a password or NTLM hashes. Held in process memory only."
-                    placeholder="Password (optional, not saved to disk)"
+                    placeholder="Password (not saved to disk)"
                     value={password}
                     onChange={setPassword}
                     maxLength={4096}
@@ -237,7 +253,7 @@ export function Connect({
                   <SecretField
                     label="NTLM hashes"
                     hint="Use either hashes or a password. LM:NT or NT; held in process memory only."
-                    placeholder="NTLM hashes LM:NT or NT (optional, not saved to disk)"
+                    placeholder="NTLM hashes LM:NT or NT (not saved to disk)"
                     value={hashes}
                     onChange={setHashes}
                     maxLength={4096}
@@ -247,7 +263,7 @@ export function Connect({
               {error && <div className="banner-error">{error}</div>}
               <div className="actions">
                 <button className="btn primary" type="submit" disabled={busy || engagement.mode === "demo" || engagement.archived || Boolean(activeJob)}>
-                  {busy ? "Checking…" : "Run preflight"}
+                  {busy ? "Validating…" : "Run preflight"}
                 </button>
                 <Link className="btn ghost" to="/run">
                   Open run
@@ -268,12 +284,49 @@ export function Connect({
                 </span>{" "}
                 target probes attempted {preflight.target_contacted ? "yes" : "no"}
               </p>
+              {preflight.network_status && (
+                <p className="muted">
+                  Network: <strong>{preflight.network_status}</strong>
+                </p>
+              )}
               <p className="muted mono">
                 {(preflight.transport ?? transport).toUpperCase()} · port {preflight.ldap_port ?? ldapPort}
               </p>
               <p className="muted">
                 Authentication: <strong>{authMode === "anonymous" ? "Anonymous — no domain credentials" : "Authenticated"}</strong>
               </p>
+              {preflight.credential_validation && (
+                <p className="muted">
+                  Credential: <strong>
+                    {!preflight.credential_validation.required
+                      ? "not applicable"
+                      : preflight.credential_validation.valid
+                        ? "validated"
+                        : preflight.credential_validation.attempted
+                          ? "rejected"
+                          : "not attempted"}
+                  </strong>
+                </p>
+              )}
+              {(preflight.credential_log ?? []).length > 0 && (
+                <>
+                  <h2>Authentication log</h2>
+                  <pre className="log">{preflight.credential_log!.join("\n")}</pre>
+                </>
+              )}
+              {(preflight.credential_remediation ?? []).length > 0 && (
+                <>
+                  <h2>Credential remediation</h2>
+                  <div className="banner-warning">
+                    Do not retry repeatedly. Complete these steps in order before one controlled retry.
+                  </div>
+                  <ol className="steps">
+                    {preflight.credential_remediation!.map((step, index) => (
+                      <li key={`${index}-${step}`}>{step}</li>
+                    ))}
+                  </ol>
+                </>
+              )}
               {engagement?.connect?.expires_at && preflight.ready && (
                 <p className="muted">Valid until {formatWhen(engagement.connect.expires_at)}. Restarting the console requires a new preflight.</p>
               )}
@@ -284,6 +337,7 @@ export function Connect({
                   </span>{" "}
                   <span className="mono">{check.id}</span>
                   <div className="muted">{typeof check.value === "string" ? check.value : JSON.stringify(check.value)}</div>
+                  {check.remediation && <div className="muted">Remediation: {check.remediation}</div>}
                 </div>
               ))}
               {preflight.next_step && <p className="muted">Next: {preflight.next_step}</p>}

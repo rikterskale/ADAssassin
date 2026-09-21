@@ -328,10 +328,10 @@ work, and do not combine targets governed by different authorization records.
 6. Choose an authentication mode:
    - **Anonymous — no domain credentials** when no domain account or credential
      material is available;
-   - **Authenticated — supplied or engine credential** only when the approved
+   - **Authenticated — validate password or NTLM hash** only when the approved
      workflow has authorized credential material.
-7. In authenticated mode, optionally enter the approved bind username and
-   either the password or NTLM material required by the engine workflow.
+7. In authenticated mode, enter the approved bind username and exactly one
+   password or NTLM hash.
 8. Choose **Run preflight**.
 
 Anonymous mode is explicit and fail-closed. It refuses username, password,
@@ -349,14 +349,18 @@ Credential handling:
 - password and NTLM material are held in process memory only;
 - password and hashes are cleared from the form after submission;
 - secrets are never written into engagement JSON;
+- a credential is staged in memory only after the pinned engine accepts its
+  LDAP bind;
 - stopping the console removes these in-memory values.
 
 Password and NTLM-hash inputs are mutually exclusive. Choose one bind method;
 the server refuses an ambiguous request containing both.
 
-Preflight wraps the engine live-AD doctor. It can perform DNS and DC-port
-checks, so it can contact the target. The selected LDAP/StartTLS/LDAPS endpoint
-is a blocking connectivity check. Preflight does not bind credentials or
+Preflight wraps the engine live-AD doctor. It performs DNS and DC-port checks,
+so it can contact the target. The selected LDAP/StartTLS/LDAPS endpoint is a
+blocking connectivity check. In authenticated mode it then makes one LDAP bind
+through the pinned engine to validate the supplied credential. This active
+authentication can affect lockout counters and detection. Preflight does not
 execute a capability.
 
 ### 7.1 Interpret the result
@@ -365,14 +369,30 @@ execute a capability.
 | --- | --- | --- |
 | `ready` | All blocking checks passed | Continue to observe work |
 | `blocked` | A required target or local check failed | Read each blocking check and fix it |
+| `credential-bind: ok` | The selected LDAP endpoint accepted the credential | Continue only while the preflight remains valid |
+| `credential-bind: error` | The bind was rejected, could not complete, or was skipped behind failed connectivity | Verify the approved account, credential, transport, and connectivity; then retry |
 | `warning` check | Advisory issue | Review before continuing; document acceptance if applicable |
 | `target probes attempted yes` | The approved DC probe branch ran, even if an individual socket check failed | Read the actual checks; do not interpret this as proof of reachability |
 
+For an authenticated preflight, read **Authentication log** before acting. It
+records whether the network gate passed, the password/hash method, selected
+transport and standard port, whether one bind was attempted, the result,
+memory-staging decision, and the fact that no automatic retry occurred. The
+username and secret value are omitted.
+
+If the bind is rejected, stop repeated attempts and complete **Credential
+remediation** in order: check lockout state; confirm the authorized endpoint and
+principal format; verify account state and credential currency; correct password
+whitespace or NT-hash format; check LDAP/NTLM/TLS/DNS/time policy; then retry
+Connect once. A second failure is a stop condition for escalation to the
+engagement or identity owner.
+
 YELLOW and RED Run buttons remain disabled until the active engagement has a
 successful preflight. The scope bar then displays **preflight ready**. The
-result is bound to the normalized domain/DC/transport/port endpoint and expires
-after 15 minutes by default. A target edit or console restart requires a new
-preflight. Live runs cannot override the preflight-bound transport or port.
+result is bound to the normalized domain/DC/transport/port endpoint and, for
+authenticated mode, the validated in-memory credential. It expires after 15
+minutes by default. A target edit or console restart requires a new preflight.
+Live runs cannot override the preflight-bound transport, port, or credential.
 
 ## 8. Choose a capability without losing visibility
 
@@ -575,7 +595,7 @@ they do not replace encrypted storage or your evidence-handling policy.
 | Overview | `/` | Doctor, health, capability metrics, active workspace, recent jobs |
 | Guided | `/guided` | Engagement-scoped core milestones, closeout, and clearly optional RED work |
 | Engagements | `/engagements` | Create, seed demo, list, select, edit, archive, and restore workspaces |
-| Connect | `/connect` | Domain, DC, explicit anonymous/authenticated mode, optional credentials, preflight checks |
+| Connect | `/connect` | Domain, DC, explicit anonymous/authenticated mode, required credential validation for authenticated mode, preflight checks |
 | Run | `/run` | All capabilities, typed prompts, exact target review, confirmations, job recovery |
 | Findings | `/findings` | Search, filters, evidence, explain, remediation, all four statuses |
 | Catalog | `/catalog` | All capabilities, lanes, categories, dependencies, prompts, run links |
@@ -734,7 +754,7 @@ $BaseUrl = "http://127.0.0.1:8745"
 | 11 | POST | `/api/engagements/demo` | Ensure and return isolated demo |
 | 12 | POST | `/api/engagements/{id}/guided` | Record an allowed page-visit milestone |
 | 13 | GET | `/api/engagements/{id}` | Get one engagement |
-| 14 | POST | `/api/engagements/{id}/connect` | Live preflight; domain/DC, explicit auth mode, and one optional credential method |
+| 14 | POST | `/api/engagements/{id}/connect` | Live preflight; domain/DC, explicit auth mode, and username plus one required credential method for authenticated mode |
 | 15 | POST | `/api/engagements/{id}/run` | Start capability job with typed options and gates |
 | 16 | GET | `/api/engagements/{id}/jobs/{job_id}` | Poll live or completed job |
 | 17 | GET | `/api/engagements/{id}/findings` | List/group findings |
@@ -824,9 +844,11 @@ curl -X POST "$BASE_URL/api/engagements/ENGAGEMENT_ID/connect" \
 
 Valid `transport` values are `ldap` (389), `starttls` (389), and `ldaps` (636).
 The API derives the port and does not accept an arbitrary LDAP port. Use
-`hashes` instead of `password` only when approved. Valid timeout is 0.2 to 30
-seconds. Avoid placing real secrets in shell history; the GUI's masked form or
-an approved secret-injection process is preferable.
+`hashes` instead of `password` only when approved. Authenticated mode requires
+`username` and exactly one of `password` or `hashes`; it performs one LDAP bind
+and returns blocked preflight state if the bind is not accepted. Valid timeout
+is 0.2 to 30 seconds. Avoid placing real secrets in shell history; the GUI's
+masked form or an approved secret-injection process is preferable.
 
 For an authorized anonymous preflight, send `"auth_mode":"anonymous"` and omit
 `username`, `password`, and `hashes`. A later non-GREEN run is accepted only
@@ -835,6 +857,9 @@ when the pinned engine declares `anonymous` in that capability's `auth_modes`.
 ### 19.5 Start and poll a GREEN/YELLOW run
 
 The `options` keys must match the selected capability's `required_prompts`.
+Live requests reject target credential options such as `username`, `password`,
+`hashes`, ccache, or AES keys; authenticate through Connect so the credential
+is validated before a job is queued.
 
 ```bash
 curl -X POST "$BASE_URL/api/engagements/ENGAGEMENT_ID/run" \

@@ -54,7 +54,10 @@ python -m pytest                                         # backend suite
 - Built-in Start Here guide with every console surface and launch/runtime command
 - Guided checklist through connect, observe, and typed-confirm RED
 - Catalog lane and authentication filters, including prominent Offline and Anonymous—no-credentials paths
-- Connect preflight with an explicit anonymous/authenticated choice and a bound LDAP/StartTLS/LDAPS endpoint; passwords stay in memory
+- Connect preflight with an explicit anonymous/authenticated choice, a bound
+  LDAP/StartTLS/LDAPS endpoint, and required credential bind validation;
+  passwords stay in memory, while rejected binds produce a redacted trace and
+  ordered remediation guidance
 - Observe runs plus typed-confirm RED (capability id + ack/force)
 - Findings pane: severity groups, explain, remediation checklist, status
 - Vault metadata inventory with single-item TTL unmask + audit

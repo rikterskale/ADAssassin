@@ -50,13 +50,18 @@ def _connect(client: TestClient, engagement_id: str) -> None:
         "advisory_checks": [],
         "next_step": "ready",
     }
-    with patch("adaf_attack.cli._doctor_payload", return_value=preflight):
+    with (
+        patch("adaf_attack.cli._doctor_payload", return_value=preflight),
+        patch("adassassin.targets.validate_bind_credential", return_value=True),
+    ):
         response = client.post(
             f"/api/engagements/{engagement_id}/connect",
             json={
                 "domain": "corp.local",
                 "dc": "127.0.0.1",
                 "auth_mode": "authenticated",
+                "username": "operator",
+                "password": "fixture-only-secret",
             },
         )
     assert response.status_code == 200
@@ -236,6 +241,7 @@ def test_preflight_uses_ready_and_restart_invalidates_target_state(tmp_path: Pat
             engagement["id"],
             domain="corp.local",
             dc="dc01.corp.local",
+            username="operator",
             password="fixture secret",
         )
     assert result["preflight"]["ok"] is True
@@ -245,12 +251,16 @@ def test_preflight_uses_ready_and_restart_invalidates_target_state(tmp_path: Pat
     assert has_successful_connect(result["engagement"]) is False
 
     ready = {**not_ready, "ready": True, "blocking_checks": [], "next_step": "ready"}
-    with patch("adaf_attack.cli._doctor_payload", return_value=ready):
+    with (
+        patch("adaf_attack.cli._doctor_payload", return_value=ready),
+        patch("adassassin.targets.validate_bind_credential", return_value=True),
+    ):
         connected = connect_engagement(
             settings,
             engagement["id"],
             domain="corp.local",
             dc="dc01.corp.local",
+            username="operator",
             password="fixture secret",
         )["engagement"]
     assert has_successful_connect(connected) is True
@@ -274,12 +284,16 @@ def test_failed_reconnect_revokes_the_previous_target_assertion(tmp_path: Path) 
         "advisory_checks": [],
         "next_step": "ready",
     }
-    with patch("adaf_attack.cli._doctor_payload", return_value=ready):
+    with (
+        patch("adaf_attack.cli._doctor_payload", return_value=ready),
+        patch("adassassin.targets.validate_bind_credential", return_value=True),
+    ):
         connected = connect_engagement(
             settings,
             engagement["id"],
             domain="corp.local",
             dc="dc01.corp.local",
+            username="operator",
             password="first fixture secret",
         )["engagement"]
     assert has_successful_connect(connected)
@@ -293,6 +307,7 @@ def test_failed_reconnect_revokes_the_previous_target_assertion(tmp_path: Path) 
             engagement["id"],
             domain="other.local",
             dc="dc01.other.local",
+            username="operator",
             password="replacement fixture secret",
         )
     revoked = get_engagement(settings, engagement["id"])
@@ -313,13 +328,18 @@ def test_run_target_must_exactly_match_current_preflight(tmp_path: Path) -> None
         "advisory_checks": [],
         "next_step": "ready",
     }
-    with patch("adaf_attack.cli._doctor_payload", return_value=ready):
+    with (
+        patch("adaf_attack.cli._doctor_payload", return_value=ready),
+        patch("adassassin.targets.validate_bind_credential", return_value=True),
+    ):
         connect_engagement(
             settings,
             engagement["id"],
             domain="corp.local",
             dc="dc01.corp.local",
             auth_mode="authenticated",
+            username="operator",
+            password="fixture-only-secret",
         )
     with (
         patch("adaf_attack.core.runner.execute_capability") as engine_run,
@@ -488,12 +508,16 @@ def test_target_edit_and_archive_revoke_live_connection(tmp_path: Path) -> None:
         "advisory_checks": [],
         "next_step": "ready",
     }
-    with patch("adaf_attack.cli._doctor_payload", return_value=ready):
+    with (
+        patch("adaf_attack.cli._doctor_payload", return_value=ready),
+        patch("adassassin.targets.validate_bind_credential", return_value=True),
+    ):
         connected = connect_engagement(
             settings,
             engagement["id"],
             domain="corp.local",
             dc="dc01.corp.local",
+            username="operator",
             password="fixture secret",
         )["engagement"]
     assert has_successful_connect(connected)

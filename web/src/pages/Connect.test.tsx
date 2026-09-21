@@ -8,12 +8,21 @@ vi.mock("../api", () => ({ api: { connect: vi.fn() } }));
 const preflight = {
   ok: true,
   ready: true,
+  network_status: "reachable" as const,
   transport: "ldap" as const,
   ldap_port: 389,
   target_contacted: true,
   blocking_checks: [],
   advisory_checks: [],
   next_step: "Run an observe capability",
+  credential_validation: {
+    required: true,
+    attempted: true,
+    valid: true,
+    method: "password" as const,
+  },
+  credential_log: ["Result: credential accepted; eligible for memory-only staging."],
+  credential_remediation: [],
   checks: [{ id: "dns", status: "ok", value: "resolved" }],
 };
 
@@ -42,6 +51,7 @@ describe("Connect", () => {
     const { user } = renderWithRouter(
       <Connect engagement={engagement} onConnected={onConnected} onSeedDemo={vi.fn()} />,
     );
+    await user.type(screen.getByPlaceholderText(/^password/i), "fixture-only-secret");
     await user.click(screen.getByRole("button", { name: /run preflight/i }));
 
     await waitFor(() =>
@@ -52,10 +62,13 @@ describe("Connect", () => {
           dc: "10.0.0.1",
           transport: "ldap",
           auth_mode: "authenticated",
+          username: "operator",
+          password: "fixture-only-secret",
         }),
       ),
     );
     expect(await screen.findByText("ready")).toBeInTheDocument();
+    expect(screen.getByText("reachable")).toBeInTheDocument();
     expect(screen.getByText("dns")).toBeInTheDocument();
     expect(onConnected).toHaveBeenCalledWith(engagement);
   });
@@ -74,6 +87,7 @@ describe("Connect", () => {
 
     await user.selectOptions(screen.getByLabelText(/directory transport/i), "ldaps");
     expect(screen.getByLabelText(/ldap port/i)).toHaveValue(636);
+    await user.type(screen.getByPlaceholderText(/^password/i), "fixture-only-secret");
     await user.click(screen.getByRole("button", { name: /run preflight/i }));
 
     await waitFor(() =>
@@ -91,12 +105,71 @@ describe("Connect", () => {
     const { user } = renderWithRouter(
       <Connect engagement={engagement} onConnected={vi.fn()} onSeedDemo={vi.fn()} />,
     );
+    await user.type(screen.getByPlaceholderText(/^password/i), "fixture-only-secret");
     await user.click(screen.getByRole("button", { name: /run preflight/i }));
     expect(await screen.findByText(/dns resolution failed/i)).toBeInTheDocument();
   });
 
+  it("shows a redacted authentication log and ordered remediation after rejection", async () => {
+    const engagement = makeEngagement();
+    const failedPreflight = {
+      ...preflight,
+      ready: false,
+      credential_validation: {
+        required: true,
+        attempted: true,
+        valid: false,
+        method: "password" as const,
+      },
+      credential_log: [
+        "Attempt: one password LDAP bind through the pinned engine over LDAP:389.",
+        "Secret handling: credential value redacted; automatic retries disabled.",
+        "Result: the engine did not establish an authenticated bind.",
+      ],
+      credential_remediation: [
+        "Stop repeated attempts and check the account lockout threshold.",
+        "Correct the credential in Connect and retry once.",
+      ],
+    };
+    vi.mocked(api.connect).mockResolvedValue({
+      ok: true,
+      engagement,
+      preflight: failedPreflight,
+    });
+    const { user } = renderWithRouter(
+      <Connect engagement={engagement} onConnected={vi.fn()} onSeedDemo={vi.fn()} />,
+    );
+    await user.type(screen.getByPlaceholderText(/^password/i), "fixture-only-secret");
+    await user.click(screen.getByRole("button", { name: /run preflight/i }));
+
+    expect(await screen.findByRole("heading", { name: /authentication log/i })).toBeInTheDocument();
+    expect(screen.getByText(/credential value redacted/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /credential remediation/i })).toBeInTheDocument();
+    expect(screen.getByText(/stop repeated attempts and check/i)).toBeInTheDocument();
+    expect(screen.queryByText("fixture-only-secret")).not.toBeInTheDocument();
+  });
+
+  it("requires credential material before authenticated preflight", async () => {
+    const engagement = makeEngagement();
+    const { user } = renderWithRouter(
+      <Connect engagement={engagement} onConnected={vi.fn()} onSeedDemo={vi.fn()} />,
+    );
+    await user.click(screen.getByRole("button", { name: /run preflight/i }));
+    expect(await screen.findByText(/requires one bind credential/i)).toBeInTheDocument();
+    expect(api.connect).not.toHaveBeenCalled();
+  });
+
   it("makes no-credential anonymous connect explicit and omits credential fields", async () => {
     const engagement = makeEngagement({ username: "" });
+    const anonymousPreflight = {
+      ...preflight,
+      credential_validation: {
+        required: false,
+        attempted: false,
+        valid: null,
+        method: "anonymous" as const,
+      },
+    };
     const anonymousEngagement = makeEngagement({
       username: "",
       connect: {
@@ -112,13 +185,13 @@ describe("Connect", () => {
         expires_at: "2099-09-01T10:15:00Z",
         invalidated_reason: null,
         target: { domain: "corp.local", dc: "10.0.0.1" },
-        preflight,
+        preflight: anonymousPreflight,
       },
     });
     vi.mocked(api.connect).mockResolvedValue({
       ok: true,
       engagement: anonymousEngagement,
-      preflight,
+      preflight: anonymousPreflight,
     });
     const { user } = renderWithRouter(
       <Connect engagement={engagement} onConnected={vi.fn()} onSeedDemo={vi.fn()} />,

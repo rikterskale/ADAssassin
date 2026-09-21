@@ -245,6 +245,13 @@ def assert_run_allowed(
         connect = engagement.get("connect") or {}
         if connect.get("auth_mode") == "anonymous":
             _assert_anonymous_run(entry, options)
+        elif _has_target_credentials(options):
+            raise RunRefused(
+                "Live target credentials must be validated in Connect. Remove username, password, "
+                "hashes, Kerberos, ccache, and AES-key overrides from the run options, then use the "
+                "preflight-validated in-memory credential.",
+                status_code=409,
+            )
         _assert_transport_matches_preflight(connect, options)
         approved = normalize_target(
             str(connect.get("domain") or ""), str(connect.get("dc") or "")
@@ -366,6 +373,98 @@ def _build_log(messages: list[str], engine_result: dict[str, Any] | None, error:
     if error:
         lines.append(f"error={error}")
     return lines
+
+
+def _redact_runtime_error(exc: Exception, target: Any) -> str:
+    """Return a single-line engine error with runtime credentials removed."""
+    message = str(exc).replace("\r", " ").replace("\n", " ").strip()
+    secret_values: set[str] = set()
+    for attribute in ("password", "hashes", "aes_key"):
+        secret = getattr(target, attribute, None)
+        if isinstance(secret, str) and secret:
+            secret_values.add(secret)
+            if attribute == "hashes":
+                secret_values.update(part for part in secret.split(":") if len(part) >= 8)
+    for secret in sorted(secret_values, key=len, reverse=True):
+        message = message.replace(secret, "***")
+    return message[:4000] or exc.__class__.__name__
+
+
+def _is_credential_failure(message: str) -> bool:
+    normalized = message.lower()
+    return any(
+        marker in normalized
+        for marker in (
+            "ldap bind failed",
+            "all credentials failed ldap bind",
+            "credential resolution failed",
+        )
+    )
+
+
+def _credential_auth_label(target: Any) -> str:
+    if getattr(target, "ccache", None):
+        return "Kerberos credential cache"
+    if getattr(target, "aes_key", None):
+        return "Kerberos AES key"
+    if getattr(target, "hashes", None):
+        return "NTLM hash"
+    if getattr(target, "password", None):
+        return "password"
+    if getattr(target, "username", None):
+        return "username without a staged secret"
+    return "no credential"
+
+
+def _credential_failure_actions(auth_label: str) -> list[dict[str, str]]:
+    return [
+        {
+            "id": "credential-stop-retries",
+            "message": (
+                "Stop repeated retries. Check the account lockout threshold and current bad-password "
+                "count through the approved identity-administration channel before another attempt."
+            ),
+        },
+        {
+            "id": "credential-check-identity",
+            "message": (
+                "Confirm that the connected domain and domain controller are the authorized target, "
+                "then enter the intended principal as DOMAIN\\user or user@domain."
+            ),
+        },
+        {
+            "id": "credential-check-account",
+            "message": (
+                "Verify through the approved credential or identity source that the account is enabled, "
+                "unlocked, unexpired, and permitted to authenticate; confirm that the current secret or "
+                "ticket belongs to that principal."
+            ),
+        },
+        {
+            "id": "credential-check-format",
+            "message": (
+                f"Validate the {auth_label} input: remove accidental password whitespace; use a bare NT "
+                "hash or LM:NT pair for hash authentication; for Kerberos, confirm the cache or AES key "
+                "matches the principal and realm and is not expired."
+            ),
+        },
+        {
+            "id": "credential-check-policy",
+            "message": (
+                "Confirm that the selected LDAP, StartTLS, or LDAPS transport and directory policy permit "
+                "the chosen method. Check NTLM restrictions, LDAP signing/channel binding, TLS trust, and "
+                "Kerberos DNS, time synchronization, SPN, and realm configuration as applicable."
+            ),
+        },
+        {
+            "id": "credential-retry-once",
+            "message": (
+                "Correct the credential in Connect, rerun the complete preflight, and "
+                "retry once. If it fails again, stop and escalate to the engagement or identity owner to "
+                "avoid an account lockout."
+            ),
+        },
+    ]
 
 
 def _as_bool(value: Any) -> bool:
@@ -604,6 +703,8 @@ def _run_worker(
     error: str | None = None
     status = "completed"
     findings: list[dict[str, Any]] = []
+    failure_category: str | None = None
+    next_actions: list[dict[str, Any]] = []
 
     try:
         from adaf_attack.core.runner import execute_capability
@@ -623,12 +724,32 @@ def _run_worker(
         )
         findings = _extract_findings(engine_result, capability_id=capability_id)
     except Exception as exc:
-        # Surface engine PolicyError / RunError text verbatim.
+        # Preserve useful engine context while ensuring runtime credentials do
+        # not enter the job log or persisted error field.
         status = "failed"
-        error = str(exc)
-        _log(f"run failed: {exc}")
+        error = _redact_runtime_error(exc, target)
+        if _is_credential_failure(error):
+            failure_category = "credential"
+            auth_label = _credential_auth_label(target)
+            _log("failure category: credential authentication")
+            if auth_label == "no credential":
+                _log(
+                    "connect preflight: anonymous mode supplied no credential; the engine reported "
+                    "an authentication failure at runtime"
+                )
+            else:
+                _log(
+                    "connect preflight: credential was accepted before queueing; runtime "
+                    "authentication failed or the credential state changed"
+                )
+            _log(f"authentication method: {auth_label}")
+            _log(f"engine detail: {error}")
+            next_actions = _credential_failure_actions(auth_label)
+            for index, action in enumerate(next_actions, start=1):
+                _log(f"remediation {index}: {action['message']}")
+        else:
+            _log(f"run failed: {error}")
 
-    next_actions: list[dict[str, Any]] = []
     if status == "completed":
         try:
             from adaf_attack.core.novice import beginner_next_actions
@@ -650,6 +771,7 @@ def _run_worker(
         job["log"] = final_log
         job["findings"] = findings
         job["error"] = error
+        job["failure_category"] = failure_category
         job["session_id"] = (engine_result or {}).get("session_id")
         job["session_path"] = (engine_result or {}).get("session_path")
         job["result"] = (engine_result or {}).get("result")
@@ -748,6 +870,7 @@ def execute_run(
         "log": [f"queued {capability_id}"],
         "findings": [],
         "error": None,
+        "failure_category": None,
         "session_id": None,
         "session_path": None,
         "result": None,
