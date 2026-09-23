@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { StartHere } from "./StartHere";
 import { renderWithRouter } from "../test/utils";
 
@@ -24,5 +24,29 @@ describe("StartHere", () => {
     expect(screen.getByText(/\/api\/catalog/)).toBeInTheDocument();
     expect(screen.getByText(/ADASSASSIN_RUN_SYNCHRONOUS/)).toBeInTheDocument();
     expect(screen.getByText(/all 30 local api operations/i)).toBeInTheDocument();
+  });
+
+  it("keeps one clear first action and links each first-session instruction to its destination", async () => {
+    const { user } = renderWithRouter(<StartHere />, { route: "/start" });
+
+    const hero = screen.getByRole("heading", { name: /first click to defensible closeout/i }).closest(".hero");
+    expect(hero).not.toBeNull();
+    const primaryAction = within(hero as HTMLElement).getByRole("link", { name: "Begin the zero-contact walkthrough" });
+    expect(within(hero as HTMLElement).getAllByRole("link")).toHaveLength(1);
+    expect(primaryAction).toHaveAttribute("href", "/guided");
+    await user.tab();
+    expect(primaryAction).toHaveFocus();
+
+    for (const [label, href] of [
+      ["Check console health", "/"],
+      ["Open Guided walkthrough", "/guided"],
+      ["Open demo findings", "/findings"],
+      ["Browse GREEN capabilities", "/catalog?lane=green"],
+      ["Review the demo vault", "/vault"],
+      ["Preview rollback", "/rollback"],
+      ["Review closeout", "/report"],
+    ]) {
+      expect(screen.getByRole("link", { name: label })).toHaveAttribute("href", href);
+    }
   });
 });

@@ -71,9 +71,6 @@ export function StartHere() {
         </p>
         <div className="actions">
           <Link className="btn primary" to="/guided">Begin the zero-contact walkthrough</Link>
-          <Link className="btn" to="/catalog">Browse all capabilities</Link>
-          <Link className="btn ghost" to="/engagements">Create a live engagement</Link>
-          <a className="btn ghost" href="/operator-guide.md">Download the complete offline guide</a>
         </div>
       </section>
 
@@ -90,18 +87,32 @@ export function StartHere() {
         <section className="panel span-8" id="first-session">
           <h2>Your first safe session</h2>
           <ol className="steps guide-steps">
-            <li><strong>Confirm Console health.</strong> Doctor should pass and say no directory contact.</li>
-            <li><strong>Open Guided.</strong> The console normally seeds an offline demo automatically; the button is always available too.</li>
-            <li><strong>Open Findings.</strong> Select a fixture, choose Explain + remediate, and try each local status.</li>
-            <li><strong>Open the GREEN Catalog.</strong> Inspect prompts, dependencies, approval, noise, and rollback metadata.</li>
-            <li><strong>Open Vault and Rollback.</strong> Practice a 30-second unmask and an offline rollback preview.</li>
-            <li><strong>Generate a Report.</strong> Download both formats and read the closeout checks.</li>
+            <li>
+              <strong>Confirm Console health.</strong> Doctor should pass and say no directory contact.{" "}
+              <Link className="linklike" to="/">Check console health</Link>.
+            </li>
+            <li>
+              <strong>Open Guided.</strong> The console normally seeds an offline demo automatically; the button is always available too.{" "}
+              <Link className="linklike" to="/guided">Open Guided walkthrough</Link>.
+            </li>
+            <li>
+              <strong>Open Findings.</strong> Select a fixture, choose Explain + remediate, and try each local status.{" "}
+              <Link className="linklike" to="/findings">Open demo findings</Link>.
+            </li>
+            <li>
+              <strong>Open the GREEN Catalog.</strong> Inspect prompts, dependencies, approval, noise, and rollback metadata.{" "}
+              <Link className="linklike" to="/catalog?lane=green">Browse GREEN capabilities</Link>.
+            </li>
+            <li>
+              <strong>Open Vault and Rollback.</strong> Practice a 30-second unmask and an offline rollback preview.{" "}
+              <Link className="linklike" to="/vault">Review the demo vault</Link> and{" "}
+              <Link className="linklike" to="/rollback">Preview rollback</Link>.
+            </li>
+            <li>
+              <strong>Generate a Report.</strong> Download both formats and read the closeout checks.{" "}
+              <Link className="linklike" to="/report">Review closeout</Link>.
+            </li>
           </ol>
-          <div className="actions guide-actions">
-            <Link className="btn primary" to="/guided">Open Guided</Link>
-            <Link className="btn ghost" to="/findings">Open Findings</Link>
-            <Link className="btn ghost" to="/catalog?lane=green">Open GREEN Catalog</Link>
-          </div>
         </section>
 
         <section className="panel span-4" id="risk-lanes">
