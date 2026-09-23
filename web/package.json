@@ -14,7 +14,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "typecheck:test": "tsc -p tsconfig.test.json --noEmit",
-    "e2e": "playwright test",
+    "e2e": "node scripts/run-e2e.mjs",
+    "test:e2e-harness": "node --test scripts/e2e-harness.test.mjs",
     "e2e:report": "playwright show-report"
   },
   "dependencies": {

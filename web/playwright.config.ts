@@ -1,5 +1,4 @@
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig, devices } from "@playwright/test";
@@ -23,17 +22,18 @@ const PYTHON = process.env.ADASSASSIN_E2E_PYTHON
     ? `"${VENV_PYTHON}"`
     : process.platform === "win32" ? "python" : "python3";
 
-// Isolate engagement data in a throwaway temp dir so the E2E run never touches
-// a real ~/.adassassin, and start from a clean slate every run.
-const DATA_DIR = path.join(os.tmpdir(), "adassassin-e2e-data");
-try {
-  fs.rmSync(DATA_DIR, { recursive: true, force: true });
-} catch {
-  /* first run: nothing to clean */
+// Configuration is evaluated again in workers. Storage belongs to the outer
+// launcher, which cleans it up only after Playwright stops the server.
+const MODE = process.env.ADASSASSIN_E2E_MODE;
+const DATA_DIR = process.env.ADASSASSIN_E2E_DATA_DIR;
+const ARTIFACT_DIR = process.env.ADASSASSIN_E2E_ARTIFACT_DIR;
+if (MODE !== "list" && (MODE !== "run" || !DATA_DIR || !ARTIFACT_DIR)) {
+  throw new Error("Run E2E through npm run e2e (including -- --list) so the launcher owns its storage and server.");
 }
 
 export default defineConfig({
   testDir: "./e2e",
+  outputDir: ARTIFACT_DIR ? path.join(ARTIFACT_DIR, "results") : undefined,
   // The journey shares one server + one engagement store, so run serially.
   fullyParallel: false,
   workers: 1,
@@ -49,12 +49,12 @@ export default defineConfig({
     video: "off",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
-  webServer: {
-    command: `${PYTHON} -m adassassin --no-browser --port ${PORT}`,
+  webServer: MODE === "list" ? undefined : {
+    command: `${PYTHON} -m adassassin --no-browser --host 127.0.0.1 --port ${PORT}`,
     cwd: "..",
-    env: { ADASSASSIN_DATA_DIR: DATA_DIR, ADASSASSIN_OPEN_BROWSER: "false" },
+    env: { ADASSASSIN_DATA_DIR: DATA_DIR!, ADASSASSIN_OPEN_BROWSER: "false" },
     url: `${BASE_URL}/api/health`,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     timeout: 120_000,
     stdout: "pipe",
     stderr: "pipe",

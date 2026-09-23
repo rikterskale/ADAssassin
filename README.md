@@ -99,6 +99,28 @@ The E2E configuration uses the repository `.venv` when present, falls back to
 the platform Python command, and accepts `ADASSASSIN_E2E_PYTHON` for an explicit
 interpreter path.
 
+Run E2E through `npm --prefix web run e2e`; forward filters or reporters after
+`--`, or use `-- --list` to list tests without starting a server or allocating
+engagement data. Direct `playwright test` is refused because it has no storage
+owner. The launcher requires a free loopback port (8799 by default); set
+`E2E_PORT` to a different unused port for concurrent runs. This collision check
+is not an atomic port reservation. Existing console servers are never deliberately
+reused. Custom `--config`, `--output`, and interactive UI/watch options are refused.
+
+Each run owns a fresh engagement directory under `web/.playwright/` and keeps
+its artifacts under a unique `web/test-results/e2e-*/` directory. Built-in HTML,
+JSON, JUnit, and blob reporters also write there. The launcher forwards runtime
+settings, including `ADASSASSIN_E2E_PYTHON` and `PLAYWRIGHT_BROWSERS_PATH`, without
+inheriting operator credentials or application configuration. It deletes only
+its own engagement directory after Playwright exits and the port is free.
+Startup/test failures use the same cleanup; previous artifacts are preserved.
+
+Ctrl+C, abnormal termination, or cleanup failure may leave temporary data. The
+launcher prints the retained path when it can; after a forced kill, inspect only
+the affected run's directory. Confirm its server has stopped before manually
+removing that directory. Later runs never sweep leftovers. Validate the launcher
+without a browser or Python server using `npm --prefix web run test:e2e-harness`.
+
 ## Engine pin
 
 `adaf-attack==0.10.1` @ `df92b617ad7d2ca3603408d59fcef50338e50bab`
