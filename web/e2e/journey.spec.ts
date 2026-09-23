@@ -1,4 +1,5 @@
 import { expect, Page, test } from "@playwright/test";
+import type { Engagement, GuideResponse } from "../src/types";
 
 // Scope navigation clicks to the sidebar so they never collide with in-content
 // links that point at the same routes.
@@ -109,4 +110,88 @@ test("reference journey: catalog inspect, glossary, and guided path", async ({ p
     await expect(page).toHaveURL(/\/guided$/);
     await expect(page.getByRole("heading", { name: /^01 /i })).toBeVisible();
   });
+});
+
+test("guided progress follows the selected workspace through delayed responses and retry", async ({ page }, testInfo) => {
+  // Synthetic browser responses only; no workspace, target, or evidence is created.
+  const workspaces: Engagement[] = ["a", "b"].map((id) => ({
+    id, name: `Workspace ${id.toUpperCase()}`, mode: "demo", domain: "", dc: "", username: "",
+    notes: "Synthetic guide regression", created_at: "2026-09-01T00:00:00Z", updated_at: "2026-09-01T00:00:00Z",
+    findings: [], jobs: [], connect: null, vault: { secrets: 0, tickets: 0, certificates: 0 },
+    rollback: { pending: 0 }, target_contacted: false, guided_marked: [],
+  }));
+  function guideFor(id: string, title = `Review ${id}`): GuideResponse {
+    const next = { id: "demo", title, why: "Offline orientation", href: "/guided",
+      complete_when: "demo", completion_mode: "automatic" as const, done: false };
+    return { ok: true, engagement_id: id, completed: [], next, steps: [next],
+      lanes: { green: 9, yellow: 37, red: 46 }, doctor_summary: "ready", core_complete: false };
+  }
+  let holdA = false;
+  let heldA = false;
+  let holdB = false;
+  let failB = false;
+  let releaseA!: () => void;
+  let releaseB!: () => void;
+  const waitA = new Promise<void>((resolve) => { releaseA = resolve; });
+  const waitB = new Promise<void>((resolve) => { releaseB = resolve; });
+  await page.route("**/api/engagements", (route) => route.fulfill({ json: { ok: true, engagements: workspaces } }));
+  await page.route("**/api/guide?*", async (route) => {
+    const id = new URL(route.request().url()).searchParams.get("engagement_id")!;
+    if (id === "a" && holdA) {
+      heldA = true;
+      await waitA;
+      await route.fulfill({ json: guideFor(id, "Obsolete progress") });
+    } else if (id === "b" && failB) {
+      failB = false;
+      await route.fulfill({ status: 503, json: { detail: "Synthetic guide outage" } });
+    } else {
+      if (id === "b" && holdB) await waitB;
+      await route.fulfill({ json: guideFor(id) });
+    }
+  });
+
+  await page.goto("/guided");
+  await expect(page.getByRole("link", { name: "Continue: Review a" })).toBeVisible();
+  holdA = true;
+  await page.getByRole("button", { name: "Refresh console data" }).click();
+  await expect.poll(() => heldA).toBe(true);
+  holdB = true;
+  const selector = page.getByRole("combobox", { name: "Current engagement" });
+  await selector.selectOption("b");
+  await expect(page.getByRole("status")).toHaveText(/loading guided progress/i);
+  await expect(page.getByRole("progressbar")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /continue:/i })).toHaveCount(0);
+  await page.screenshot({ path: testInfo.outputPath("guided-loading.png"), fullPage: true, animations: "disabled" });
+
+  releaseB();
+  await expect(page.getByRole("link", { name: "Continue: Review b" })).toBeVisible();
+  releaseA();
+  await expect(page.getByRole("button", { name: "Refresh console data" })).toBeEnabled();
+  await expect(selector).toHaveValue("b");
+  await expect(page.getByRole("link", { name: "Continue: Review b" })).toBeVisible();
+  await expect(page.getByText(/obsolete progress/i)).toHaveCount(0);
+
+  failB = true;
+  await page.getByRole("button", { name: "Refresh console data" }).click();
+  await expect(page.getByRole("status")).toHaveText(/guided progress is unavailable/i);
+  await expect(page.getByRole("progressbar")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /continue:/i })).toHaveCount(0);
+  await page.setViewportSize({ width: 375, height: 812 });
+  await expect(nav(page)).not.toBeInViewport();
+  const retry = page.getByRole("button", { name: "Retry guided progress" });
+  await retry.focus();
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Shift+Tab");
+  await expect(retry).toBeFocused();
+  await expect(retry).toHaveCSS("outline-style", "solid");
+  await expect(retry).toHaveCSS("outline-width", "2px");
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: testInfo.outputPath("guided-unavailable-mobile.png"), fullPage: true, animations: "disabled" });
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("link", { name: "Continue: Review b" })).toBeVisible();
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.getByRole("progressbar", { name: "Guided path progress" })).toHaveAttribute("aria-valuemax", "1");
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: testInfo.outputPath("guided-recovered.png"), fullPage: true, animations: "disabled" });
 });

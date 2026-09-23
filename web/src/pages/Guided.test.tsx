@@ -1,6 +1,7 @@
 import { screen } from "@testing-library/react";
 import { Guided } from "./Guided";
 import { makeEngagement, makeGuide, makeGuideStep, renderWithRouter } from "../test/utils";
+import type { GuideResponse } from "../types";
 
 const guide = makeGuide({
   steps: [
@@ -10,6 +11,55 @@ const guide = makeGuide({
 });
 
 describe("Guided", () => {
+  it("hides previous progress and cards while loading", () => {
+    renderWithRouter(<Guided guide={guide} loading engagement={null} onDemo={vi.fn()} />);
+    expect(screen.getByRole("status")).toHaveTextContent(/loading guided progress/i);
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /continue:/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /01 check/i })).not.toBeInTheDocument();
+  });
+
+  it.each<{ label: string; value: GuideResponse | null }>([
+    { label: "missing", value: null },
+    { label: "empty", value: makeGuide({ steps: [], next: null, core_complete: true }) },
+    { label: "unsuccessful", value: makeGuide({ ok: false }) },
+    { label: "optional only", value: makeGuide({ steps: [makeGuideStep({ optional: true })], next: null }) },
+    { label: "skipped only", value: makeGuide({ steps: [makeGuideStep({ applicable: false })], next: null }) },
+  ])("does not claim completion or render a zero-range progressbar for $label data", ({ value }) => {
+    renderWithRouter(<Guided guide={value} engagement={null} onDemo={vi.fn()} />);
+    expect(screen.getByRole("status")).toHaveTextContent(/guided progress is unavailable/i);
+    expect(screen.queryByText(/core journey complete/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /continue:/i })).not.toBeInTheDocument();
+  });
+
+  it.each([
+    { done: false, core_complete: undefined },
+    { done: false, core_complete: true },
+    { done: true, core_complete: false },
+  ])("does not infer completion from a missing next step (%j)", (state) => {
+    const incomplete = makeGuide({
+      next: null, core_complete: state.core_complete,
+      steps: [makeGuideStep({ done: state.done })],
+    });
+    renderWithRouter(<Guided guide={incomplete} engagement={null} onDemo={vi.fn()} />);
+    expect(screen.queryByText(/core journey complete/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(/progress needs a refresh/i);
+  });
+
+  it("derives completion for older responses while excluding skipped and optional work", () => {
+    const complete = makeGuide({ next: null, steps: [
+      makeGuideStep({ done: true }),
+      makeGuideStep({ id: "connect", applicable: false, skipped_reason: "Offline workspace" }),
+      makeGuideStep({ id: "red", optional: true }),
+    ] });
+    renderWithRouter(<Guided guide={complete} engagement={null} onDemo={vi.fn()} />);
+    expect(screen.getByRole("status")).toHaveTextContent(/1 of 1 core steps complete.*core journey complete/i);
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuemax", "1");
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "1");
+    expect(screen.getByText(/offline workspace/i)).toBeInTheDocument();
+  });
+
   it("renders numbered steps", () => {
     renderWithRouter(
       <Guided guide={guide} engagement={null} onDemo={vi.fn()} />,

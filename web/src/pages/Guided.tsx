@@ -2,17 +2,22 @@ import { Link } from "react-router-dom";
 import type { Engagement, GuideResponse } from "../types";
 
 export function Guided({
-  guide, engagement, onDemo,
+  guide, engagement, onDemo, loading = false, onRetry,
 }: {
   guide: GuideResponse | null;
   engagement: Engagement | null;
   onDemo: () => void;
+  loading?: boolean;
+  onRetry?: () => void;
 }) {
-  const steps = guide?.steps ?? [];
+  const steps = !loading && guide?.ok ? guide.steps : [];
   const coreSteps = steps.filter((step) => step.applicable !== false && !step.optional);
   const optionalSteps = steps.filter((step) => step.optional);
   const doneCount = coreSteps.filter((step) => step.done).length;
-  const currentStep = guide?.next ?? null;
+  const available = coreSteps.length > 0;
+  const currentStep = coreSteps.find((step) => step.id === guide?.next?.id && !step.done) ?? null;
+  const complete = available && doneCount === coreSteps.length && guide?.core_complete !== false && guide?.next === null;
+  const needsRefresh = available && !currentStep && !complete;
   const pct = coreSteps.length === 0 ? 0 : Math.round((doneCount / coreSteps.length) * 100);
 
   return (
@@ -33,21 +38,29 @@ export function Guided({
       </section>
       <div className="panel">
         <h2>Progress</h2>
-        <p className="muted">
-          {doneCount} of {coreSteps.length} core steps complete
-          {currentStep ? ` · up next: ${currentStep.title}` : " · core journey complete"}
-          {guide?.engagement_name ? ` · ${guide.engagement_name}` : ""}
+        <p className="muted" role="status">
+          {loading ? "Loading guided progress…" : !available ? "Guided progress is unavailable." : (
+            <>
+              {doneCount} of {coreSteps.length} core steps complete
+              {currentStep ? ` · up next: ${currentStep.title}` : complete ? " · core journey complete" : " · Progress needs a refresh."}
+              {guide?.engagement_name ? ` · ${guide.engagement_name}` : ""}
+            </>
+          )}
         </p>
-        <div
+        {available && <div
           className="progress"
           role="progressbar"
           aria-valuemin={0}
           aria-valuemax={coreSteps.length}
           aria-valuenow={doneCount}
+          aria-valuetext={`${doneCount} of ${coreSteps.length} core steps complete`}
           aria-label="Guided path progress"
         >
           <span className="progress-fill" style={{ width: `${pct}%` }} />
-        </div>
+        </div>}
+        {!loading && (!available || needsRefresh) && onRetry && (
+          <button className="btn" type="button" onClick={onRetry}>Retry guided progress</button>
+        )}
         {currentStep && (
           <div className="actions" style={{ marginTop: 14 }}>
             <Link className="btn primary" to={currentStep.href}>Continue: {currentStep.title}</Link>

@@ -23,6 +23,12 @@ import {
 } from "./storage";
 import type { CatalogResponse, DoctorResponse, Engagement, GuideResponse, HealthResponse } from "./types";
 
+type GuideState = { engagementId: string | null } & (
+  | { status: "loading" }
+  | { status: "ready"; data: GuideResponse }
+  | { status: "unavailable"; message: string }
+);
+
 export default function App() {
   return (
     <ToastProvider>
@@ -36,7 +42,7 @@ function Console() {
   const location = useLocation();
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [doctor, setDoctor] = useState<DoctorResponse | null>(null);
-  const [guide, setGuide] = useState<GuideResponse | null>(null);
+  const [guideState, setGuideState] = useState<GuideState>({ engagementId: null, status: "loading" });
   const [catalog, setCatalog] = useState<CatalogResponse | null>(null);
   const [engagements, setEngagements] = useState<Engagement[]>([]);
   const [currentId, setCurrentId] = useState<string | null>(null);
@@ -45,14 +51,45 @@ function Console() {
   const [error, setError] = useState<string | null>(null);
   const autoSeededRef = useRef(false);
   const currentIdRef = useRef<string | null>(null);
+  const guideRequestRef = useRef(0);
+  const refreshRequestRef = useRef(0);
   const [firstRun, setFirstRun] = useState(() => !readOnboardingSeen());
 
+  const loadGuide = useCallback(async (engagementId: string | null) => {
+    const request = ++guideRequestRef.current;
+    const isCurrent = () => request === guideRequestRef.current && engagementId === currentIdRef.current;
+    setGuideState({ engagementId, status: "loading" });
+    try {
+      const data = await api.guide(engagementId);
+      if (!isCurrent()) return false;
+      if (!data.ok || (data.engagement_id !== undefined && data.engagement_id !== engagementId)) {
+        throw new Error("The guide response does not match the selected workspace. Retry guided progress.");
+      }
+      setGuideState({ engagementId, status: "ready", data });
+      return true;
+    } catch (err) {
+      if (isCurrent()) {
+        setGuideState({ engagementId, status: "unavailable", message: err instanceof Error ? err.message : String(err) });
+      }
+      return false;
+    }
+  }, []);
+
+  const selectEngagement = useCallback((id: string) => {
+    // Update the ref before starting a request, including programmatic selections.
+    currentIdRef.current = id;
+    setCurrentId(id);
+    void loadGuide(id);
+  }, [loadGuide]);
+
   const refresh = useCallback(async () => {
+    const request = ++refreshRequestRef.current;
     setRefreshing(true);
     try {
       const [nextHealth, nextDoctor, nextCatalog, nextEngagements] = await Promise.all([
         api.health(), api.doctor(), api.catalog(), api.engagements(),
       ]);
+      if (request !== refreshRequestRef.current) return;
       const ids = new Set(nextEngagements.engagements.map((item) => item.id));
       const stored = readCurrentEngagement();
       const selected = currentIdRef.current && ids.has(currentIdRef.current)
@@ -60,26 +97,33 @@ function Console() {
         : stored && ids.has(stored)
           ? stored
           : nextEngagements.engagements[0]?.id ?? null;
-      const nextGuide = await api.guide(selected);
-      setHealth(nextHealth); setDoctor(nextDoctor); setGuide(nextGuide); setCatalog(nextCatalog);
+      setHealth(nextHealth); setDoctor(nextDoctor); setCatalog(nextCatalog);
       setEngagements(nextEngagements.engagements);
       currentIdRef.current = selected;
       setCurrentId(selected);
       setError(null);
-      setLoaded(true);
+      // Commit selection before awaiting the guide so a later user selection wins.
+      if (await loadGuide(selected)) setLoaded(true);
     } catch (err) {
       // Leave `loaded` false on the first failure so the retry screen shows;
       // a later transient failure keeps the already-rendered console up.
-      setError(err instanceof Error ? err.message : String(err));
+      if (request === refreshRequestRef.current) {
+        setError(err instanceof Error ? err.message : String(err));
+      }
     } finally {
-      setRefreshing(false);
+      if (request === refreshRequestRef.current) setRefreshing(false);
     }
-  }, []);
-
-  useEffect(() => { void refresh(); }, [refresh]);
+  }, [loadGuide]);
 
   useEffect(() => {
-    currentIdRef.current = currentId;
+    void refresh();
+    return () => {
+      guideRequestRef.current += 1;
+      refreshRequestRef.current += 1;
+    };
+  }, [refresh]);
+
+  useEffect(() => {
     if (currentId) writeCurrentEngagement(currentId);
   }, [currentId]);
 
@@ -89,13 +133,6 @@ function Console() {
       setFirstRun(false);
     }
   }, [firstRun, loaded, location.pathname]);
-
-  useEffect(() => {
-    if (!loaded) return;
-    void api.guide(currentId).then(setGuide).catch((err) => {
-      setError(err instanceof Error ? err.message : String(err));
-    });
-  }, [currentId, loaded]);
 
   // Zero-friction start: if nothing exists yet, seed the offline demo once so no page is empty.
   useEffect(() => {
@@ -118,10 +155,13 @@ function Console() {
     () => engagements.find((item) => item.id === currentId) ?? engagements[0] ?? null,
     [engagements, currentId],
   );
+  const currentGuide = guideState.engagementId === currentId ? guideState : null;
+  const guide = currentGuide?.status === "ready" ? currentGuide.data : null;
+  const notice = error ?? (currentGuide?.status === "unavailable" ? currentGuide.message : null);
 
   function upsertEngagement(engagement: Engagement) {
     setEngagements((items) => [engagement, ...items.filter((item) => item.id !== engagement.id)]);
-    setCurrentId(engagement.id);
+    selectEngagement(engagement.id);
   }
 
   async function createEngagement(body: { name: string; domain: string; dc: string; notes: string }) {
@@ -182,8 +222,8 @@ function Console() {
     await refresh();
   }
 
-  if (!loaded && error) {
-    return <Fatal message={error} onRetry={() => void refresh()} />;
+  if (!loaded && notice) {
+    return <Fatal message={notice} onRetry={() => void refresh()} />;
   }
   if (!loaded) {
     return <Splash />;
@@ -197,9 +237,9 @@ function Console() {
             health={health}
             engagements={engagements}
             current={current}
-            onSelectEngagement={setCurrentId}
+            onSelectEngagement={selectEngagement}
             catalog={catalog?.capabilities ?? []}
-            notice={error}
+            notice={notice}
             refreshing={refreshing}
             onRefresh={() => void refresh()}
           />
@@ -207,10 +247,10 @@ function Console() {
       >
         <Route path="/start" element={<StartHere />} />
         <Route path="/" element={firstRun ? <Navigate to="/start" replace /> : <Overview health={health} doctor={doctor} guide={guide} engagement={current} onSeedDemo={seedDemo} />} />
-        <Route path="/guided" element={<Guided guide={guide} engagement={current} onDemo={() => void seedDemo()} />} />
+        <Route path="/guided" element={<Guided guide={guide} loading={!currentGuide || currentGuide.status === "loading"} engagement={current} onDemo={() => void seedDemo()} onRetry={() => void loadGuide(currentId)} />} />
         <Route path="/catalog" element={<Catalog catalog={catalog} onViewGreen={markGreenCatalog} />} />
         <Route path="/glossary" element={<Glossary onSeen={markGlossary} />} />
-        <Route path="/engagements" element={<Engagements items={engagements} currentId={current?.id ?? null} onCreate={createEngagement} onUpdate={updateEngagement} onArchive={archiveEngagement} onDemo={() => void seedDemo()} onSelect={setCurrentId} />} />
+        <Route path="/engagements" element={<Engagements items={engagements} currentId={current?.id ?? null} onCreate={createEngagement} onUpdate={updateEngagement} onArchive={archiveEngagement} onDemo={() => void seedDemo()} onSelect={selectEngagement} />} />
         <Route path="/connect" element={<Connect engagement={current} onConnected={(item) => void handleConnected(item)} onSeedDemo={() => void seedDemo()} />} />
         <Route path="/run" element={<Run engagement={current} catalog={catalog?.capabilities ?? []} onRan={(item) => void handleRan(item)} onSeedDemo={() => void seedDemo()} />} />
         <Route path="/findings" element={<Findings engagement={current} onUpdated={(item) => void handleConnected(item)} onSeedDemo={() => void seedDemo()} onSeen={() => void mark("findings")} />} />

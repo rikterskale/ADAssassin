@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor } from "@testing-library/react";
 import App from "./App";
 import { api } from "./api";
 import {
@@ -6,9 +6,11 @@ import {
   makeDoctor,
   makeEngagement,
   makeGuide,
+  makeGuideStep,
   makeHealth,
   renderWithRouter,
 } from "./test/utils";
+import type { GuideResponse } from "./types";
 
 vi.mock("./api", () => ({
   api: {
@@ -61,6 +63,7 @@ function primeRefresh(engagements = [makeEngagement()]) {
 
 describe("App bootstrap", () => {
   beforeEach(() => {
+    vi.resetAllMocks();
     window.localStorage.clear();
   });
 
@@ -125,5 +128,121 @@ describe("App bootstrap", () => {
     await waitFor(() => expect(vi.mocked(api.markGuided)).toHaveBeenCalledTimes(1));
     await new Promise((resolve) => window.setTimeout(resolve, 25));
     expect(vi.mocked(api.markGuided)).toHaveBeenCalledTimes(1);
+  });
+
+  it("recovers from an initial guide failure through the fatal-screen retry", async () => {
+    primeRefresh();
+    vi.mocked(api.guide).mockRejectedValueOnce(new Error("Guide unavailable"));
+    const { user } = renderWithRouter(<App />, { route: "/guided" });
+    expect(await screen.findByText(/cannot reach the console/i)).toBeInTheDocument();
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    expect(await screen.findByRole("progressbar")).toHaveAttribute("aria-valuemax", "2");
+  });
+});
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason: Error) => void;
+  const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; });
+  return { promise, resolve, reject };
+}
+
+function engagementGuide(id: string, title: string) {
+  const next = makeGuideStep({ id: "demo", title, href: "/guided" });
+  return makeGuide({ engagement_id: id, next, steps: [next] });
+}
+
+describe("Guide selection", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    window.localStorage.clear();
+    window.localStorage.setItem("adassassin.onboardingSeen", "1");
+    primeRefresh([
+      makeEngagement({ id: "a", name: "Workspace A" }),
+      makeEngagement({ id: "b", name: "Workspace B" }),
+    ]);
+    vi.mocked(api.guide).mockImplementation(async (id) => engagementGuide(id!, `Review ${id}`));
+  });
+
+  it.each(["success", "failure"])("ignores a superseded selection %s, even after returning to the same engagement", async (outcome) => {
+    const { user } = renderWithRouter(<App />, { route: "/guided" });
+    await screen.findByRole("link", { name: "Continue: Review a" });
+    const oldB = deferred<GuideResponse>();
+    vi.mocked(api.guide).mockReturnValueOnce(oldB.promise);
+    const selector = screen.getByRole("combobox", { name: "Current engagement" });
+    await user.selectOptions(selector, "b");
+    expect(screen.getByRole("status")).toHaveTextContent(/loading guided progress/i);
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /continue:/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /01 review a/i })).not.toBeInTheDocument();
+
+    await user.selectOptions(selector, "a");
+    await screen.findByRole("link", { name: "Continue: Review a" });
+    await user.selectOptions(selector, "b");
+    await screen.findByRole("link", { name: "Continue: Review b" });
+    await act(async () => {
+      if (outcome === "success") oldB.resolve(engagementGuide("b", "Obsolete result"));
+      else oldB.reject(new Error("Obsolete failure"));
+    });
+    expect(screen.getByRole("link", { name: "Continue: Review b" })).toBeInTheDocument();
+    expect(screen.queryByText(/obsolete/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it.each(["success", "failure"])("ignores a refresh guide %s after the engagement changes", async (outcome) => {
+    const { user } = renderWithRouter(<App />, { route: "/guided" });
+    await screen.findByRole("link", { name: "Continue: Review a" });
+    const oldRefresh = deferred<GuideResponse>();
+    vi.mocked(api.guide).mockReturnValueOnce(oldRefresh.promise);
+    const callsBefore = vi.mocked(api.guide).mock.calls.length;
+    await user.click(screen.getByRole("button", { name: /refresh console data/i }));
+    await waitFor(() => expect(api.guide).toHaveBeenCalledTimes(callsBefore + 1));
+    await user.selectOptions(screen.getByRole("combobox", { name: "Current engagement" }), "b");
+    await screen.findByRole("link", { name: "Continue: Review b" });
+    await act(async () => {
+      if (outcome === "success") oldRefresh.resolve(engagementGuide("a", "Obsolete refresh"));
+      else oldRefresh.reject(new Error("Obsolete refresh failure"));
+    });
+    expect(screen.getByRole("combobox", { name: "Current engagement" })).toHaveValue("b");
+    expect(screen.getByRole("link", { name: "Continue: Review b" })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("shows unavailable progress after a selection fails and retries with the keyboard", async () => {
+    const { user } = renderWithRouter(<App />, { route: "/guided" });
+    await screen.findByRole("link", { name: "Continue: Review a" });
+    vi.mocked(api.guide).mockRejectedValueOnce(new Error("Guide temporarily unavailable"));
+    await user.selectOptions(screen.getByRole("combobox", { name: "Current engagement" }), "b");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Guide temporarily unavailable");
+    expect(screen.getByRole("status")).toHaveTextContent(/guided progress is unavailable/i);
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /continue:/i })).not.toBeInTheDocument();
+    const retry = screen.getByRole("button", { name: "Retry guided progress" });
+    retry.focus();
+    await user.keyboard("{Enter}");
+    expect(await screen.findByRole("link", { name: "Continue: Review b" })).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("hides the previous engagement's next step on Overview while loading", async () => {
+    const { user } = renderWithRouter(<App />);
+    await screen.findByRole("link", { name: /review a/i });
+    const pending = deferred<GuideResponse>();
+    vi.mocked(api.guide).mockReturnValueOnce(pending.promise);
+    await user.selectOptions(screen.getByRole("combobox", { name: "Current engagement" }), "b");
+    expect(screen.queryByRole("link", { name: /review a/i })).not.toBeInTheDocument();
+    await act(async () => pending.resolve(engagementGuide("b", "Review b")));
+    expect(screen.getByRole("link", { name: /review b/i })).toBeInTheDocument();
+  });
+
+  it("rejects a guide that explicitly names another engagement", async () => {
+    const { user } = renderWithRouter(<App />, { route: "/guided" });
+    await screen.findByRole("link", { name: "Continue: Review a" });
+    vi.mocked(api.guide).mockResolvedValueOnce(engagementGuide("a", "Wrong workspace"));
+    await user.selectOptions(screen.getByRole("combobox", { name: "Current engagement" }), "b");
+    expect(await screen.findByRole("alert")).toHaveTextContent(/does not match the selected workspace/i);
+    expect(screen.queryByRole("link", { name: /continue:/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(/unavailable/i);
   });
 });

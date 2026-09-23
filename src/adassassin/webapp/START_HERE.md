@@ -211,6 +211,13 @@ On a narrow screen, choose **Menu** to open navigation. No page is removed on
 mobile. If a refresh fails, the existing console remains visible and displays
 a stale-data warning with **Retry**.
 
+Guided progress belongs to the selected engagement. While its guide loads,
+**Guided** shows a loading status and hides the previous progress and
+**Continue** link. If the guide cannot load, choose **Retry guided progress**.
+An empty or inconsistent guide does not mean the core journey is complete;
+retry when progress is unavailable or needs a refresh. Skipped steps and
+optional RED work do not count against core completion.
+
 ## 5. Complete the zero-contact walkthrough first
 
 This walkthrough is both training and an installation smoke test.
